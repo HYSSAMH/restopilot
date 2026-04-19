@@ -82,6 +82,12 @@ export async function middleware(request: NextRequest) {
   return response;
 }
 
+// Next.js 16 : on force le middleware en runtime Node pour éviter la
+// couche Edge (dont l'erreur "edge function has crashed" sur Netlify
+// lors du traitement de gros payloads). Node runtime permet aussi
+// d'utiliser l'écosystème npm complet dans le middleware au besoin.
+export const runtime = "nodejs";
+
 export const config = {
   matcher: [
     "/dashboard/:path*",
