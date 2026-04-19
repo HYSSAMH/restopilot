@@ -23,6 +23,17 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
+# ── Functions (API routes & middleware) ─────────────────────
+# Le timeout MAX des fonctions synchrones dépend du plan Netlify :
+#   Free  : 10 s
+#   Pro   : 26 s
+#   Business+ : 30 s (configurable)
+# Le code (app/api/mercuriale-import/route.ts) déclare maxDuration=60
+# et parallélise l'extraction des pages PDF pour rentrer dans 10 s
+# même sur PDF de 3-5 pages.
+[functions]
+  node_bundler = "esbuild"
+
 # ── Variables d'environnement ───────────────────────────────
 # À configurer DANS Netlify Dashboard > Site settings > Environment variables
 # (ne PAS les mettre ici — ce fichier est commit). Liste :

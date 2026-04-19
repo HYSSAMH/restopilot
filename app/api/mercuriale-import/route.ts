@@ -1,7 +1,10 @@
 import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 
-export const runtime = "nodejs";
+export const runtime     = "nodejs";
+// Demande explicite d'un timeout étendu (respecté par Next.js sur les
+// runtimes qui le supportent, dont Netlify Functions sur plan ≥ Pro).
+export const maxDuration = 60;
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -144,7 +147,8 @@ async function extractPdfPage(
     { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBase64 } },
     { type: "text", text: pdfPagePrompt(page, total, lastCat) },
   ];
-  console.log(`[mercuriale-import] calling Anthropic (PDF page ${page}/${total}, model ${MODEL_ID})`);
+  const t0 = Date.now();
+  console.log(`[mercuriale-import] → Anthropic PDF page ${page}/${total}`);
   const msg = await (anthropic.messages.create as (
     body: Omit<Anthropic.MessageCreateParamsNonStreaming, "messages"> & {
       messages: { role: "user"; content: MsgContent[] }[];
@@ -155,9 +159,12 @@ async function extractPdfPage(
     { headers: { "anthropic-beta": "pdfs-2024-09-25" } },
   );
   const text = msg.content[0].type === "text" ? msg.content[0].text : "";
-  console.log(`[mercuriale-import] page ${page} response length: ${text.length} chars`);
   const products = parseProducts(text);
-  console.log(`[mercuriale-import] page ${page} parsed: ${products.length} products`);
+  console.log(`[mercuriale-import] ← page ${page} (${Date.now() - t0}ms) — ${text.length} chars → ${products.length} produits`);
+  if (products.length === 0 && text.length > 0) {
+    // Log les 300 premiers caractères si parsing a échoué
+    console.warn(`[mercuriale-import] page ${page} parsing vide — début réponse : ${text.slice(0, 300)}`);
+  }
   return products;
 }
 
@@ -174,16 +181,19 @@ async function extractImage(
     { type: "image", source: { type: "base64", media_type: mt, data: base64 } },
     { type: "text", text: IMAGE_PROMPT },
   ];
-  console.log(`[mercuriale-import] calling Anthropic (image, model ${MODEL_ID})`);
+  const t0 = Date.now();
+  console.log(`[mercuriale-import] → Anthropic image (${MODEL_ID})`);
   const msg = await anthropic.messages.create({
     model: MODEL_ID,
     max_tokens: 8096,
     messages: [{ role: "user", content: content as Anthropic.MessageParam["content"] }],
   });
   const text = msg.content[0].type === "text" ? msg.content[0].text : "";
-  console.log(`[mercuriale-import] image response length: ${text.length} chars`);
   const products = parseProducts(text);
-  console.log(`[mercuriale-import] image parsed: ${products.length} products`);
+  console.log(`[mercuriale-import] ← image (${Date.now() - t0}ms) — ${text.length} chars → ${products.length} produits`);
+  if (products.length === 0 && text.length > 0) {
+    console.warn(`[mercuriale-import] image parsing vide — début réponse : ${text.slice(0, 300)}`);
+  }
   return products;
 }
 
@@ -229,14 +239,24 @@ export async function POST(req: NextRequest) {
           const products = await extractImage(anthropic, pdfBase64, mediaType);
           all.push(...products);
         } else {
-          for (let page = 1; page <= totalPages; page++) {
-            sse(ctrl, { type: "progress", page, totalPages });
-            const products = await extractPdfPage(anthropic, pdfBase64, page, totalPages, lastCat);
-            all.push(...products);
-            const last = [...products].reverse().find(p => p.categorie);
-            if (last) lastCat = last.categorie;
-            if (products.length === 0 && page > 1) break;
-          }
+          // Extraction PARALLÈLE des pages PDF (Promise.all).
+          // Gagne drastiquement sur Netlify : 3 pages ≈ 4-5s au lieu de 12-15s.
+          // Contrepartie : on perd la carryover de `lastCat` d'une page à
+          // l'autre. La catégorie par défaut devient "epicerie" si Claude ne
+          // détecte aucun en-tête de section sur une page.
+          sse(ctrl, { type: "progress", page: 0, totalPages });
+          let completed = 0;
+          const pagePromises = Array.from({ length: totalPages }, (_, i) => {
+            const pageNum = i + 1;
+            return extractPdfPage(anthropic, pdfBase64, pageNum, totalPages, lastCat)
+              .then((products) => {
+                completed += 1;
+                sse(ctrl, { type: "progress", page: completed, totalPages });
+                return products;
+              });
+          });
+          const pageResults = await Promise.all(pagePromises);
+          pageResults.forEach((products) => all.push(...products));
         }
 
         // Deduplicate by normalised name (first occurrence wins)
