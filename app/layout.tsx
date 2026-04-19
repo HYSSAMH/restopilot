@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { ImportProvider } from "@/lib/import-context";
+import { ProfileProvider } from "@/lib/auth/profile-provider";
 import ImportToast from "@/components/ImportToast";
 import ImportPreviewModal from "@/components/ImportPreviewModal";
 
-const geist = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
+const inter = Inter({ subsets: ["latin"], variable: "--font-geist-sans" });
 
 export const metadata: Metadata = {
   title: "RestoPilot — Gérez votre restaurant intelligemment",
@@ -14,13 +15,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr" className={`${geist.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-[#0d0d1a] text-white">
-        <ImportProvider>
-          {children}
-          <ImportToast />
-          <ImportPreviewModal />
-        </ImportProvider>
+    <html lang="fr" className={`${inter.variable} h-full antialiased`}>
+      <body className="min-h-full flex flex-col bg-[#F8F9FA] text-[#1A1A2E]">
+        <ProfileProvider>
+          <ImportProvider>
+            {children}
+            <ImportToast />
+            <ImportPreviewModal />
+          </ImportProvider>
+        </ProfileProvider>
       </body>
     </html>
   );

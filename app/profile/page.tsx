@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import Navbar from "@/components/dashboard/Navbar";
+import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import AddressAutocomplete from "@/components/profile/AddressAutocomplete";
 import SiretInput from "@/components/profile/SiretInput";
 import LogoUpload from "@/components/profile/LogoUpload";
 import { createClient } from "@/lib/supabase/client";
+import { useProfile } from "@/lib/auth/use-profile";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -64,10 +65,10 @@ const JOURS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"
 
 function Section({ title, children, description }: { title: string; description?: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-white/8 bg-white/[0.02] p-6">
+    <section className="rounded-2xl border border-gray-200 bg-gray-50 p-6">
       <div className="mb-4">
-        <h2 className="text-base font-semibold text-white">{title}</h2>
-        {description && <p className="mt-0.5 text-xs text-white/40">{description}</p>}
+        <h2 className="text-base font-semibold text-[#1A1A2E]">{title}</h2>
+        {description && <p className="mt-0.5 text-xs text-gray-500">{description}</p>}
       </div>
       <div className="flex flex-col gap-4">{children}</div>
     </section>
@@ -77,18 +78,19 @@ function Section({ title, children, description }: { title: string; description?
 function Field({ label, children, span2 }: { label: string; children: React.ReactNode; span2?: boolean }) {
   return (
     <div className={span2 ? "sm:col-span-2" : ""}>
-      <label className="mb-1.5 block text-xs font-medium text-white/60">{label}</label>
+      <label className="mb-1.5 block text-xs font-medium text-gray-600">{label}</label>
       {children}
     </div>
   );
 }
 
 const inputCls =
-  "w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm text-white placeholder-white/25 outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 disabled:opacity-60";
+  "w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-[#1A1A2E] placeholder-gray-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-60";
 
 // ── Page ───────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
+  const { refresh: refreshGlobalProfile } = useProfile();
   const [p, setP]             = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving]   = useState(false);
@@ -190,6 +192,10 @@ export default function ProfilePage() {
         .eq("id", p.id);
     }
 
+    // Force le refresh du profil global → Navbar, dashboard et pages se mettent
+    // à jour instantanément sans rechargement (en plus du Realtime).
+    await refreshGlobalProfile();
+
     setToast({ type: "success", msg: "Profil enregistré avec succès ✓" });
     setSaving(false);
   }
@@ -197,24 +203,22 @@ export default function ProfilePage() {
   // ── Rendering ───────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0d0d1a]">
-        <Navbar />
+      <DashboardLayout>
         <div className="mx-auto max-w-3xl px-6 py-10">
-          <div className="h-64 animate-pulse rounded-2xl border border-white/8 bg-white/5" />
+          <div className="h-64 animate-pulse rounded-2xl border border-gray-200 bg-white" />
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   if (!p) {
     return (
-      <div className="min-h-screen bg-[#0d0d1a]">
-        <Navbar />
+      <DashboardLayout>
         <div className="mx-auto max-w-3xl px-6 py-10 text-center">
-          <p className="text-white/50">Session introuvable.</p>
-          <Link href="/login" className="mt-4 inline-block text-violet-400 hover:text-violet-300">Se reconnecter</Link>
+          <p className="text-gray-500">Session introuvable.</p>
+          <Link href="/login" className="mt-4 inline-block text-indigo-500 hover:text-indigo-600">Se reconnecter</Link>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
@@ -222,21 +226,19 @@ export default function ProfilePage() {
   const isFour   = p.role === "fournisseur";
 
   return (
-    <div className="min-h-screen bg-[#0d0d1a]">
-      <Navbar role={p.role} />
-
-      <div className="mx-auto max-w-3xl px-6 py-8">
+    <DashboardLayout role={p.role}>
+        <div className="mx-auto max-w-3xl px-6 py-8">
         {/* Breadcrumb */}
-        <div className="mb-6 flex items-center gap-2 text-sm text-white/30">
-          <Link href={backHref} className="hover:text-white/60">Dashboard</Link>
+        <div className="mb-6 flex items-center gap-2 text-sm text-gray-400">
+          <Link href={backHref} className="hover:text-gray-600">Dashboard</Link>
           <span>/</span>
-          <span className="text-white/60">Mon profil</span>
+          <span className="text-gray-600">Mon profil</span>
         </div>
 
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-white">Mon profil</h1>
-          <p className="mt-1 text-sm text-white/40">
+          <h1 className="text-2xl font-bold text-[#1A1A2E]">Mon profil</h1>
+          <p className="mt-1 text-sm text-gray-500">
             Ces informations sont utilisées pour pré-remplir les factures et la facturation.
           </p>
         </div>
@@ -292,7 +294,7 @@ export default function ProfilePage() {
                   value={p.email_contact ?? ""}
                   onChange={(e) => update("email_contact", e.target.value)}
                 />
-                <p className="mt-1 text-[11px] text-white/30">Email de connexion : {p.email}</p>
+                <p className="mt-1 text-[11px] text-gray-400">Email de connexion : {p.email}</p>
               </Field>
             </div>
           </Section>
@@ -389,7 +391,7 @@ export default function ProfilePage() {
                     update("adresse_livraison_cp",     p.code_postal);
                     update("adresse_livraison_ville",  p.ville);
                   }}
-                  className="self-start text-xs text-violet-400 underline-offset-2 hover:text-violet-300 hover:underline"
+                  className="self-start text-xs text-indigo-500 underline-offset-2 hover:text-indigo-600 hover:underline"
                 >
                   Copier depuis l&apos;adresse principale
                 </button>
@@ -399,7 +401,7 @@ export default function ProfilePage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Type de restaurant">
                     <select
-                      className={inputCls + " bg-[#13132a]"}
+                      className={inputCls + " bg-white"}
                       value={p.type_restaurant ?? ""}
                       onChange={(e) => update("type_restaurant", e.target.value || null)}
                     >
@@ -463,7 +465,7 @@ export default function ProfilePage() {
                     update("adresse_facturation_cp",     p.code_postal);
                     update("adresse_facturation_ville",  p.ville);
                   }}
-                  className="self-start text-xs text-violet-400 underline-offset-2 hover:text-violet-300 hover:underline"
+                  className="self-start text-xs text-indigo-500 underline-offset-2 hover:text-indigo-600 hover:underline"
                 >
                   Copier depuis l&apos;adresse principale
                 </button>
@@ -520,8 +522,8 @@ export default function ProfilePage() {
                           }}
                           className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
                             selected
-                              ? "bg-violet-600 text-white"
-                              : "border border-white/10 bg-white/5 text-white/50 hover:text-white/80"
+                              ? "bg-indigo-500 text-[#1A1A2E]"
+                              : "border border-gray-200 bg-white text-gray-500 hover:text-[#1A1A2E]"
                           }`}
                         >
                           {j}
@@ -543,12 +545,12 @@ export default function ProfilePage() {
           )}
 
           {/* ── Save bar ───────────────────────────────────────────── */}
-          <div className="sticky bottom-4 z-10 mt-2 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#13132a]/90 px-5 py-3 backdrop-blur">
-            <p className="text-xs text-white/40">Les modifications ne sont pas enregistrées tant que vous n&apos;avez pas cliqué sur Sauvegarder.</p>
+          <div className="sticky bottom-4 z-10 mt-2 flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white/90 px-5 py-3 backdrop-blur">
+            <p className="text-xs text-gray-500">Les modifications ne sont pas enregistrées tant que vous n&apos;avez pas cliqué sur Sauvegarder.</p>
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-purple-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 transition-all hover:from-violet-500 hover:to-purple-400 disabled:opacity-50"
+              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-5 py-2.5 text-sm font-semibold text-[#1A1A2E] shadow-lg shadow-indigo-500/20 transition-all hover:from-indigo-600 hover:to-violet-600 disabled:opacity-50"
             >
               {saving ? (
                 <>
@@ -574,6 +576,6 @@ export default function ProfilePage() {
           <p className="text-sm font-medium">{toast.msg}</p>
         </div>
       )}
-    </div>
+    </DashboardLayout>
   );
 }

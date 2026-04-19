@@ -185,24 +185,24 @@ function RegisterInner() {
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 py-10">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-32 -left-32 h-80 w-80 rounded-full bg-violet-700/20 blur-3xl" />
-        <div className="absolute -bottom-32 -right-32 h-80 w-80 rounded-full bg-pink-500/15 blur-3xl" />
+        <div className="absolute -top-32 -left-32 h-80 w-80 rounded-full bg-indigo-100/60 blur-3xl" />
+        <div className="absolute -bottom-32 -right-32 h-80 w-80 rounded-full bg-violet-100/50 blur-3xl" />
       </div>
 
       <div className="relative z-10 w-full max-w-lg animate-fade-in-up">
-        <Link href="/" className="mb-6 flex items-center gap-2 text-sm text-white/40 transition-colors hover:text-white/70">
+        <Link href="/" className="mb-6 flex items-center gap-2 text-sm text-gray-500 transition-colors hover:text-[#1A1A2E]">
           <span>←</span><span>Retour à l&apos;accueil</span>
         </Link>
 
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm">
+        <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
           <div className="mb-6 text-center">
-            <h1 className="text-2xl font-bold text-white">Créer mon compte</h1>
-            <p className="mt-1 text-sm text-white/50">Gratuit · 2 minutes</p>
+            <h1 className="text-2xl font-bold text-[#1A1A2E]">Créer mon compte</h1>
+            <p className="mt-1 text-sm text-gray-500">Gratuit · 2 minutes</p>
           </div>
 
           {/* ── Choix du rôle ─────────────────────────────────── */}
           <div className="mb-5">
-            <p className="mb-2 text-xs font-medium text-white/60">Je suis :</p>
+            <p className="mb-2 text-xs font-medium text-[#1A1A2E]">Je suis :</p>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {ROLES.map(r => (
                 <button
@@ -211,16 +211,16 @@ function RegisterInner() {
                   onClick={() => setRole(r.id)}
                   className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-all ${
                     role === r.id
-                      ? "border-violet-500/60 bg-violet-600/15 ring-2 ring-violet-500/30"
-                      : "border-white/10 bg-white/5 hover:bg-white/8"
+                      ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500/20"
+                      : "border-gray-200 bg-white hover:bg-white"
                   }`}
                 >
                   <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${r.gradient}`}>
                     <span className="text-lg">{r.icon}</span>
                   </div>
                   <div className="min-w-0">
-                    <p className={`text-sm font-semibold ${role === r.id ? "text-white" : "text-white/80"}`}>{r.label}</p>
-                    <p className="mt-0.5 text-[11px] leading-snug text-white/40">{r.sub}</p>
+                    <p className={`text-sm font-semibold ${role === r.id ? "text-[#1A1A2E]" : "text-[#1A1A2E]/80"}`}>{r.label}</p>
+                    <p className="mt-0.5 text-[11px] leading-snug text-gray-500">{r.sub}</p>
                   </div>
                 </button>
               ))}
@@ -230,77 +230,79 @@ function RegisterInner() {
           {/* ── Formulaire ────────────────────────────────────── */}
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-white/60">
+              <label htmlFor="reg-etab" className="mb-1.5 block text-xs font-medium text-[#1A1A2E]">
                 Nom de l&apos;établissement *
               </label>
               <input
-                required
+                id="reg-etab" name="nom_etablissement" autoComplete="organization" required
                 value={nomEtablissement} onChange={e => setNomEtab(e.target.value)}
                 placeholder={role === "fournisseur" ? "ex : ProFrais Distribution" : "ex : Le Bistrot Parisien"}
-                className="w-full rounded-xl border border-white/10 bg-white/8 px-4 py-2.5 text-sm text-white placeholder-white/25 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/50"
+                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-[#1A1A2E] placeholder-gray-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-white/60">Prénom</label>
+                <label htmlFor="reg-prenom" className="mb-1.5 block text-xs font-medium text-[#1A1A2E]">Prénom</label>
                 <input
+                  id="reg-prenom" name="given-name" autoComplete="given-name"
                   value={prenom} onChange={e => setPrenom(e.target.value)}
                   placeholder="Marc"
-                  className="w-full rounded-xl border border-white/10 bg-white/8 px-4 py-2.5 text-sm text-white placeholder-white/25 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/50"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-[#1A1A2E] placeholder-gray-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-white/60">Nom</label>
+                <label htmlFor="reg-nom" className="mb-1.5 block text-xs font-medium text-[#1A1A2E]">Nom</label>
                 <input
+                  id="reg-nom" name="family-name" autoComplete="family-name"
                   value={nom} onChange={e => setNom(e.target.value)}
                   placeholder="Dupont"
-                  className="w-full rounded-xl border border-white/10 bg-white/8 px-4 py-2.5 text-sm text-white placeholder-white/25 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/50"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-[#1A1A2E] placeholder-gray-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-white/60">Adresse email *</label>
+              <label htmlFor="reg-email" className="mb-1.5 block text-xs font-medium text-[#1A1A2E]">Adresse email *</label>
               <input
-                required type="email" autoComplete="email"
+                id="reg-email" name="email" required type="email" autoComplete="email"
                 value={email} onChange={e => setEmail(e.target.value)}
                 placeholder="vous@exemple.com"
-                className="w-full rounded-xl border border-white/10 bg-white/8 px-4 py-2.5 text-sm text-white placeholder-white/25 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/50"
+                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-[#1A1A2E] placeholder-gray-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-white/60">Mot de passe *</label>
+                <label htmlFor="reg-password" className="mb-1.5 block text-xs font-medium text-[#1A1A2E]">Mot de passe *</label>
                 <input
-                  required type="password" autoComplete="new-password" minLength={8}
+                  id="reg-password" name="new-password" required type="password" autoComplete="new-password" minLength={8}
                   value={password} onChange={e => setPassword(e.target.value)}
                   placeholder="8+ caractères"
-                  className="w-full rounded-xl border border-white/10 bg-white/8 px-4 py-2.5 text-sm text-white placeholder-white/25 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/50"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-[#1A1A2E] placeholder-gray-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-white/60">Confirmation *</label>
+                <label htmlFor="reg-password-confirm" className="mb-1.5 block text-xs font-medium text-[#1A1A2E]">Confirmation *</label>
                 <input
-                  required type="password" autoComplete="new-password"
+                  id="reg-password-confirm" name="new-password-confirm" required type="password" autoComplete="new-password"
                   value={confirmPassword} onChange={e => setConfirm(e.target.value)}
                   placeholder="Retapez le mot de passe"
-                  className="w-full rounded-xl border border-white/10 bg-white/8 px-4 py-2.5 text-sm text-white placeholder-white/25 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/50"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-[#1A1A2E] placeholder-gray-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
             </div>
 
             {error && (
-              <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
             )}
             {success && (
-              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400">{success}</div>
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-600">{success}</div>
             )}
 
             <button
               type="submit" disabled={loading || !!success}
-              className="mt-1 flex h-12 w-full items-center justify-center rounded-xl bg-gradient-to-r from-violet-600 to-purple-500 text-sm font-semibold text-white shadow-lg shadow-violet-500/30 transition-all hover:from-violet-500 hover:to-purple-400 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-1 flex h-12 w-full items-center justify-center rounded-xl bg-indigo-500 text-sm font-semibold text-[#1A1A2E] shadow-lg shadow-indigo-500/20 transition-all hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? (
                 <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -311,15 +313,15 @@ function RegisterInner() {
             </button>
           </form>
 
-          <p className="mt-5 text-center text-sm text-white/40">
+          <p className="mt-5 text-center text-sm text-gray-500">
             Déjà inscrit ?{" "}
-            <Link href="/login" className="font-medium text-violet-400 transition-colors hover:text-violet-300">
+            <Link href="/login" className="font-medium text-indigo-500 transition-colors hover:text-indigo-600">
               Se connecter
             </Link>
           </p>
         </div>
 
-        <p className="mt-6 text-center text-xs text-white/20">
+        <p className="mt-6 text-center text-xs text-gray-400">
           Resto<span className="text-violet-500/60">Pilot</span> · Tous droits réservés
         </p>
       </div>
@@ -329,7 +331,7 @@ function RegisterInner() {
 
 export default function RegisterPage() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-white/40">Chargement…</div>}>
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-gray-500">Chargement…</div>}>
       <RegisterInner />
     </Suspense>
   );

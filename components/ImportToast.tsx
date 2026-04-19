@@ -22,14 +22,14 @@ export default function ImportToast() {
       : state.status === "running" ? 0 : 100;
 
   return (
-    <div className="fixed bottom-6 right-6 z-[200] w-80 overflow-hidden rounded-2xl border border-white/12 bg-[#13132a] shadow-2xl shadow-black/50 transition-all">
+    <div className="fixed bottom-6 right-6 z-[200] w-80 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl shadow-black/50 transition-all">
       {/* Top bar */}
       <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-3">
         <div className="flex items-center gap-3">
           {/* Icon */}
           {state.status === "running" && (
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-600/20">
-              <svg className="h-4 w-4 animate-spin text-violet-400" fill="none" viewBox="0 0 24 24">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-500/20">
+              <svg className="h-4 w-4 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
               </svg>
@@ -50,8 +50,8 @@ export default function ImportToast() {
           <div className="min-w-0">
             {state.status === "running" && (
               <>
-                <p className="text-sm font-medium text-white">Import en cours…</p>
-                <p className="truncate text-xs text-white/40">
+                <p className="text-sm font-medium text-[#1A1A2E]">Import en cours…</p>
+                <p className="truncate text-xs text-gray-500">
                   {state.progress
                     ? `Page ${state.progress.page}/${state.progress.totalPages} · ${state.filename ?? ""}`
                     : `Lecture du fichier · ${state.filename ?? ""}`}
@@ -62,13 +62,13 @@ export default function ImportToast() {
               const total = state.result!.added + state.result!.updated;
               return (
                 <>
-                  <p className="text-sm font-medium text-white">
+                  <p className="text-sm font-medium text-[#1A1A2E]">
                     {total > 0
                       ? `${total} produit${total > 1 ? "s" : ""} importé${total > 1 ? "s" : ""} avec succès`
                       : "Aucune modification"}
                   </p>
                   {total > 0 && (
-                    <p className="text-xs text-white/50">
+                    <p className="text-xs text-gray-500">
                       {state.result!.added > 0 && `${state.result!.added} ajouté${state.result!.added > 1 ? "s" : ""}`}
                       {state.result!.added > 0 && state.result!.updated > 0 && " · "}
                       {state.result!.updated > 0 && `${state.result!.updated} mis à jour`}
@@ -79,7 +79,7 @@ export default function ImportToast() {
             })()}
             {state.status === "error" && (
               <>
-                <p className="text-sm font-medium text-white">Import échoué</p>
+                <p className="text-sm font-medium text-[#1A1A2E]">Import échoué</p>
                 <p className="truncate text-xs text-red-400/80">{state.error}</p>
               </>
             )}
@@ -90,7 +90,7 @@ export default function ImportToast() {
         {state.status !== "running" && (
           <button
             onClick={dismiss}
-            className="shrink-0 text-white/30 hover:text-white/60 transition-colors mt-0.5"
+            className="shrink-0 text-gray-400 hover:text-gray-600 transition-colors mt-0.5"
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -100,7 +100,7 @@ export default function ImportToast() {
       </div>
 
       {/* Progress bar */}
-      <div className="h-1 w-full bg-white/8">
+      <div className="h-1 w-full bg-gray-100">
         <div
           className={`h-full transition-all duration-500 ${
             state.status === "done"  ? "bg-emerald-500" :

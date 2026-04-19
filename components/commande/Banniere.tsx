@@ -39,11 +39,11 @@ export default function Banniere({ cartMap }: BanniereProps) {
   if (entries.length === 0) return null;
 
   return (
-    <div className="sticky top-16 z-40 border-b border-white/8 bg-[#0d0d1a]/95 backdrop-blur-md">
+    <div className="sticky top-16 z-40 border-b border-gray-200 bg-[#F8F9FA]/95 backdrop-blur-md">
       <div className="mx-auto max-w-7xl px-6">
         <div className="flex flex-wrap items-center gap-3 py-3">
           {/* Label */}
-          <span className="text-xs font-medium uppercase tracking-wider text-white/30">
+          <span className="text-xs font-medium uppercase tracking-wider text-gray-400">
             Récapitulatif commande
           </span>
 
@@ -51,17 +51,17 @@ export default function Banniere({ cartMap }: BanniereProps) {
             {/* Économies */}
             <div className="flex items-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5">
               <span className="text-sm">💰</span>
-              <span className="text-xs text-white/50">Économies</span>
+              <span className="text-xs text-gray-500">Économies</span>
               <span className="text-sm font-bold text-emerald-400">
                 −{fmt(economies)} €
               </span>
             </div>
 
             {/* Fournisseurs */}
-            <div className="flex items-center gap-2 rounded-xl border border-violet-500/25 bg-violet-500/10 px-3 py-1.5">
+            <div className="flex items-center gap-2 rounded-xl border border-indigo-200 bg-violet-500/10 px-3 py-1.5">
               <span className="text-sm">🚚</span>
-              <span className="text-xs text-white/50">Fournisseurs</span>
-              <span className="text-sm font-bold text-violet-300">{nbFournisseurs}</span>
+              <span className="text-xs text-gray-500">Fournisseurs</span>
+              <span className="text-sm font-bold text-indigo-600">{nbFournisseurs}</span>
             </div>
 
             {/* Minimums */}
@@ -75,7 +75,7 @@ export default function Banniere({ cartMap }: BanniereProps) {
               }`}
             >
               <span className="text-sm">{allMinimumsOk ? "✅" : "⚠️"}</span>
-              <span className="text-xs text-white/50">Minimums</span>
+              <span className="text-xs text-gray-500">Minimums</span>
               <span
                 className={`text-sm font-bold ${
                   allMinimumsOk ? "text-emerald-400" : minimumsAtteints > 0 ? "text-amber-300" : "text-red-400"
@@ -86,9 +86,9 @@ export default function Banniere({ cartMap }: BanniereProps) {
             </div>
 
             {/* Produits */}
-            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5">
-              <span className="text-xs text-white/50">Produits</span>
-              <span className="text-sm font-bold text-white">{entries.length}</span>
+            <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-1.5">
+              <span className="text-xs text-gray-500">Produits</span>
+              <span className="text-sm font-bold text-[#1A1A2E]">{entries.length}</span>
             </div>
           </div>
         </div>

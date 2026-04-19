@@ -80,7 +80,7 @@ export default function SiretInput({ value, onChange, onCompanyFound, disabled }
   const statusUI = (() => {
     switch (status) {
       case "checking":
-        return <span className="text-white/40">⏳ Vérification…</span>;
+        return <span className="text-gray-500">⏳ Vérification…</span>;
       case "valid":
         return (
           <span className="text-emerald-400">
@@ -98,7 +98,7 @@ export default function SiretInput({ value, onChange, onCompanyFound, disabled }
 
   return (
     <div>
-      <label className="mb-1.5 block text-xs font-medium text-white/60">Numéro SIRET *</label>
+      <label className="mb-1.5 block text-xs font-medium text-gray-600">Numéro SIRET *</label>
       <input
         type="text"
         inputMode="numeric"
@@ -107,9 +107,9 @@ export default function SiretInput({ value, onChange, onCompanyFound, disabled }
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value.replace(/[^\d\s]/g, ""))}
-        className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 font-mono text-sm tracking-wider text-white placeholder-white/25 outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 disabled:opacity-60"
+        className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 font-mono text-sm tracking-wider text-[#1A1A2E] placeholder-gray-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-60"
       />
-      <p className="mt-1.5 text-xs">{statusUI ?? <span className="text-white/30">Ex : 732 829 320 00074</span>}</p>
+      <p className="mt-1.5 text-xs">{statusUI ?? <span className="text-gray-400">Ex : 732 829 320 00074</span>}</p>
     </div>
   );
 }

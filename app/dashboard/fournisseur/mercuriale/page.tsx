@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Link from "next/link";
-import Navbar from "@/components/dashboard/Navbar";
+import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { createClient } from "@/lib/supabase/client";
 import { useImport } from "@/lib/import-context";
 import { useProfile } from "@/lib/auth/use-profile";
@@ -45,7 +45,7 @@ function catIcone(id: string) { return CATEGORIES.find(c => c.id === id)?.icone 
 function catLabel(id: string) { return CATEGORIES.find(c => c.id === id)?.label ?? id; }
 
 const BADGE_CONFIG: Record<string, { label: string; chip: string; dot: string }> = {
-  nouveaute:   { label: "Nouveauté",   chip: "border-violet-500/30 bg-violet-500/10 text-violet-300", dot: "bg-violet-400" },
+  nouveaute:   { label: "Nouveauté",   chip: "border-indigo-200 bg-indigo-50 text-indigo-600", dot: "bg-violet-400" },
   prix_baisse: { label: "Prix baisse", chip: "border-sky-500/30 bg-sky-500/10 text-sky-300",          dot: "bg-sky-400"    },
   promotion:   { label: "Promotion",   chip: "border-amber-500/30 bg-amber-500/10 text-amber-300",    dot: "bg-amber-400"  },
 };
@@ -89,10 +89,10 @@ type SortKey      = "date_desc" | "date_asc" | "name_asc" | "price_asc" | "price
 
 function StatCard({ label, value, sub, color }: { label: string; value: number | string; sub?: string; color?: string }) {
   return (
-    <div className={`rounded-2xl border px-5 py-4 ${color ?? "border-white/8 bg-white/5"}`}>
-      <p className="text-xs text-white/40">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-white">{value}</p>
-      {sub && <p className="mt-0.5 text-xs text-white/30">{sub}</p>}
+    <div className={`rounded-2xl border px-5 py-4 ${color ?? "border-gray-200 bg-white"}`}>
+      <p className="text-xs text-gray-500">{label}</p>
+      <p className="mt-1 text-2xl font-bold text-[#1A1A2E]">{value}</p>
+      {sub && <p className="mt-0.5 text-xs text-gray-400">{sub}</p>}
     </div>
   );
 }
@@ -372,22 +372,20 @@ export default function MercurialePage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-[#0d0d1a]">
-      <Navbar role="fournisseur" />
-
+    <DashboardLayout role="fournisseur">
       <div className="mx-auto max-w-6xl px-6 py-8">
         {/* Breadcrumb */}
-        <div className="mb-6 flex items-center gap-2 text-sm text-white/30">
-          <Link href="/dashboard/fournisseur" className="hover:text-white/60 transition-colors">Dashboard</Link>
+        <div className="mb-6 flex items-center gap-2 text-sm text-gray-400">
+          <Link href="/dashboard/fournisseur" className="hover:text-gray-600 transition-colors">Dashboard</Link>
           <span>/</span>
-          <span className="text-white/60">Ma mercuriale</span>
+          <span className="text-gray-600">Ma mercuriale</span>
         </div>
 
         {/* Header */}
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-white">Ma mercuriale</h1>
-            <p className="mt-1 text-sm text-white/40">
+            <h1 className="text-2xl font-bold text-[#1A1A2E]">Ma mercuriale</h1>
+            <p className="mt-1 text-sm text-gray-500">
               Gérez vos produits, prix et stocks visibles par les restaurateurs.
             </p>
           </div>
@@ -396,7 +394,7 @@ export default function MercurialePage() {
             <button
               onClick={handleImportClick}
               disabled={importState.status === "running"}
-              className="flex shrink-0 items-center gap-2 rounded-xl border border-violet-500/40 bg-violet-600/15 px-4 py-2.5 text-sm font-medium text-violet-300 transition-all hover:bg-violet-600/30 hover:text-violet-200 disabled:opacity-50"
+              className="flex shrink-0 items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-500/15 px-4 py-2.5 text-sm font-medium text-indigo-600 transition-all hover:bg-indigo-500/30 hover:text-violet-200 disabled:opacity-50"
             >
               {importState.status === "running" ? (
                 <>
@@ -419,7 +417,7 @@ export default function MercurialePage() {
             </button>
             <button
               onClick={openAdd}
-              className="flex shrink-0 items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-purple-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 hover:from-violet-500 hover:to-purple-400 transition-all"
+              className="flex shrink-0 items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-2.5 text-sm font-semibold text-[#1A1A2E] shadow-lg shadow-indigo-500/20 hover:from-indigo-600 hover:to-violet-600 transition-all"
             >
               <span className="text-lg leading-none">+</span>
               Ajouter un produit
@@ -444,36 +442,36 @@ export default function MercurialePage() {
             label="Stock faible"
             value={nbStockFaible}
             sub="< 10 unités"
-            color={nbStockFaible > 0 ? "border-amber-500/25 bg-amber-500/8" : "border-white/8 bg-white/5"}
+            color={nbStockFaible > 0 ? "border-amber-500/25 bg-amber-500/8" : "border-gray-200 bg-white"}
           />
         </div>
 
         {/* ── Filtres ─────────────────────────────────────────────────── */}
-        <div className="mb-4 space-y-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+        <div className="mb-4 space-y-3 rounded-2xl border border-gray-200 bg-gray-50 p-4">
           {/* Search + dropdowns */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative min-w-48 flex-1">
-              <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Rechercher un produit..."
-                className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pl-9 pr-4 text-sm text-white placeholder-white/25 outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20"
+                className="w-full rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-4 text-sm text-[#1A1A2E] placeholder-gray-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
             <select
               value={categoryFilter}
               onChange={e => setCategoryFilter(e.target.value as CategoryFilter)}
-              className="rounded-xl border border-white/10 bg-[#13132a] px-3.5 py-2 text-sm text-white outline-none focus:border-violet-500/50"
+              className="rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm text-[#1A1A2E] outline-none focus:border-indigo-500"
             >
               {CATEGORY_FILTERS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
             </select>
             <select
               value={sortBy}
               onChange={e => setSortBy(e.target.value as SortKey)}
-              className="rounded-xl border border-white/10 bg-[#13132a] px-3.5 py-2 text-sm text-white outline-none focus:border-violet-500/50"
+              className="rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm text-[#1A1A2E] outline-none focus:border-indigo-500"
             >
               <option value="date_desc">Plus récents</option>
               <option value="date_asc">Plus anciens</option>
@@ -486,14 +484,14 @@ export default function MercurialePage() {
           {/* Chips: statut + badge */}
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-white/40">Statut :</span>
-              <div className="flex gap-1 rounded-xl border border-white/8 bg-white/5 p-1">
+              <span className="text-xs font-medium text-gray-500">Statut :</span>
+              <div className="flex gap-1 rounded-xl border border-gray-200 bg-white p-1">
                 {(["tous", "actifs", "inactifs"] as const).map(f => (
                   <button
                     key={f}
                     onClick={() => setStatusFilter(f)}
                     className={`rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition-all ${
-                      statusFilter === f ? "bg-violet-600 text-white shadow" : "text-white/40 hover:text-white/70"
+                      statusFilter === f ? "bg-indigo-500 text-[#1A1A2E] shadow" : "text-gray-500 hover:text-gray-700"
                     }`}
                   >
                     {f}
@@ -502,8 +500,8 @@ export default function MercurialePage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-white/40">Badge :</span>
-              <div className="flex gap-1 rounded-xl border border-white/8 bg-white/5 p-1">
+              <span className="text-xs font-medium text-gray-500">Badge :</span>
+              <div className="flex gap-1 rounded-xl border border-gray-200 bg-white p-1">
                 {([
                   { id: "tous",        label: "Tous"        },
                   { id: "nouveaute",   label: "Nouveautés"  },
@@ -514,7 +512,7 @@ export default function MercurialePage() {
                     key={f.id}
                     onClick={() => setBadgeFilter(f.id)}
                     className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                      badgeFilter === f.id ? "bg-violet-600 text-white shadow" : "text-white/40 hover:text-white/70"
+                      badgeFilter === f.id ? "bg-indigo-500 text-[#1A1A2E] shadow" : "text-gray-500 hover:text-gray-700"
                     }`}
                   >
                     {f.label}
@@ -527,7 +525,7 @@ export default function MercurialePage() {
                 onClick={() => {
                   setSearch(""); setCategoryFilter("tous"); setStatusFilter("tous"); setBadgeFilter("tous");
                 }}
-                className="ml-auto text-xs text-white/40 underline-offset-2 hover:text-white/70 hover:underline"
+                className="ml-auto text-xs text-gray-500 underline-offset-2 hover:text-gray-700 hover:underline"
               >
                 Réinitialiser les filtres
               </button>
@@ -537,12 +535,12 @@ export default function MercurialePage() {
 
         {/* ── Résumé + actions groupées ──────────────────────────────── */}
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3 px-1">
-          <p className="text-sm text-white/40">
+          <p className="text-sm text-gray-500">
             {totalFiltered === entries.length ? (
-              <><span className="font-semibold text-white/70">{entries.length}</span> produit{entries.length > 1 ? "s" : ""}</>
+              <><span className="font-semibold text-gray-700">{entries.length}</span> produit{entries.length > 1 ? "s" : ""}</>
             ) : (
               <>
-                <span className="font-semibold text-white/70">{totalFiltered}</span>
+                <span className="font-semibold text-gray-700">{totalFiltered}</span>
                 {" "}produit{totalFiltered > 1 ? "s" : ""} affiché{totalFiltered > 1 ? "s" : ""} sur {entries.length}
               </>
             )}
@@ -550,20 +548,20 @@ export default function MercurialePage() {
 
           {selectedIds.size > 0 ? (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs font-medium text-violet-300">
+              <span className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-600">
                 {selectedIds.size} sélectionné{selectedIds.size > 1 ? "s" : ""}
               </span>
               {selectedIds.size < totalFiltered && (
                 <button
                   onClick={selectAllFiltered}
-                  className="text-xs text-white/40 underline-offset-2 hover:text-white/70 hover:underline"
+                  className="text-xs text-gray-500 underline-offset-2 hover:text-gray-700 hover:underline"
                 >
                   Sélectionner les {totalFiltered} filtrés
                 </button>
               )}
               <button
                 onClick={() => setBulkConfirm("deactivate")}
-                className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/70 transition-all hover:bg-white/10 hover:text-white"
+                className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-all hover:bg-white/10 hover:text-[#1A1A2E]"
               >
                 Désactiver la sélection
               </button>
@@ -575,7 +573,7 @@ export default function MercurialePage() {
               </button>
               <button
                 onClick={clearSelection}
-                className="text-xs text-white/30 hover:text-white/60"
+                className="text-xs text-gray-400 hover:text-gray-600"
               >
                 Annuler
               </button>
@@ -587,13 +585,13 @@ export default function MercurialePage() {
         {loading ? (
           <div className="space-y-2">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-14 animate-pulse rounded-2xl border border-white/8 bg-white/5" />
+              <div key={i} className="h-14 animate-pulse rounded-2xl border border-gray-200 bg-white" />
             ))}
           </div>
         ) : pageItems.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-white/8 bg-white/5 py-24 text-center">
+          <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-gray-200 bg-white py-24 text-center">
             <span className="text-5xl">{entries.length === 0 ? "📦" : "🔍"}</span>
-            <p className="text-white/50">
+            <p className="text-gray-500">
               {entries.length === 0
                 ? "Votre mercuriale est vide pour l'instant."
                 : "Aucun produit ne correspond à vos filtres."}
@@ -601,23 +599,23 @@ export default function MercurialePage() {
             {entries.length === 0 && (
               <button
                 onClick={openAdd}
-                className="mt-1 rounded-xl bg-violet-600/20 px-4 py-2 text-sm font-medium text-violet-300 hover:bg-violet-600 hover:text-white transition-all"
+                className="mt-1 rounded-xl bg-indigo-500/20 px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-500 hover:text-[#1A1A2E] transition-all"
               >
                 Ajouter votre premier produit
               </button>
             )}
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-white/8">
+          <div className="overflow-hidden rounded-2xl border border-gray-200">
             {/* Header row */}
-            <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto] items-center gap-4 border-b border-white/8 bg-white/[0.03] px-5 py-3 text-xs font-medium uppercase tracking-wide text-white/30">
+            <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto] items-center gap-4 border-b border-gray-200 bg-gray-50 px-5 py-3 text-xs font-medium uppercase tracking-wide text-gray-400">
               <label className="flex h-5 w-5 cursor-pointer items-center justify-center" title="Tout sélectionner (page en cours)">
                 <input
                   type="checkbox"
                   checked={allPageSelected}
                   ref={el => { if (el) el.indeterminate = !allPageSelected && somePageSelected; }}
                   onChange={togglePageSelection}
-                  className="h-4 w-4 cursor-pointer rounded border-white/20 bg-white/5 accent-violet-600"
+                  className="h-4 w-4 cursor-pointer rounded border-white/20 bg-white accent-violet-600"
                 />
               </label>
               <span>Produit</span>
@@ -628,7 +626,7 @@ export default function MercurialePage() {
               <span className="w-20 text-right">Actions</span>
             </div>
 
-            <div className="divide-y divide-white/5">
+            <div className="divide-y divide-gray-100">
               {pageItems.map(entry => {
                 const selected = selectedIds.has(entry.tarif_id);
                 const badge    = activeBadge(entry);
@@ -636,7 +634,7 @@ export default function MercurialePage() {
                   <div
                     key={entry.tarif_id}
                     className={`grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto] items-center gap-4 px-5 py-3.5 transition-colors ${
-                      selected ? "bg-violet-600/10 hover:bg-violet-600/15" : "hover:bg-white/[0.02]"
+                      selected ? "bg-indigo-500/10 hover:bg-indigo-500/15" : "hover:bg-gray-50"
                     }`}
                   >
                     <label className="flex h-5 w-5 cursor-pointer items-center justify-center">
@@ -644,7 +642,7 @@ export default function MercurialePage() {
                         type="checkbox"
                         checked={selected}
                         onChange={() => toggleSelect(entry.tarif_id)}
-                        className="h-4 w-4 cursor-pointer rounded border-white/20 bg-white/5 accent-violet-600"
+                        className="h-4 w-4 cursor-pointer rounded border-white/20 bg-white accent-violet-600"
                       />
                     </label>
 
@@ -652,7 +650,7 @@ export default function MercurialePage() {
                     <div className="flex min-w-0 items-center gap-3">
                       <span className="shrink-0 text-xl">{entry.icone}</span>
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-white">{entry.nom}</p>
+                        <p className="truncate text-sm font-medium text-[#1A1A2E]">{entry.nom}</p>
                         {badge && (
                           <span className={`mt-0.5 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${BADGE_CONFIG[badge].chip}`}>
                             <span className={`h-1 w-1 rounded-full ${BADGE_CONFIG[badge].dot}`} />
@@ -662,20 +660,20 @@ export default function MercurialePage() {
                       </div>
                     </div>
 
-                    <span className="hidden w-24 text-xs text-white/40 sm:block">{catLabel(entry.categorie)}</span>
+                    <span className="hidden w-24 text-xs text-gray-500 sm:block">{catLabel(entry.categorie)}</span>
 
                     <div className="w-24 text-right">
-                      <span className="text-sm font-semibold text-white">{entry.prix.toFixed(2)} €</span>
-                      <span className="ml-1 text-xs text-white/30">/{entry.unite}</span>
+                      <span className="text-sm font-semibold text-[#1A1A2E]">{entry.prix.toFixed(2)} €</span>
+                      <span className="ml-1 text-xs text-gray-400">/{entry.unite}</span>
                     </div>
 
                     <div className="hidden w-16 text-right sm:block">
                       {entry.stock !== null ? (
-                        <span className={`text-sm font-medium ${entry.stock < 10 ? "text-amber-400" : "text-white/60"}`}>
+                        <span className={`text-sm font-medium ${entry.stock < 10 ? "text-amber-400" : "text-gray-600"}`}>
                           {entry.stock}
                         </span>
                       ) : (
-                        <span className="text-sm text-white/20">—</span>
+                        <span className="text-sm text-gray-300">—</span>
                       )}
                     </div>
 
@@ -685,7 +683,7 @@ export default function MercurialePage() {
                         className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-all ${
                           entry.actif
                             ? "bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25"
-                            : "bg-white/8 text-white/30 hover:bg-white/12"
+                            : "bg-gray-100 text-gray-400 hover:bg-gray-100"
                         }`}
                       >
                         <span className={`h-1.5 w-1.5 rounded-full ${entry.actif ? "bg-emerald-400" : "bg-white/30"}`} />
@@ -697,7 +695,7 @@ export default function MercurialePage() {
                       <button
                         onClick={() => openEdit(entry)}
                         title="Modifier"
-                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/40 transition-colors hover:bg-violet-600/20 hover:text-violet-300"
+                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-indigo-500/20 hover:text-indigo-600"
                       >
                         <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -706,7 +704,7 @@ export default function MercurialePage() {
                       <button
                         onClick={() => setConfirmDelete(entry.tarif_id)}
                         title="Supprimer"
-                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/40 transition-colors hover:bg-red-500/20 hover:text-red-400"
+                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-red-500/20 hover:text-red-400"
                       >
                         <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -723,8 +721,8 @@ export default function MercurialePage() {
         {/* ── Pagination ─────────────────────────────────────────────── */}
         {totalPages > 1 && (
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-white/40">
-              Page <span className="font-semibold text-white/70">{safePage}</span> sur {totalPages}
+            <p className="text-xs text-gray-500">
+              Page <span className="font-semibold text-gray-700">{safePage}</span> sur {totalPages}
               {" · "}
               {pageStart + 1}–{Math.min(pageStart + PAGE_SIZE, totalFiltered)} / {totalFiltered}
             </p>
@@ -732,21 +730,21 @@ export default function MercurialePage() {
               <button
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={safePage === 1}
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/50 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-30"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-white/10 hover:text-[#1A1A2E] disabled:opacity-30"
               >
                 ‹
               </button>
               {getPageNumbers(safePage, totalPages).map((p, i) =>
                 p === "…" ? (
-                  <span key={`dots-${i}`} className="px-1.5 text-xs text-white/30">…</span>
+                  <span key={`dots-${i}`} className="px-1.5 text-xs text-gray-400">…</span>
                 ) : (
                   <button
                     key={p}
                     onClick={() => setCurrentPage(p)}
                     className={`flex h-8 min-w-8 items-center justify-center rounded-lg border px-2 text-xs font-medium transition-colors ${
                       p === safePage
-                        ? "border-violet-500/50 bg-violet-600 text-white"
-                        : "border-white/10 bg-white/5 text-white/50 hover:bg-white/10 hover:text-white"
+                        ? "border-violet-500/50 bg-indigo-500 text-[#1A1A2E]"
+                        : "border-gray-200 bg-white text-gray-500 hover:bg-white/10 hover:text-[#1A1A2E]"
                     }`}
                   >
                     {p}
@@ -756,7 +754,7 @@ export default function MercurialePage() {
               <button
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={safePage === totalPages}
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/50 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-30"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-white/10 hover:text-[#1A1A2E] disabled:opacity-30"
               >
                 ›
               </button>
@@ -769,27 +767,27 @@ export default function MercurialePage() {
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeModal} />
-          <div className="relative w-full max-w-md rounded-2xl border border-white/12 bg-[#13132a] p-6 shadow-2xl shadow-black/50">
+          <div className="relative w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl shadow-black/50">
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-white">
+              <h2 className="text-lg font-bold text-[#1A1A2E]">
                 {editingId ? "Modifier le produit" : "Ajouter un produit"}
               </h2>
-              <button onClick={closeModal} className="text-white/30 hover:text-white/60 transition-colors text-xl leading-none">✕</button>
+              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 transition-colors text-xl leading-none">✕</button>
             </div>
 
             <div className="flex flex-col gap-4">
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-white/50">Nom du produit *</label>
+                <label className="mb-1.5 block text-xs font-medium text-gray-500">Nom du produit *</label>
                 <input
                   value={form.nom}
                   onChange={e => setForm(f => ({ ...f, nom: e.target.value }))}
                   placeholder="ex : Tomates cerises"
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm text-white placeholder-white/20 outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-[#1A1A2E] placeholder-gray-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
 
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-white/50">Catégorie *</label>
+                <label className="mb-1.5 block text-xs font-medium text-gray-500">Catégorie *</label>
                 <div className="grid grid-cols-3 gap-1.5">
                   {CATEGORIES.map(cat => (
                     <button
@@ -798,8 +796,8 @@ export default function MercurialePage() {
                       onClick={() => setForm(f => ({ ...f, categorie: cat.id }))}
                       className={`flex flex-col items-center gap-1 rounded-xl border py-2 text-xs transition-all ${
                         form.categorie === cat.id
-                          ? "border-violet-500/50 bg-violet-600/20 text-violet-300"
-                          : "border-white/8 bg-white/5 text-white/40 hover:bg-white/8"
+                          ? "border-violet-500/50 bg-indigo-500/20 text-indigo-600"
+                          : "border-gray-200 bg-white text-gray-500 hover:bg-gray-100"
                       }`}
                     >
                       <span className="text-xl">{cat.icone}</span>
@@ -811,7 +809,7 @@ export default function MercurialePage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1.5 block text-xs font-medium text-white/50">Prix unitaire (€) *</label>
+                  <label className="mb-1.5 block text-xs font-medium text-gray-500">Prix unitaire (€) *</label>
                   <input
                     type="number"
                     min="0"
@@ -819,15 +817,15 @@ export default function MercurialePage() {
                     value={form.prix}
                     onChange={e => setForm(f => ({ ...f, prix: e.target.value }))}
                     placeholder="0.00"
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm text-white placeholder-white/20 outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20"
+                    className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-[#1A1A2E] placeholder-gray-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                   />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-xs font-medium text-white/50">Unité *</label>
+                  <label className="mb-1.5 block text-xs font-medium text-gray-500">Unité *</label>
                   <select
                     value={form.unite}
                     onChange={e => setForm(f => ({ ...f, unite: e.target.value }))}
-                    className="w-full rounded-xl border border-white/10 bg-[#13132a] px-3.5 py-2.5 text-sm text-white outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20"
+                    className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-[#1A1A2E] outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                   >
                     {UNITES.map(u => <option key={u} value={u}>{u}</option>)}
                   </select>
@@ -835,8 +833,8 @@ export default function MercurialePage() {
               </div>
 
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-white/50">
-                  Stock disponible <span className="text-white/25">(optionnel — laisser vide si illimité)</span>
+                <label className="mb-1.5 block text-xs font-medium text-gray-500">
+                  Stock disponible <span className="text-gray-400">(optionnel — laisser vide si illimité)</span>
                 </label>
                 <input
                   type="number"
@@ -844,14 +842,14 @@ export default function MercurialePage() {
                   value={form.stock}
                   onChange={e => setForm(f => ({ ...f, stock: e.target.value }))}
                   placeholder="ex : 50"
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm text-white placeholder-white/20 outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-[#1A1A2E] placeholder-gray-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
 
-              <div className="flex items-center justify-between rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3">
+              <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
                 <div>
-                  <p className="text-sm text-white/70">Visible dans le catalogue</p>
-                  <p className="text-xs text-white/30">Les restaurateurs peuvent commander ce produit</p>
+                  <p className="text-sm text-gray-700">Visible dans le catalogue</p>
+                  <p className="text-xs text-gray-400">Les restaurateurs peuvent commander ce produit</p>
                 </div>
                 <button
                   type="button"
@@ -872,14 +870,14 @@ export default function MercurialePage() {
             <div className="mt-5 flex gap-3">
               <button
                 onClick={closeModal}
-                className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-medium text-white/50 transition-all hover:bg-white/8 hover:text-white/70"
+                className="flex-1 rounded-xl border border-gray-200 bg-white py-2.5 text-sm font-medium text-gray-500 transition-all hover:bg-gray-100 hover:text-gray-700"
               >
                 Annuler
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex-1 rounded-xl bg-gradient-to-r from-violet-600 to-purple-500 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 transition-all hover:from-violet-500 hover:to-purple-400 disabled:opacity-50"
+                className="flex-1 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 py-2.5 text-sm font-semibold text-[#1A1A2E] shadow-lg shadow-indigo-500/20 transition-all hover:from-indigo-600 hover:to-violet-600 disabled:opacity-50"
               >
                 {saving ? "Enregistrement…" : editingId ? "Enregistrer" : "Ajouter"}
               </button>
@@ -892,23 +890,23 @@ export default function MercurialePage() {
       {confirmDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfirmDelete(null)} />
-          <div className="relative w-full max-w-sm rounded-2xl border border-white/12 bg-[#13132a] p-6 text-center shadow-2xl shadow-black/50">
+          <div className="relative w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-2xl shadow-black/50">
             <span className="text-4xl">🗑️</span>
-            <h2 className="mt-3 text-lg font-bold text-white">Supprimer ce produit ?</h2>
-            <p className="mt-1.5 text-sm text-white/40">
+            <h2 className="mt-3 text-lg font-bold text-[#1A1A2E]">Supprimer ce produit ?</h2>
+            <p className="mt-1.5 text-sm text-gray-500">
               Il sera retiré de votre mercuriale et ne sera plus visible dans le catalogue restaurateur.
             </p>
             <div className="mt-5 flex gap-3">
               <button
                 onClick={() => setConfirmDelete(null)}
-                className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-medium text-white/50 transition-all hover:bg-white/8"
+                className="flex-1 rounded-xl border border-gray-200 bg-white py-2.5 text-sm font-medium text-gray-500 transition-all hover:bg-gray-100"
               >
                 Annuler
               </button>
               <button
                 onClick={handleDelete}
                 disabled={deleting}
-                className="flex-1 rounded-xl border border-red-500/30 bg-red-500/20 py-2.5 text-sm font-semibold text-red-400 transition-all hover:bg-red-500 hover:text-white disabled:opacity-50"
+                className="flex-1 rounded-xl border border-red-500/30 bg-red-500/20 py-2.5 text-sm font-semibold text-red-400 transition-all hover:bg-red-500 hover:text-[#1A1A2E] disabled:opacity-50"
               >
                 {deleting ? "Suppression…" : "Supprimer"}
               </button>
@@ -921,12 +919,12 @@ export default function MercurialePage() {
       {bulkConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !bulkProcessing && setBulkConfirm(null)} />
-          <div className="relative w-full max-w-sm rounded-2xl border border-white/12 bg-[#13132a] p-6 text-center shadow-2xl shadow-black/50">
+          <div className="relative w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-2xl shadow-black/50">
             <span className="text-4xl">{bulkConfirm === "delete" ? "🗑️" : "⏸️"}</span>
-            <h2 className="mt-3 text-lg font-bold text-white">
+            <h2 className="mt-3 text-lg font-bold text-[#1A1A2E]">
               {bulkConfirm === "delete" ? "Supprimer" : "Désactiver"} {selectedIds.size} produit{selectedIds.size > 1 ? "s" : ""} ?
             </h2>
-            <p className="mt-1.5 text-sm text-white/40">
+            <p className="mt-1.5 text-sm text-gray-500">
               {bulkConfirm === "delete"
                 ? "Cette action est irréversible. Les produits seront retirés de votre mercuriale."
                 : "Les produits ne seront plus visibles dans le catalogue restaurateur, mais restent modifiables."}
@@ -935,7 +933,7 @@ export default function MercurialePage() {
               <button
                 onClick={() => setBulkConfirm(null)}
                 disabled={bulkProcessing}
-                className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-medium text-white/50 transition-all hover:bg-white/8 disabled:opacity-30"
+                className="flex-1 rounded-xl border border-gray-200 bg-white py-2.5 text-sm font-medium text-gray-500 transition-all hover:bg-gray-100 disabled:opacity-30"
               >
                 Annuler
               </button>
@@ -944,8 +942,8 @@ export default function MercurialePage() {
                 disabled={bulkProcessing}
                 className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all disabled:opacity-50 ${
                   bulkConfirm === "delete"
-                    ? "border border-red-500/30 bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white"
-                    : "border border-white/10 bg-white/8 text-white/80 hover:bg-white/15"
+                    ? "border border-red-500/30 bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-[#1A1A2E]"
+                    : "border border-gray-200 bg-gray-100 text-[#1A1A2E] hover:bg-white/15"
                 }`}
               >
                 {bulkProcessing ? "Application…" : bulkConfirm === "delete" ? "Supprimer" : "Désactiver"}
@@ -954,6 +952,6 @@ export default function MercurialePage() {
           </div>
         </div>
       )}
-    </div>
+    </DashboardLayout>
   );
 }

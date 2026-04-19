@@ -106,14 +106,14 @@ export default function ImportPreviewModal() {
 
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-white/12 bg-[#13132a] shadow-2xl shadow-black/60">
+      <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl shadow-black/60">
         {/* Header */}
-        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-white/8 px-6 py-4">
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-200 px-6 py-4">
           <div>
-            <h2 className="text-lg font-bold text-white">
+            <h2 className="text-lg font-bold text-[#1A1A2E]">
               Vérification avant import
             </h2>
-            <p className="mt-0.5 truncate text-sm text-white/40">
+            <p className="mt-0.5 truncate text-sm text-gray-500">
               {items.length} produit{items.length > 1 ? "s" : ""} détecté
               {items.length > 1 ? "s" : ""}
               {state.filename && <> · {state.filename}</>}
@@ -122,7 +122,7 @@ export default function ImportPreviewModal() {
           {!isApplying && (
             <button
               onClick={cancelImport}
-              className="shrink-0 text-xl leading-none text-white/30 transition-colors hover:text-white/60"
+              className="shrink-0 text-xl leading-none text-gray-400 transition-colors hover:text-gray-600"
             >
               ✕
             </button>
@@ -130,7 +130,7 @@ export default function ImportPreviewModal() {
         </div>
 
         {/* Summary chips */}
-        <div className="flex shrink-0 flex-wrap gap-2 border-b border-white/8 bg-white/[0.02] px-6 py-3">
+        <div className="flex shrink-0 flex-wrap gap-2 border-b border-gray-200 bg-gray-50 px-6 py-3">
           {nouveauxIdx.length > 0 && (
             <span className="flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
@@ -144,7 +144,7 @@ export default function ImportPreviewModal() {
             </span>
           )}
           {unchangedIdx.length > 0 && (
-            <span className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/40">
+            <span className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-500">
               <span className="h-1.5 w-1.5 rounded-full bg-white/25" />
               {unchangedIdx.length} inchangé
               {unchangedIdx.length > 1 ? "s" : ""}
@@ -186,7 +186,7 @@ export default function ImportPreviewModal() {
             <div>
               <button
                 onClick={() => setShowUnchanged((v) => !v)}
-                className="flex items-center gap-2 text-xs font-medium text-white/40 transition-colors hover:text-white/70"
+                className="flex items-center gap-2 text-xs font-medium text-gray-500 transition-colors hover:text-gray-700"
               >
                 <span
                   className={`transition-transform ${showUnchanged ? "rotate-90" : ""}`}
@@ -202,18 +202,18 @@ export default function ImportPreviewModal() {
                   {unchangedIdx.map(({ item, idx }) => (
                     <div
                       key={idx}
-                      className="flex items-center gap-3 rounded-xl border border-white/6 bg-white/[0.02] px-4 py-2.5 opacity-60"
+                      className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-2.5 opacity-60"
                     >
                       <span className="shrink-0 text-lg">
                         {CAT_ICONE[item.categorie] ?? "📦"}
                       </span>
-                      <span className="flex-1 truncate text-sm text-white/60">
+                      <span className="flex-1 truncate text-sm text-gray-600">
                         {item.nom}
                       </span>
-                      <span className="shrink-0 text-xs text-white/30">
+                      <span className="shrink-0 text-xs text-gray-400">
                         {CAT_LABEL[item.categorie] ?? item.categorie}
                       </span>
-                      <span className="shrink-0 text-sm text-white/40">
+                      <span className="shrink-0 text-sm text-gray-500">
                         {item.prix.toFixed(2)} €/{item.unite}
                       </span>
                     </div>
@@ -225,8 +225,8 @@ export default function ImportPreviewModal() {
         </div>
 
         {/* Footer */}
-        <div className="flex shrink-0 items-center justify-between gap-4 border-t border-white/8 bg-white/[0.02] px-6 py-4">
-          <p className="text-xs text-white/30">
+        <div className="flex shrink-0 items-center justify-between gap-4 border-t border-gray-200 bg-gray-50 px-6 py-4">
+          <p className="text-xs text-gray-400">
             {changeCount} modification{changeCount !== 1 ? "s" : ""} · badges
             valables 7 jours
           </p>
@@ -234,14 +234,14 @@ export default function ImportPreviewModal() {
             <button
               onClick={cancelImport}
               disabled={isApplying}
-              className="rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-medium text-white/60 transition-all hover:bg-white/8 disabled:opacity-30"
+              className="rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-600 transition-all hover:bg-gray-100 disabled:opacity-30"
             >
               Annuler
             </button>
             <button
               onClick={handleConfirm}
               disabled={isApplying || changeCount === 0}
-              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-purple-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 transition-all hover:from-violet-500 hover:to-purple-400 disabled:opacity-50"
+              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-5 py-2.5 text-sm font-semibold text-[#1A1A2E] shadow-lg shadow-indigo-500/20 transition-all hover:from-indigo-600 hover:to-violet-600 disabled:opacity-50"
             >
               {isApplying ? (
                 <>
@@ -299,7 +299,7 @@ function Section({
         <span className={`text-xs font-semibold uppercase tracking-wide ${titleColor}`}>
           {title}
         </span>
-        <span className="text-xs text-white/25">({count})</span>
+        <span className="text-xs text-gray-400">({count})</span>
       </div>
       <div className="space-y-1.5">{children}</div>
     </div>
@@ -341,11 +341,11 @@ function EditRow({
         value={item.editNom}
         onChange={(e) => onChange(idx, "editNom", e.target.value)}
         disabled={disabled}
-        className="min-w-0 flex-1 basis-40 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white outline-none placeholder-white/20 focus:border-violet-500/50 disabled:opacity-60"
+        className="min-w-0 flex-1 basis-40 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-[#1A1A2E] outline-none placeholder-gray-400 focus:border-indigo-500 disabled:opacity-60"
       />
 
       {/* Catégorie chip */}
-      <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white/40">
+      <span className="shrink-0 rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500">
         {CAT_LABEL[item.categorie] ?? item.categorie}
       </span>
 
@@ -358,7 +358,7 @@ function EditRow({
 
       {/* Old price (crossed out, only for updated) */}
       {item.status === "updated" && item.oldPrix !== undefined && (
-        <span className="shrink-0 text-xs text-white/30 line-through">
+        <span className="shrink-0 text-xs text-gray-400 line-through">
           {item.oldPrix.toFixed(2)} €
         </span>
       )}
@@ -372,9 +372,9 @@ function EditRow({
           value={item.editPrix}
           onChange={(e) => onChange(idx, "editPrix", e.target.value)}
           disabled={disabled}
-          className="w-20 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-right text-sm text-white outline-none focus:border-violet-500/50 disabled:opacity-60"
+          className="w-20 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-right text-sm text-[#1A1A2E] outline-none focus:border-indigo-500 disabled:opacity-60"
         />
-        <span className="text-sm text-white/40">€</span>
+        <span className="text-sm text-gray-500">€</span>
       </div>
 
       {/* Unité */}
@@ -382,7 +382,7 @@ function EditRow({
         value={item.editUnite}
         onChange={(e) => onChange(idx, "editUnite", e.target.value)}
         disabled={disabled}
-        className="shrink-0 rounded-lg border border-white/10 bg-[#13132a] px-2.5 py-1.5 text-sm text-white outline-none focus:border-violet-500/50 disabled:opacity-60"
+        className="shrink-0 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-[#1A1A2E] outline-none focus:border-indigo-500 disabled:opacity-60"
       >
         {UNITES.map((u) => (
           <option key={u} value={u}>
