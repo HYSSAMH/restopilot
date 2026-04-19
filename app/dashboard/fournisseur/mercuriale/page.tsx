@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { Suspense, useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { createClient } from "@/lib/supabase/client";
 import { useImport } from "@/lib/import-context";
@@ -116,10 +117,23 @@ function getPageNumbers(current: number, total: number): (number | "…")[] {
 
 // ── Page ───────────────────────────────────────────────────────────────────
 
-export default function MercurialePage() {
+export default function MercurialePageWrapper() {
+  return (
+    <Suspense fallback={<DashboardLayout role="fournisseur"><div className="p-10 text-gray-500">Chargement…</div></DashboardLayout>}>
+      <MercurialePage />
+    </Suspense>
+  );
+}
+
+function MercurialePage() {
   const { state: importState, startImport } = useImport();
   const { profile } = useProfile();
-  const fournisseurId = profile?.id ?? null;
+  const searchParams = useSearchParams();
+  // Mode admin "en tant que" : /dashboard/fournisseur/mercuriale?as=<user_id>
+  // Autorisé uniquement si l'utilisateur connecté a le rôle admin.
+  const impersonateId = searchParams.get("as");
+  const isAdminActingAs = impersonateId && profile?.role === "admin";
+  const fournisseurId = isAdminActingAs ? impersonateId : (profile?.id ?? null);
 
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -369,7 +383,7 @@ export default function MercurialePage() {
     const valid = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
     if (!valid.includes(file.type)) { setImportError("Format non supporté. Utilisez PDF, JPG ou PNG."); return; }
     if (file.size > 20 * 1024 * 1024) { setImportError("Fichier trop grand (max 20 MB)."); return; }
-    startImport(file);
+    startImport(file, isAdminActingAs ? fournisseurId ?? undefined : undefined);
   }
 
   const hasActiveFilters =

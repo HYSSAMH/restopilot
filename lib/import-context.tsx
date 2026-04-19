@@ -73,8 +73,12 @@ type CurrentRow = {
 
 interface ImportContextValue {
   state: ImportState;
-  startImport: (file: File) => void;
-  confirmImport: (editedItems: PreviewItem[]) => Promise<void>;
+  /**
+   * `targetFournisseurId` : si fourni, l'import est attribué à cet utilisateur
+   * (cas admin agissant "en tant que"). Sinon utilise l'utilisateur connecté.
+   */
+  startImport: (file: File, targetFournisseurId?: string) => void;
+  confirmImport: (editedItems: PreviewItem[], targetFournisseurId?: string) => Promise<void>;
   cancelImport: () => void;
   dismiss: () => void;
 }
@@ -169,7 +173,7 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
     error: null,
   });
 
-  const startImport = useCallback(async (file: File) => {
+  const startImport = useCallback(async (file: File, targetFournisseurId?: string) => {
     setState({
       status: "running",
       progress: null,
@@ -189,7 +193,7 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Session expirée — reconnectez-vous pour importer.");
-      const fournisseurId = user.id;
+      const fournisseurId = targetFournisseurId ?? user.id;
 
       // Fetch current mercuriale for comparison (non-archivée)
       const { data: tarifData } = await supabase
@@ -272,14 +276,14 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const confirmImport = useCallback(async (editedItems: PreviewItem[]) => {
+  const confirmImport = useCallback(async (editedItems: PreviewItem[], targetFournisseurId?: string) => {
     setState((s) => ({ ...s, status: "applying" }));
 
     try {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Session expirée — reconnectez-vous.");
-      const fournisseurId = user.id;
+      const fournisseurId = targetFournisseurId ?? user.id;
 
       let added = 0;
       let updated = 0;

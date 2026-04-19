@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-type Role = "restaurateur" | "fournisseur";
+type Role = "restaurateur" | "fournisseur" | "admin";
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -28,14 +28,15 @@ export async function middleware(request: NextRequest) {
 
   const isDashboard = path.startsWith("/dashboard");
   const isProfile   = path === "/profile" || path.startsWith("/profile/");
-  const isProtected = isDashboard || isProfile;
+  const isAdmin     = path === "/admin"   || path.startsWith("/admin/");
+  const isProtected = isDashboard || isProfile || isAdmin;
   const isAuthRoute =
     path === "/login" ||
     path === "/register" ||
     path.startsWith("/login/") ||
     path.startsWith("/register/");
 
-  // Non authentifié + accès protégé → /login (avec retour après connexion)
+  // Non authentifié + accès protégé → /login
   if (isProtected && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
@@ -47,24 +48,34 @@ export async function middleware(request: NextRequest) {
   if (isAuthRoute && user) {
     const role = (user.user_metadata?.role as Role | undefined) ?? "restaurateur";
     const url = request.nextUrl.clone();
-    url.pathname = `/dashboard/${role}`;
+    url.pathname = role === "admin" ? "/admin" : `/dashboard/${role}`;
     url.search = "";
     return NextResponse.redirect(url);
   }
 
-  // Cloisonnement par rôle dans /dashboard/*
-  if (isDashboard && user) {
+  if (user) {
     const role = (user.user_metadata?.role as Role | undefined) ?? "restaurateur";
 
-    if (path.startsWith("/dashboard/fournisseur") && role !== "fournisseur") {
+    // /admin/* réservé aux admins
+    if (isAdmin && role !== "admin") {
       const url = request.nextUrl.clone();
-      url.pathname = "/dashboard/restaurateur";
+      url.pathname = `/dashboard/${role === "fournisseur" ? "fournisseur" : "restaurateur"}`;
       return NextResponse.redirect(url);
     }
-    if (path.startsWith("/dashboard/restaurateur") && role !== "restaurateur") {
-      const url = request.nextUrl.clone();
-      url.pathname = "/dashboard/fournisseur";
-      return NextResponse.redirect(url);
+
+    // Cloisonnement par rôle dans /dashboard/*
+    // Exception : admin peut accéder à /dashboard/* pour agir "en tant que"
+    if (isDashboard && role !== "admin") {
+      if (path.startsWith("/dashboard/fournisseur") && role !== "fournisseur") {
+        const url = request.nextUrl.clone();
+        url.pathname = "/dashboard/restaurateur";
+        return NextResponse.redirect(url);
+      }
+      if (path.startsWith("/dashboard/restaurateur") && role !== "restaurateur") {
+        const url = request.nextUrl.clone();
+        url.pathname = "/dashboard/fournisseur";
+        return NextResponse.redirect(url);
+      }
     }
   }
 
@@ -76,6 +87,8 @@ export const config = {
     "/dashboard/:path*",
     "/profile",
     "/profile/:path*",
+    "/admin",
+    "/admin/:path*",
     "/login",
     "/login/:path*",
     "/register",

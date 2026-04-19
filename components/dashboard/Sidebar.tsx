@@ -59,7 +59,8 @@ export default function Sidebar({ role: roleOverride, isOpen = false, onClose }:
   const { profile, displayName } = useProfile();
   const [loggingOut, setLoggingOut] = useState(false);
 
-  const role         = roleOverride ?? profile?.role ?? "restaurateur";
+  const rawRole      = roleOverride ?? profile?.role ?? "restaurateur";
+  const role: Role   = rawRole === "admin" ? "restaurateur" : rawRole;
   const homeHref     = `/dashboard/${role}`;
   const entityName   = profile?.nom_commercial || profile?.nom_etablissement || displayName;
   const avatarLetter = (entityName || "?").charAt(0).toUpperCase();

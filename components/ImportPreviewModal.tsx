@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useImport, type PreviewItem } from "@/lib/import-context";
+import { useProfile } from "@/lib/auth/use-profile";
 
 const UNITES = ["kg", "pièce", "L", "barq.", "lot", "boîte", "sac", "100g"];
 const CAT_ICONE: Record<string, string> = {
@@ -63,6 +64,13 @@ function fromEditable(item: EditableItem): PreviewItem {
 
 export default function ImportPreviewModal() {
   const { state, confirmImport, cancelImport } = useImport();
+  const { profile } = useProfile();
+  // Admin agissant "en tant que" : on lit ?as= directement depuis l'URL
+  // (sans useSearchParams pour ne pas forcer Suspense au layout global).
+  const impersonateId = typeof window !== "undefined"
+    ? new URL(window.location.href).searchParams.get("as")
+    : null;
+  const targetId = impersonateId && profile?.role === "admin" ? impersonateId : undefined;
   const [items, setItems] = useState<EditableItem[]>([]);
   const [showUnchanged, setShowUnchanged] = useState(false);
 
@@ -101,7 +109,7 @@ export default function ImportPreviewModal() {
 
   function handleConfirm() {
     const finalItems = items.map(fromEditable);
-    void confirmImport(finalItems);
+    void confirmImport(finalItems, targetId);
   }
 
   return (
