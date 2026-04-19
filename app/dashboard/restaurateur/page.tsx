@@ -10,7 +10,7 @@ export default function RestaurateurHome() {
 
   return (
     <DashboardLayout role="restaurateur">
-      <div className="mx-auto max-w-5xl px-8 py-10">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
         {/* Header */}
         <div className="mb-10 flex flex-wrap items-start justify-between gap-4">
           <div>

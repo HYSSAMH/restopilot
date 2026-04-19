@@ -47,9 +47,13 @@ const LINKS: Record<Role, { label: string; href: string; icon: React.ReactNode }
 
 interface SidebarProps {
   role?: Role;
+  /** Ouvert sur mobile ? (ignoré en desktop, toujours visible). */
+  isOpen?: boolean;
+  /** Callback pour fermer (mobile uniquement). */
+  onClose?: () => void;
 }
 
-export default function Sidebar({ role: roleOverride }: SidebarProps) {
+export default function Sidebar({ role: roleOverride, isOpen = false, onClose }: SidebarProps) {
   const router   = useRouter();
   const pathname = usePathname();
   const { profile, displayName } = useProfile();
@@ -61,6 +65,8 @@ export default function Sidebar({ role: roleOverride }: SidebarProps) {
   const avatarLetter = (entityName || "?").charAt(0).toUpperCase();
   const links        = LINKS[role];
 
+  const closeOnMobile = () => onClose?.();
+
   async function handleLogout() {
     setLoggingOut(true);
     const supabase = createClient();
@@ -70,9 +76,31 @@ export default function Sidebar({ role: roleOverride }: SidebarProps) {
   }
 
   return (
-    <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-[#E5E7EB] bg-white">
+    <>
+      {/* Backdrop (mobile uniquement, quand ouvert) */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 md:hidden"
+          onClick={closeOnMobile}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={[
+          "fixed inset-y-0 left-0 z-50 flex h-screen w-64 shrink-0 flex-col",
+          "border-r border-[#E5E7EB] bg-white",
+          "transform transition-transform duration-200 ease-out",
+          isOpen ? "translate-x-0" : "-translate-x-full",
+          "md:sticky md:top-0 md:translate-x-0",
+        ].join(" ")}
+      >
       {/* Logo */}
-      <Link href={homeHref} className="flex items-center gap-2.5 px-5 pt-5 pb-4">
+      <Link
+        href={homeHref}
+        onClick={closeOnMobile}
+        className="flex items-center gap-2.5 px-5 pt-5 pb-4"
+      >
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-sm">
           <span className="text-base">🍽️</span>
         </div>
@@ -84,7 +112,8 @@ export default function Sidebar({ role: roleOverride }: SidebarProps) {
       {/* User chip */}
       <Link
         href="/profile"
-        className="mx-3 mb-4 flex items-center gap-3 rounded-xl border border-[#E5E7EB] bg-[#F8F9FA] px-3 py-2.5 transition-colors hover:bg-[#F1F3F5]"
+        onClick={closeOnMobile}
+        className="mx-3 mb-4 flex min-h-[44px] items-center gap-3 rounded-xl border border-[#E5E7EB] bg-[#F8F9FA] px-3 py-2.5 transition-colors hover:bg-[#F1F3F5]"
       >
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 text-xs font-bold text-white">
           {avatarLetter}
@@ -108,7 +137,8 @@ export default function Sidebar({ role: roleOverride }: SidebarProps) {
             <Link
               key={l.href}
               href={l.href}
-              className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+              onClick={closeOnMobile}
+              className={`group flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                 active
                   ? "bg-indigo-50 text-indigo-600"
                   : "text-[#6B7280] hover:bg-[#F1F3F5] hover:text-[#1A1A2E]"
@@ -145,13 +175,14 @@ export default function Sidebar({ role: roleOverride }: SidebarProps) {
         <button
           onClick={handleLogout}
           disabled={loggingOut}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[#6B7280] transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+          className="flex w-full min-h-[44px] items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[#6B7280] transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
         >
           <IconLogout />
           <span>{loggingOut ? "Déconnexion…" : "Se déconnecter"}</span>
         </button>
       </div>
     </aside>
+    </>
   );
 }
 

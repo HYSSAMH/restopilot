@@ -204,7 +204,7 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="mx-auto max-w-3xl px-6 py-10">
+        <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
           <div className="h-64 animate-pulse rounded-2xl border border-gray-200 bg-white" />
         </div>
       </DashboardLayout>
@@ -214,7 +214,7 @@ export default function ProfilePage() {
   if (!p) {
     return (
       <DashboardLayout>
-        <div className="mx-auto max-w-3xl px-6 py-10 text-center">
+        <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-10 text-center">
           <p className="text-gray-500">Session introuvable.</p>
           <Link href="/login" className="mt-4 inline-block text-indigo-500 hover:text-indigo-600">Se reconnecter</Link>
         </div>
@@ -227,7 +227,7 @@ export default function ProfilePage() {
 
   return (
     <DashboardLayout role={p.role}>
-        <div className="mx-auto max-w-3xl px-6 py-8">
+        <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
         {/* Breadcrumb */}
         <div className="mb-6 flex items-center gap-2 text-sm text-gray-400">
           <Link href={backHref} className="hover:text-gray-600">Dashboard</Link>

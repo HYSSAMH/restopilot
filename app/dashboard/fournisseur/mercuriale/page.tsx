@@ -373,7 +373,7 @@ export default function MercurialePage() {
 
   return (
     <DashboardLayout role="fournisseur">
-      <div className="mx-auto max-w-6xl px-6 py-8">
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         {/* Breadcrumb */}
         <div className="mb-6 flex items-center gap-2 text-sm text-gray-400">
           <Link href="/dashboard/fournisseur" className="hover:text-gray-600 transition-colors">Dashboard</Link>
@@ -606,7 +606,8 @@ export default function MercurialePage() {
             )}
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-gray-200">
+          <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
+            <div className="min-w-[640px]">
             {/* Header row */}
             <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto] items-center gap-4 border-b border-gray-200 bg-gray-50 px-5 py-3 text-xs font-medium uppercase tracking-wide text-gray-400">
               <label className="flex h-5 w-5 cursor-pointer items-center justify-center" title="Tout sélectionner (page en cours)">
@@ -714,6 +715,7 @@ export default function MercurialePage() {
                   </div>
                 );
               })}
+            </div>
             </div>
           </div>
         )}
