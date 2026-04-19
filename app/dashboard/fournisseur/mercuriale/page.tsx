@@ -6,6 +6,7 @@ import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { createClient } from "@/lib/supabase/client";
 import { useImport } from "@/lib/import-context";
 import { useProfile } from "@/lib/auth/use-profile";
+import PhotoManager from "@/components/mercuriale/PhotoManager";
 
 const PAGE_SIZE = 50;
 
@@ -63,6 +64,7 @@ interface Entry {
   nom: string;
   categorie: string;
   icone: string;
+  photos: string[];
   prix: number;
   unite: string;
   stock: number | null;
@@ -150,6 +152,9 @@ export default function MercurialePage() {
   const [importError, setImportError] = useState<string | null>(null);
   const fileInputRef                  = useRef<HTMLInputElement>(null);
 
+  // Gestion des photos produits
+  const [photoTarget, setPhotoTarget] = useState<Entry | null>(null);
+
   // ── Data fetch ────────────────────────────────────────────────────────────
 
   const fetchEntries = useCallback(async () => {
@@ -157,7 +162,7 @@ export default function MercurialePage() {
     const supabase = createClient();
     const { data } = await supabase
       .from("tarifs")
-      .select("id, prix, unite, stock, actif, badge, badge_expires_at, created_at, produits!inner ( id, nom, categorie, icone )")
+      .select("id, prix, unite, stock, actif, badge, badge_expires_at, created_at, produits!inner ( id, nom, categorie, icone, photos )")
       .eq("fournisseur_id", fournisseurId)
       .is("archived_at", null)
       .order("created_at", { ascending: false });
@@ -165,13 +170,14 @@ export default function MercurialePage() {
       setEntries((data as unknown as Array<{
         id: string; prix: number; unite: string; stock: number | null; actif: boolean;
         badge: Entry["badge"]; badge_expires_at: string | null; created_at: string | null;
-        produits: { id: string; nom: string; categorie: string; icone: string };
+        produits: { id: string; nom: string; categorie: string; icone: string; photos: string[] | null };
       }>).map(t => ({
         tarif_id:         t.id,
         produit_id:       t.produits.id,
         nom:              t.produits.nom,
         categorie:        t.produits.categorie,
         icone:            t.produits.icone,
+        photos:           t.produits.photos ?? [],
         prix:             t.prix,
         unite:            t.unite,
         stock:            t.stock ?? null,
@@ -624,7 +630,7 @@ export default function MercurialePage() {
               <span className="w-24 text-right">Prix</span>
               <span className="hidden w-16 text-right sm:block">Stock</span>
               <span className="w-20 text-center">Statut</span>
-              <span className="w-20 text-right">Actions</span>
+              <span className="w-28 text-right">Actions</span>
             </div>
 
             <div className="divide-y divide-gray-100">
@@ -649,7 +655,18 @@ export default function MercurialePage() {
 
                     {/* Produit */}
                     <div className="flex min-w-0 items-center gap-3">
-                      <span className="shrink-0 text-xl">{entry.icone}</span>
+                      {entry.photos?.[0] ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={entry.photos[0]}
+                          alt=""
+                          className="h-9 w-9 shrink-0 rounded-lg object-cover ring-1 ring-gray-200"
+                        />
+                      ) : (
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-50 text-xl ring-1 ring-gray-200">
+                          {entry.icone}
+                        </span>
+                      )}
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-[#1A1A2E]">{entry.nom}</p>
                         {badge && (
@@ -692,7 +709,21 @@ export default function MercurialePage() {
                       </button>
                     </div>
 
-                    <div className="flex w-20 items-center justify-end gap-1.5">
+                    <div className="flex w-28 items-center justify-end gap-1.5">
+                      <button
+                        onClick={() => setPhotoTarget(entry)}
+                        title={entry.photos?.length ? `${entry.photos.length} photo${entry.photos.length > 1 ? "s" : ""}` : "Ajouter une photo"}
+                        className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${
+                          entry.photos?.length
+                            ? "border-indigo-200 bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+                            : "border-gray-200 bg-white text-gray-500 hover:bg-indigo-50 hover:text-indigo-600"
+                        }`}
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 7h3l2-2h8l2 2h3v13H3V7Z" />
+                          <circle cx="12" cy="13" r="3.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </button>
                       <button
                         onClick={() => openEdit(entry)}
                         title="Modifier"
@@ -953,6 +984,25 @@ export default function MercurialePage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Gestion des photos produit ──────────────────────────────── */}
+      {photoTarget && fournisseurId && (
+        <PhotoManager
+          produitId={photoTarget.produit_id}
+          userId={fournisseurId}
+          nom={photoTarget.nom}
+          photos={photoTarget.photos ?? []}
+          onChange={(photos) => {
+            setEntries((prev) =>
+              prev.map((e) =>
+                e.produit_id === photoTarget.produit_id ? { ...e, photos } : e,
+              ),
+            );
+            setPhotoTarget((t) => (t ? { ...t, photos } : t));
+          }}
+          onClose={() => setPhotoTarget(null)}
+        />
       )}
     </DashboardLayout>
   );

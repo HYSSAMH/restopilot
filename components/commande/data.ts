@@ -34,6 +34,7 @@ export type Produit = {
   categorie: Categorie;
   icone: string;
   description: string;
+  photos?: string[];
   fournisseurs: FournisseurOption[];
 };
 

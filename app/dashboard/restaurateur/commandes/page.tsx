@@ -29,6 +29,7 @@ function tarifsToProduitsFormat(
         categorie: p.categorie as Produit["categorie"],
         icone: p.icone,
         description: p.description ?? "",
+        photos: p.photos ?? [],
         fournisseurs: [],
       });
     }
@@ -70,7 +71,7 @@ export default function CommandesPage() {
         .select(`
           prix, unite, badge, badge_expires_at, ancien_prix,
           fournisseurs!inner ( id, nom, initiale, avatar, minimum, delai, note ),
-          produits!inner ( id, nom, categorie, icone, description )
+          produits!inner ( id, nom, categorie, icone, description, photos )
         `)
         .eq("actif", true)
         .is("archived_at", null)

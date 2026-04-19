@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { type CartMap, type Produit, type FournisseurOption, type Categorie } from "./data";
+import PhotoGallery from "./PhotoGallery";
 
 interface CatalogueProps {
   cartMap: CartMap;
@@ -36,16 +37,39 @@ function ProduitCard({
 }) {
   const minPrix = Math.min(...produit.fournisseurs.map((f) => f.prix));
   const selected = cartMap[produit.id];
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const photos = produit.photos ?? [];
+  const mainPhoto = photos[0];
+  const hasPhotos = photos.length > 0;
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white transition-all duration-200 hover:border-violet-500/20 hover:bg-white/[0.06]">
       {/* Product header */}
       <div className="flex items-start justify-between border-b border-gray-200 px-4 py-3.5">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">{produit.icone}</span>
-          <div>
-            <p className="font-semibold text-[#1A1A2E]">{produit.nom}</p>
-            <p className="text-xs text-white/35">{produit.description}</p>
+        <div className="flex items-center gap-3 min-w-0">
+          <button
+            type="button"
+            onClick={() => setGalleryOpen(true)}
+            className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl ring-1 ring-gray-200 transition-all hover:ring-indigo-300"
+            aria-label={hasPhotos ? `Voir les ${photos.length} photo${photos.length > 1 ? "s" : ""}` : "Aucune photo"}
+          >
+            {mainPhoto ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={mainPhoto} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <span className="bg-gray-50 flex h-full w-full items-center justify-center text-2xl">
+                {produit.icone}
+              </span>
+            )}
+            {hasPhotos && photos.length > 1 && (
+              <span className="absolute bottom-0.5 right-0.5 rounded bg-black/60 px-1 text-[9px] font-semibold text-white">
+                +{photos.length - 1}
+              </span>
+            )}
+          </button>
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-[#1A1A2E]">{produit.nom}</p>
+            <p className="truncate text-xs text-gray-500">{produit.description}</p>
           </div>
         </div>
         <div className="flex items-center gap-1.5">
@@ -56,6 +80,15 @@ function ProduitCard({
           )}
         </div>
       </div>
+
+      {galleryOpen && (
+        <PhotoGallery
+          nom={produit.nom}
+          icone={produit.icone}
+          photos={photos}
+          onClose={() => setGalleryOpen(false)}
+        />
+      )}
 
       {/* Fournisseur rows */}
       <div className="divide-y divide-gray-100 px-2 py-1.5">

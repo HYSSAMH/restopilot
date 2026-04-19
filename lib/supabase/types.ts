@@ -28,6 +28,7 @@ export interface DbTarifJoined {
     categorie: string;
     icone: string;
     description: string | null;
+    photos: string[] | null;
   };
 }
 
