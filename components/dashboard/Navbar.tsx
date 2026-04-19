@@ -111,6 +111,14 @@ export default function Navbar({ role: roleOverride }: NavbarProps) {
                     </p>
                   </div>
                 )}
+                <Link
+                  href="/profile"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-2 px-4 py-2 text-sm text-white/60 transition-colors hover:bg-white/5 hover:text-white/90"
+                >
+                  <span>👤</span> Mon profil
+                </Link>
+                <div className="my-1 h-px bg-white/8" />
                 <button
                   onClick={handleLogout}
                   disabled={loggingOut}

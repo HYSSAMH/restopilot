@@ -18,13 +18,22 @@ export default function FournisseurHome() {
       </div>
 
       <main className="relative mx-auto max-w-4xl px-6 py-12">
-        <div className="mb-10 text-center">
-          <h1 className="text-3xl font-bold text-white">
-            {firstName ? `Bonjour ${firstName}` : "Bienvenue"} 👋
-          </h1>
-          <p className="mt-2 text-white/50">
-            Gérez votre mercuriale et traitez vos commandes.
-          </p>
+        <div className="mb-10 flex flex-wrap items-start justify-between gap-4">
+          <div className="flex-1 text-center sm:text-left">
+            <h1 className="text-3xl font-bold text-white">
+              {firstName ? `Bonjour ${firstName}` : "Bienvenue"} 👋
+            </h1>
+            <p className="mt-2 text-white/50">
+              Gérez votre mercuriale et traitez vos commandes.
+            </p>
+          </div>
+          <Link
+            href="/profile"
+            className="flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white/80 transition-all hover:border-violet-500/40 hover:bg-violet-600/15 hover:text-violet-200"
+          >
+            <span>👤</span>
+            <span>Mon profil</span>
+          </Link>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -43,6 +52,23 @@ export default function FournisseurHome() {
             gradient="from-purple-500 to-pink-500"
           />
         </div>
+
+        {/* Bandeau "complétez votre profil" */}
+        <Link
+          href="/profile"
+          className="mt-6 flex items-center gap-4 rounded-2xl border border-violet-500/25 bg-gradient-to-r from-violet-600/10 to-purple-500/10 p-5 transition-all hover:border-violet-500/50 hover:bg-violet-600/15"
+        >
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-purple-500 text-xl shadow-lg">
+            👤
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold text-white">Complétez votre profil</p>
+            <p className="mt-0.5 text-xs text-white/50">
+              SIRET, IBAN, zone de livraison, horaires — apparaîtra sur les factures envoyées aux restaurateurs.
+            </p>
+          </div>
+          <span className="shrink-0 text-violet-400">→</span>
+        </Link>
       </main>
     </div>
   );

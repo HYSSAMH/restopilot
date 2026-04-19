@@ -191,11 +191,12 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
       if (!user) throw new Error("Session expirée — reconnectez-vous pour importer.");
       const fournisseurId = user.id;
 
-      // Fetch current mercuriale for comparison
+      // Fetch current mercuriale for comparison (non-archivée)
       const { data: tarifData } = await supabase
         .from("tarifs")
         .select("id, prix, produits ( id, nom, categorie )")
-        .eq("fournisseur_id", fournisseurId);
+        .eq("fournisseur_id", fournisseurId)
+        .is("archived_at", null);
 
       const currentRows: CurrentRow[] = (tarifData as CurrentRow[] | null) ?? [];
 

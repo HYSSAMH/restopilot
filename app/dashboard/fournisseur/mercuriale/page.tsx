@@ -159,6 +159,7 @@ export default function MercurialePage() {
       .from("tarifs")
       .select("id, prix, unite, stock, actif, badge, badge_expires_at, created_at, produits!inner ( id, nom, categorie, icone )")
       .eq("fournisseur_id", fournisseurId)
+      .is("archived_at", null)
       .order("created_at", { ascending: false });
     if (data) {
       setEntries((data as unknown as Array<{

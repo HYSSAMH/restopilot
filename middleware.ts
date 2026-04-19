@@ -27,14 +27,16 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   const isDashboard = path.startsWith("/dashboard");
+  const isProfile   = path === "/profile" || path.startsWith("/profile/");
+  const isProtected = isDashboard || isProfile;
   const isAuthRoute =
     path === "/login" ||
     path === "/register" ||
     path.startsWith("/login/") ||
     path.startsWith("/register/");
 
-  // Non authentifié + accès /dashboard → /login (avec retour après connexion)
-  if (isDashboard && !user) {
+  // Non authentifié + accès protégé → /login (avec retour après connexion)
+  if (isProtected && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirect", path);
@@ -72,6 +74,8 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/dashboard/:path*",
+    "/profile",
+    "/profile/:path*",
     "/login",
     "/login/:path*",
     "/register",

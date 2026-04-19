@@ -66,6 +66,7 @@ export default function CommandesPage() {
         produits!inner ( id, nom, categorie, icone, description )
       `)
       .eq("actif", true)
+      .is("archived_at", null)
       .not("fournisseur_id", "is", null)
       .not("produit_id",     "is", null)
       .then(({ data, error }) => {
