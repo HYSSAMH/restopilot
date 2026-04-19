@@ -20,6 +20,7 @@ const LINKS: Record<Role, { label: string; href: string; icon: React.ReactNode }
   fournisseur: [
     { label: "Ma mercuriale", href: "/dashboard/fournisseur/mercuriale", icon: <IconCatalog /> },
     { label: "Mes commandes", href: "/dashboard/fournisseur/commandes",  icon: <IconInbox /> },
+    { label: "Clients",       href: "/dashboard/fournisseur/clients",    icon: <IconUsers /> },
     { label: "Avoirs",        href: "/dashboard/fournisseur/avoirs",     icon: <IconReceipt /> },
     { label: "Mon profil",    href: "/profile",                          icon: <IconUser /> },
   ],
@@ -236,6 +237,13 @@ function IconReceipt() {
   return (
     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M7 3h10v18l-2-1-2 1-2-1-2 1-2-1-2 1V3Zm2 6h8m-8 4h8m-8 4h4" />
+    </svg>
+  );
+}
+function IconUsers() {
+  return (
+    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Zm4 10v1H4v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6Z" />
     </svg>
   );
 }
