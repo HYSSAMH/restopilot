@@ -131,6 +131,8 @@ function parseProducts(text: string): ExtractedProduct[] {
 
 // ── Per-page PDF extractor ─────────────────────────────────────────────────
 
+const MODEL_ID = "claude-sonnet-4-5";
+
 async function extractPdfPage(
   anthropic: Anthropic,
   pdfBase64: string,
@@ -142,17 +144,21 @@ async function extractPdfPage(
     { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBase64 } },
     { type: "text", text: pdfPagePrompt(page, total, lastCat) },
   ];
+  console.log(`[mercuriale-import] calling Anthropic (PDF page ${page}/${total}, model ${MODEL_ID})`);
   const msg = await (anthropic.messages.create as (
     body: Omit<Anthropic.MessageCreateParamsNonStreaming, "messages"> & {
       messages: { role: "user"; content: MsgContent[] }[];
     },
     opts?: Anthropic.RequestOptions,
   ) => Promise<Anthropic.Message>)(
-    { model: "claude-sonnet-4-5", max_tokens: 8096, messages: [{ role: "user", content }] },
+    { model: MODEL_ID, max_tokens: 8096, messages: [{ role: "user", content }] },
     { headers: { "anthropic-beta": "pdfs-2024-09-25" } },
   );
   const text = msg.content[0].type === "text" ? msg.content[0].text : "";
-  return parseProducts(text);
+  console.log(`[mercuriale-import] page ${page} response length: ${text.length} chars`);
+  const products = parseProducts(text);
+  console.log(`[mercuriale-import] page ${page} parsed: ${products.length} products`);
+  return products;
 }
 
 // ── Image extractor ────────────────────────────────────────────────────────
@@ -168,13 +174,17 @@ async function extractImage(
     { type: "image", source: { type: "base64", media_type: mt, data: base64 } },
     { type: "text", text: IMAGE_PROMPT },
   ];
+  console.log(`[mercuriale-import] calling Anthropic (image, model ${MODEL_ID})`);
   const msg = await anthropic.messages.create({
-    model: "claude-sonnet-4-5",
+    model: MODEL_ID,
     max_tokens: 8096,
     messages: [{ role: "user", content: content as Anthropic.MessageParam["content"] }],
   });
   const text = msg.content[0].type === "text" ? msg.content[0].text : "";
-  return parseProducts(text);
+  console.log(`[mercuriale-import] image response length: ${text.length} chars`);
+  const products = parseProducts(text);
+  console.log(`[mercuriale-import] image parsed: ${products.length} products`);
+  return products;
 }
 
 // ── SSE ────────────────────────────────────────────────────────────────────
@@ -188,17 +198,21 @@ function sse(ctrl: ReadableStreamDefaultController, data: object) {
 
 export async function POST(req: NextRequest) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
+  console.log("[mercuriale-import] POST received. ANTHROPIC_API_KEY present:", Boolean(apiKey), "len:", apiKey?.length);
   if (!apiKey || apiKey === "your_anthropic_api_key_here") {
-    return Response.json({ error: "ANTHROPIC_API_KEY non configurée." }, { status: 500 });
+    return Response.json({ error: "ANTHROPIC_API_KEY non configurée côté serveur (.env.local manquant ou variable absente sur Netlify)." }, { status: 500 });
   }
 
   let pdfBase64: string, pageCount: number, mediaType: string;
   try {
     ({ pdfBase64, pageCount = 1, mediaType = "application/pdf" } = await req.json());
-    if (!pdfBase64) throw new Error();
-  } catch {
+    if (!pdfBase64) throw new Error("pdfBase64 manquant");
+  } catch (e) {
+    console.error("[mercuriale-import] body invalide:", e);
     return Response.json({ error: "Requête invalide." }, { status: 400 });
   }
+
+  console.log("[mercuriale-import] mediaType:", mediaType, "pageCount:", pageCount, "base64 len:", pdfBase64.length);
 
   const anthropic  = new Anthropic({ apiKey });
   const isImage    = mediaType.startsWith("image/");
@@ -234,10 +248,16 @@ export async function POST(req: NextRequest) {
           return true;
         });
 
+        console.log(`[mercuriale-import] done — ${deduped.length} produits uniques`);
         sse(ctrl, { type: "done", produits: deduped, total: deduped.length });
       } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : "Erreur inconnue";
-        console.error("mercuriale-import error:", e);
+        console.error("[mercuriale-import] EXTRACTION FAILED:", e);
+        // Extract Anthropic-specific error details if available
+        let msg = e instanceof Error ? e.message : "Erreur inconnue";
+        const err = e as { status?: number; error?: { message?: string; type?: string } };
+        if (err.status && err.error?.message) {
+          msg = `Anthropic ${err.status} (${err.error.type ?? "error"}) : ${err.error.message}`;
+        }
         sse(ctrl, { type: "error", error: msg });
       } finally {
         ctrl.close();

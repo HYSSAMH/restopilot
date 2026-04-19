@@ -184,36 +184,50 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
     });
 
     try {
+      console.group("[Import PDF/image] startImport");
+      console.log("Fichier :", file.name, "·", file.type, "·", (file.size / 1024).toFixed(0), "Ko");
+
       const base64 = await readFileAsBase64(file);
       const isPdf = file.type === "application/pdf";
       const pageCount = isPdf ? detectPdfPageCount(base64) : 1;
       const mediaType = file.type === "image/jpg" ? "image/jpeg" : file.type;
+      console.log("Pages détectées :", pageCount, "· mediaType :", mediaType);
 
       // Utilisateur connecté (= fournisseur_id pour un rôle fournisseur)
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Session expirée — reconnectez-vous pour importer.");
       const fournisseurId = targetFournisseurId ?? user.id;
+      console.log("fournisseurId cible :", fournisseurId);
 
       // Fetch current mercuriale for comparison (non-archivée)
-      const { data: tarifData } = await supabase
+      const { data: tarifData, error: errTarifs } = await supabase
         .from("tarifs")
         .select("id, prix, produits ( id, nom, categorie )")
         .eq("fournisseur_id", fournisseurId)
         .is("archived_at", null);
 
+      if (errTarifs) {
+        console.error("Erreur lecture tarifs existants :", errTarifs);
+      }
+
       const currentRows: CurrentRow[] = (tarifData as CurrentRow[] | null) ?? [];
+      console.log("Tarifs existants chargés :", currentRows.length);
 
       // Call API → SSE stream
+      console.log("POST /api/mercuriale-import …");
       const res = await fetch("/api/mercuriale-import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pdfBase64: base64, pageCount, mediaType }),
       });
+      console.log("Status HTTP :", res.status);
 
       if (!res.ok || !res.body) {
         const json = await res.json().catch(() => ({}));
-        throw new Error((json as { error?: string }).error ?? "Erreur serveur");
+        const msg = (json as { error?: string }).error ?? `Erreur serveur (HTTP ${res.status})`;
+        console.error("Réponse en erreur :", json);
+        throw new Error(msg);
       }
 
       const reader = res.body.getReader();
@@ -245,20 +259,31 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
               progress: { page: data.page!, totalPages: data.totalPages! },
             }));
           }
-          if (data.type === "error") throw new Error(data.error ?? "Erreur inconnue");
-          if (data.type === "done" && data.produits) extracted = data.produits;
+          if (data.type === "error") {
+            console.error("SSE error :", data.error);
+            throw new Error(data.error ?? "Erreur inconnue");
+          }
+          if (data.type === "done" && data.produits) {
+            console.log("SSE done — produits extraits :", data.produits.length);
+            extracted = data.produits;
+          }
+          if (data.type === "progress") {
+            console.log(`SSE progress — page ${data.page}/${data.totalPages}`);
+          }
         }
       }
 
       // Build preview items (compare extracted vs current DB state)
       const previewItems = buildPreviewItems(extracted, currentRows);
+      console.log("PreviewItems construits :", previewItems.length);
+      console.groupEnd();
 
       if (previewItems.length === 0) {
         setState((s) => ({
           ...s,
           status: "error",
           progress: null,
-          error: "Aucun produit exploitable détecté dans le fichier.",
+          error: `Aucun produit exploitable (${extracted.length} extraits, ${extracted.filter(p => !p.prix).length} sans prix).`,
         }));
         return;
       }
@@ -270,6 +295,7 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
         previewItems,
       }));
     } catch (e: unknown) {
+      console.groupEnd();
       const msg = e instanceof Error ? e.message : "Erreur inconnue";
       console.error("ImportContext startImport error:", e);
       setState((s) => ({ ...s, status: "error", progress: null, error: msg }));
