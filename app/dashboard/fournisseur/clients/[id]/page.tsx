@@ -90,10 +90,14 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
-    const [{ data: prof }, { data: cmds }, { data: pays }, { data: cond }] = await Promise.all([
+    console.group("[Fiche client] chargement");
+    console.log("Fournisseur connecté (auth.uid) :", user.id);
+    console.log("Client ID demandé (param URL) :",  clientId);
+
+    const [profRes, cmdsRes, paysRes, condRes] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", clientId).maybeSingle(),
       supabase.from("commandes")
-        .select("id, statut, montant_total, avoir_montant, avoir_statut, created_at, lignes_commande ( nom_snapshot, prix_snapshot, unite, quantite )")
+        .select("id, statut, montant_total, avoir_montant, avoir_statut, created_at, restaurateur_nom, lignes_commande ( nom_snapshot, prix_snapshot, unite, quantite )")
         .eq("fournisseur_id", user.id).eq("restaurateur_id", clientId)
         .order("created_at", { ascending: false }),
       supabase.from("paiements")
@@ -105,10 +109,51 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
         .eq("fournisseur_id", user.id).eq("restaurateur_id", clientId).maybeSingle(),
     ]);
 
-    setProfil(prof as Profil | null);
-    setCmds((cmds ?? []) as Commande[]);
-    setPaiements((pays ?? []) as Paiement[]);
-    if (cond) setConditions(cond as Conditions);
+    console.log("Profil reçu :", profRes.data);
+    if (profRes.error) console.error("Erreur profil :", profRes.error);
+    console.log("Commandes reçues :", cmdsRes.data?.length ?? 0);
+    if (cmdsRes.error) console.error("Erreur commandes :", cmdsRes.error);
+    console.log("Paiements reçus :", paysRes.data?.length ?? 0);
+    if (paysRes.error) console.error("Erreur paiements :", paysRes.error);
+    console.log("Conditions :", condRes.data);
+
+    let profil = profRes.data as Profil | null;
+
+    // Fallback : si le profil est null mais qu'il existe des commandes pour
+    // ce client, on hydrate un profil minimal depuis restaurateur_nom.
+    // Cause typique : la policy RLS profiles_select_clients n'a pas été
+    // appliquée (migration_clients_rls_fix.sql à exécuter).
+    if (!profil && cmdsRes.data && cmdsRes.data.length > 0) {
+      console.warn(
+        "⚠ Profil restaurateur introuvable via RLS mais commandes présentes.\n" +
+        "  → Exécutez supabase/migration_clients_rls_fix.sql pour ajouter la policy profiles_select_clients.\n" +
+        "  Affichage en mode dégradé (nom issu de commandes.restaurateur_nom)."
+      );
+      const first = cmdsRes.data[0] as { restaurateur_nom?: string };
+      profil = {
+        id: clientId,
+        nom_commercial:    null,
+        nom_etablissement: first.restaurateur_nom ?? "Client",
+        raison_sociale:    null,
+        siret:             null,
+        telephone:         null,
+        email_contact:     null,
+        email:             null,
+        adresse_ligne1:    null,
+        adresse_ligne2:    null,
+        code_postal:       null,
+        ville:             null,
+        type_restaurant:   null,
+        nombre_couverts:   null,
+      };
+    }
+
+    console.groupEnd();
+
+    setProfil(profil);
+    setCmds((cmdsRes.data ?? []) as Commande[]);
+    setPaiements((paysRes.data ?? []) as Paiement[]);
+    if (condRes.data) setConditions(condRes.data as Conditions);
     setLoading(false);
   }, [clientId]);
 
@@ -286,9 +331,24 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
   if (!profil) {
     return (
       <DashboardLayout role="fournisseur">
-        <div className="mx-auto max-w-5xl px-4 py-10 text-center sm:px-8">
-          <p className="text-gray-500">Client introuvable.</p>
-          <Link href="/dashboard/fournisseur/clients" className="mt-3 inline-block text-indigo-500 hover:text-indigo-600">
+        <div className="mx-auto max-w-2xl px-4 py-10 sm:px-8">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
+            <p className="font-semibold text-amber-800">Client introuvable</p>
+            <p className="mt-2 text-sm text-amber-700">
+              Aucune commande ni profil n&apos;est associé à cet identifiant pour votre compte.
+            </p>
+            <p className="mt-3 text-xs text-amber-700/80">
+              ID demandé : <code className="rounded bg-white/50 px-1.5 py-0.5 font-mono">{clientId}</code>
+            </p>
+            <p className="mt-3 text-xs text-amber-700/80">
+              Si vous êtes sûr que ce client a passé une commande chez vous, il se peut que la policy RLS
+              <code className="mx-1 rounded bg-white/50 px-1.5 py-0.5 font-mono">profiles_select_clients</code>
+              ne soit pas installée. Exécutez
+              <code className="mx-1 rounded bg-white/50 px-1.5 py-0.5 font-mono">supabase/migration_clients_rls_fix.sql</code>
+              dans Supabase SQL Editor.
+            </p>
+          </div>
+          <Link href="/dashboard/fournisseur/clients" className="mt-4 inline-block text-indigo-500 hover:text-indigo-600">
             ← Retour à la liste
           </Link>
         </div>
