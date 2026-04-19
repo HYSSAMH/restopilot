@@ -18,18 +18,22 @@ interface Row {
 }
 
 const STATUT_LABELS: Record<StatutCommande, string> = {
-  recue:          "Reçue",
-  en_preparation: "En préparation",
-  en_livraison:   "En livraison",
-  livree:         "Livrée",
-  annulee:        "Annulée",
+  recue:                       "Reçue",
+  en_preparation:              "En préparation",
+  en_livraison:                "En livraison",
+  livree:                      "Livrée",
+  receptionnee:                "Réceptionnée",
+  receptionnee_avec_anomalies: "Récep. anomalies",
+  annulee:                     "Annulée",
 };
 const STATUT_CHIP: Record<StatutCommande, string> = {
-  recue:          "border-amber-200 bg-amber-50 text-amber-700",
-  en_preparation: "border-blue-200 bg-blue-50 text-blue-700",
-  en_livraison:   "border-violet-200 bg-violet-50 text-violet-700",
-  livree:         "border-emerald-200 bg-emerald-50 text-emerald-700",
-  annulee:        "border-red-200 bg-red-50 text-red-700",
+  recue:                       "border-amber-200 bg-amber-50 text-amber-700",
+  en_preparation:              "border-blue-200 bg-blue-50 text-blue-700",
+  en_livraison:                "border-violet-200 bg-violet-50 text-violet-700",
+  livree:                      "border-sky-200 bg-sky-50 text-sky-700",
+  receptionnee:                "border-emerald-200 bg-emerald-50 text-emerald-700",
+  receptionnee_avec_anomalies: "border-rose-200 bg-rose-50 text-rose-700",
+  annulee:                     "border-red-200 bg-red-50 text-red-700",
 };
 
 function fmt(n: number) {

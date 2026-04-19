@@ -10,38 +10,18 @@ type Role = "restaurateur" | "fournisseur";
 
 const LINKS: Record<Role, { label: string; href: string; icon: React.ReactNode }[]> = {
   restaurateur: [
-    {
-      label: "Passer une commande",
-      href: "/dashboard/restaurateur/commandes",
-      icon: <IconCart />,
-    },
-    {
-      label: "Mes commandes",
-      href: "/dashboard/restaurateur/historique",
-      icon: <IconList />,
-    },
-    {
-      label: "Mon profil",
-      href: "/profile",
-      icon: <IconUser />,
-    },
+    { label: "Passer une commande", href: "/dashboard/restaurateur/commandes",  icon: <IconCart /> },
+    { label: "À réceptionner",      href: "/dashboard/restaurateur/receptions", icon: <IconTruck /> },
+    { label: "Mes commandes",       href: "/dashboard/restaurateur/historique", icon: <IconList /> },
+    { label: "Factures",            href: "/dashboard/restaurateur/factures",   icon: <IconInvoice /> },
+    { label: "Rapports d'achats",   href: "/dashboard/restaurateur/rapports",   icon: <IconChart /> },
+    { label: "Mon profil",          href: "/profile",                           icon: <IconUser /> },
   ],
   fournisseur: [
-    {
-      label: "Ma mercuriale",
-      href: "/dashboard/fournisseur/mercuriale",
-      icon: <IconCatalog />,
-    },
-    {
-      label: "Mes commandes",
-      href: "/dashboard/fournisseur/commandes",
-      icon: <IconInbox />,
-    },
-    {
-      label: "Mon profil",
-      href: "/profile",
-      icon: <IconUser />,
-    },
+    { label: "Ma mercuriale", href: "/dashboard/fournisseur/mercuriale", icon: <IconCatalog /> },
+    { label: "Mes commandes", href: "/dashboard/fournisseur/commandes",  icon: <IconInbox /> },
+    { label: "Avoirs",        href: "/dashboard/fournisseur/avoirs",     icon: <IconReceipt /> },
+    { label: "Mon profil",    href: "/profile",                          icon: <IconUser /> },
   ],
 };
 
@@ -228,6 +208,34 @@ function IconLogout() {
   return (
     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+    </svg>
+  );
+}
+function IconTruck() {
+  return (
+    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 7h11v8H3V7Zm11 3h4l3 3v2h-7v-5Zm-7 7a2 2 0 1 1 0 0.01M16 17a2 2 0 1 1 0 0.01" />
+    </svg>
+  );
+}
+function IconInvoice() {
+  return (
+    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14 3H6a2 2 0 0 0-2 2v16l3-2 3 2 3-2 3 2V5a2 2 0 0 0-2-2Zm-7 8h6m-6 4h6" />
+    </svg>
+  );
+}
+function IconChart() {
+  return (
+    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 20V10m6 10V4m6 16v-8m4 8H2" />
+    </svg>
+  );
+}
+function IconReceipt() {
+  return (
+    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7 3h10v18l-2-1-2 1-2-1-2 1-2-1-2 1V3Zm2 6h8m-8 4h8m-8 4h4" />
     </svg>
   );
 }

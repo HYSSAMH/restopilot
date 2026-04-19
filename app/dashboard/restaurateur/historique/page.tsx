@@ -5,13 +5,16 @@ import Link from "next/link";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { createClient } from "@/lib/supabase/client";
 import type { DbCommande, StatutCommande } from "@/lib/supabase/types";
+import { regenerateAvoirPDF } from "@/lib/avoir-from-db";
 
 const STATUTS: Record<StatutCommande, { label: string; dot: string; badge: string }> = {
-  recue:          { label: "Reçue",          dot: "bg-amber-400",   badge: "border-amber-500/30 bg-amber-500/10 text-amber-300"   },
-  en_preparation: { label: "En préparation", dot: "bg-blue-400",    badge: "border-blue-500/30 bg-blue-500/10 text-blue-300"      },
-  en_livraison:   { label: "En livraison",   dot: "bg-violet-400",  badge: "border-indigo-200 bg-indigo-50 text-indigo-600" },
-  livree:         { label: "Livrée",         dot: "bg-emerald-400", badge: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" },
-  annulee:        { label: "Annulée",        dot: "bg-red-400",     badge: "border-red-500/30 bg-red-500/10 text-red-400"         },
+  recue:                       { label: "Reçue",            dot: "bg-amber-400",   badge: "border-amber-200 bg-amber-50 text-amber-700"    },
+  en_preparation:              { label: "En préparation",   dot: "bg-blue-400",    badge: "border-blue-200 bg-blue-50 text-blue-700"       },
+  en_livraison:                { label: "En livraison",     dot: "bg-violet-400",  badge: "border-indigo-200 bg-indigo-50 text-indigo-600" },
+  livree:                      { label: "Livrée",           dot: "bg-sky-400",     badge: "border-sky-200 bg-sky-50 text-sky-700"          },
+  receptionnee:                { label: "Réceptionnée",     dot: "bg-emerald-400", badge: "border-emerald-200 bg-emerald-50 text-emerald-700" },
+  receptionnee_avec_anomalies: { label: "Avec anomalies",   dot: "bg-rose-400",    badge: "border-rose-200 bg-rose-50 text-rose-700"        },
+  annulee:                     { label: "Annulée",          dot: "bg-red-400",     badge: "border-red-200 bg-red-50 text-red-700"          },
 };
 
 function StatutBadge({ statut }: { statut: StatutCommande }) {
@@ -53,6 +56,7 @@ export default function HistoriquePage() {
       .from("commandes")
       .select(`
         id, restaurateur_nom, fournisseur_id, statut, montant_total, created_at, updated_at,
+        avoir_montant, avoir_statut, avoir_motif_contestation,
         fournisseurs ( nom, initiale, avatar ),
         lignes_commande ( id, nom_snapshot, prix_snapshot, unite, quantite )
       `)
@@ -231,6 +235,14 @@ export default function HistoriquePage() {
                     </div>
                   </div>
 
+                  {/* ── Panneau avoir (si applicable) ──────────────────────── */}
+                  {c.avoir_statut && (
+                    <AvoirPanel
+                      commande={c}
+                      onChange={fetchCommandes}
+                    />
+                  )}
+
                   <button
                     onClick={() => setOpenId(open ? null : c.id)}
                     className="flex w-full items-center justify-between border-t border-gray-200 px-5 py-2.5 text-xs text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-600"
@@ -271,4 +283,103 @@ export default function HistoriquePage() {
       </div>
     </DashboardLayout>
   );
+}
+
+// ── Panneau avoir (status + actions selon le statut) ──────────────────────
+function AvoirPanel({ commande, onChange }: { commande: DbCommande; onChange: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const statut = commande.avoir_statut!;
+  const montant = Number(commande.avoir_montant ?? 0);
+
+  async function forceAction(newStatut: "accepte" | "annule") {
+    setBusy(true);
+    const supabase = createClient();
+    const patch: Record<string, unknown> = { avoir_statut: newStatut };
+    if (newStatut === "accepte") patch.avoir_accepte_at = new Date().toISOString();
+    if (newStatut === "annule")  patch.avoir_annule_at  = new Date().toISOString();
+    await supabase.from("commandes").update(patch).eq("id", commande.id);
+    setBusy(false);
+    onChange();
+  }
+
+  async function download() {
+    try { await regenerateAvoirPDF(commande.id); }
+    catch (e) { console.error(e); alert("Erreur génération PDF"); }
+  }
+
+  if (statut === "en_attente") {
+    return (
+      <div className="border-t border-amber-200 bg-amber-50 px-5 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm text-amber-800">
+            <span className="font-semibold">Avoir de {montant.toFixed(2)} €</span> en attente de réponse du fournisseur.
+          </p>
+          <button
+            onClick={download}
+            className="min-h-[40px] rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100"
+          >
+            ↓ Télécharger l&apos;avoir
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (statut === "accepte") {
+    return (
+      <div className="border-t border-emerald-200 bg-emerald-50 px-5 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm text-emerald-800">
+            ✓ <span className="font-semibold">Avoir confirmé</span> par le fournisseur ({montant.toFixed(2)} €)
+          </p>
+          <button
+            onClick={download}
+            className="min-h-[40px] rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-medium text-emerald-800 hover:bg-emerald-100"
+          >
+            ↓ Télécharger l&apos;avoir
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (statut === "conteste") {
+    return (
+      <div className="border-t border-rose-200 bg-rose-50 px-5 py-3">
+        <p className="text-sm font-semibold text-rose-800">
+          Avoir contesté par le fournisseur
+        </p>
+        {commande.avoir_motif_contestation && (
+          <p className="mt-1 text-xs text-rose-700">
+            <span className="font-semibold">Motif :</span> {commande.avoir_motif_contestation}
+          </p>
+        )}
+        <div className="mt-2 flex flex-wrap justify-end gap-2">
+          <button
+            onClick={() => forceAction("annule")}
+            disabled={busy}
+            className="min-h-[40px] rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-[#1A1A2E] hover:bg-gray-100 disabled:opacity-50"
+          >
+            Annuler l&apos;avoir
+          </button>
+          <button
+            onClick={() => forceAction("accepte")}
+            disabled={busy}
+            className="min-h-[40px] rounded-lg bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-600 disabled:opacity-50"
+          >
+            Maintenir l&apos;avoir
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (statut === "annule") {
+    return (
+      <div className="border-t border-gray-200 bg-gray-50 px-5 py-3">
+        <p className="text-sm text-gray-600">Avoir annulé.</p>
+      </div>
+    );
+  }
+  return null;
 }

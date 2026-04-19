@@ -7,9 +7,10 @@ import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/auth/use-profile";
 
 const LINKS = [
-  { label: "Vue d'ensemble",    href: "/admin",           icon: <IconGrid /> },
-  { label: "Utilisateurs",      href: "/admin/users",     icon: <IconUsers /> },
-  { label: "Commandes",         href: "/admin/commandes", icon: <IconInbox /> },
+  { label: "Vue d'ensemble", href: "/admin",           icon: <IconGrid />   },
+  { label: "Utilisateurs",   href: "/admin/users",     icon: <IconUsers />  },
+  { label: "Commandes",      href: "/admin/commandes", icon: <IconInbox />  },
+  { label: "Avoirs & litiges", href: "/admin/avoirs",  icon: <IconAvoir />  },
 ];
 
 interface Props {
@@ -140,6 +141,13 @@ function IconLogout() {
   return (
     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+    </svg>
+  );
+}
+function IconAvoir() {
+  return (
+    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4h16v16H4V4Zm4 5h8M8 12h5m-5 3h8" />
     </svg>
   );
 }

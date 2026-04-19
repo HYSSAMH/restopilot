@@ -1,12 +1,34 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useProfile } from "@/lib/auth/use-profile";
+import { createClient } from "@/lib/supabase/client";
 
 export default function FournisseurHome() {
   const { profile } = useProfile();
   const firstName = profile?.prenom || profile?.nom_commercial || profile?.nom_etablissement || "";
+
+  // Compteur d'avoirs en attente
+  const [avoirsEnAttente, setAvoirsEnAttente] = useState<{ count: number; total: number } | null>(null);
+  useEffect(() => {
+    if (!profile?.id) return;
+    (async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("commandes")
+        .select("avoir_montant")
+        .eq("fournisseur_id", profile.id)
+        .eq("avoir_statut", "en_attente");
+      if (data) {
+        setAvoirsEnAttente({
+          count: data.length,
+          total: data.reduce((s, c) => s + Number(c.avoir_montant ?? 0), 0),
+        });
+      }
+    })();
+  }, [profile?.id]);
 
   return (
     <DashboardLayout role="fournisseur">
@@ -28,6 +50,27 @@ export default function FournisseurHome() {
             <span>Mon profil</span>
           </Link>
         </div>
+
+        {/* Bandeau avoirs en attente */}
+        {avoirsEnAttente && avoirsEnAttente.count > 0 && (
+          <Link
+            href="/dashboard/fournisseur/avoirs"
+            className="mb-4 flex items-center gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 transition-all hover:bg-amber-100"
+          >
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-xl text-white shadow-md">
+              ⚠
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-amber-900">
+                {avoirsEnAttente.count} avoir{avoirsEnAttente.count > 1 ? "s" : ""} en attente · {avoirsEnAttente.total.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} €
+              </p>
+              <p className="mt-0.5 text-xs text-amber-700">
+                Des restaurateurs ont signalé des anomalies de réception. Validez ou contestez ces avoirs.
+              </p>
+            </div>
+            <span className="shrink-0 text-amber-600">→</span>
+          </Link>
+        )}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <ActionCard

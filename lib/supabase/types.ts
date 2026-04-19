@@ -3,6 +3,8 @@ export type StatutCommande =
   | "en_preparation"
   | "en_livraison"
   | "livree"
+  | "receptionnee"
+  | "receptionnee_avec_anomalies"
   | "annulee";
 
 export interface DbFournisseur {
@@ -40,6 +42,9 @@ export interface DbCommande {
   montant_total: number;
   created_at: string;
   updated_at: string;
+  avoir_montant?: number | null;
+  avoir_statut?: "en_attente" | "accepte" | "conteste" | "annule" | null;
+  avoir_motif_contestation?: string | null;
   fournisseurs: Pick<DbFournisseur, "nom" | "initiale" | "avatar">;
   lignes_commande: {
     id: string;

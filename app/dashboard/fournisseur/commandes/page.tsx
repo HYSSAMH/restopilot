@@ -8,11 +8,13 @@ import type { DbCommande, StatutCommande } from "@/lib/supabase/types";
 
 // ── Statut config ──────────────────────────────────────────────────────────
 const STATUTS: { value: StatutCommande; label: string; next: StatutCommande | null; dot: string; badge: string; btn?: string }[] = [
-  { value: "recue",          label: "Reçue",          next: "en_preparation", dot: "bg-amber-400",   badge: "border-amber-500/30 bg-amber-500/10 text-amber-300",   btn: "Démarrer la préparation →" },
-  { value: "en_preparation", label: "En préparation", next: "en_livraison",   dot: "bg-blue-400",    badge: "border-blue-500/30 bg-blue-500/10 text-blue-300",      btn: "Marquer en livraison →" },
-  { value: "en_livraison",   label: "En livraison",   next: "livree",         dot: "bg-violet-400",  badge: "border-indigo-200 bg-indigo-50 text-indigo-600", btn: "Confirmer la livraison →" },
-  { value: "livree",         label: "Livrée",         next: null,             dot: "bg-emerald-400", badge: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" },
-  { value: "annulee",        label: "Annulée",        next: null,             dot: "bg-red-400",     badge: "border-red-500/30 bg-red-500/10 text-red-400" },
+  { value: "recue",                        label: "Reçue",                    next: "en_preparation", dot: "bg-amber-400",   badge: "border-amber-200 bg-amber-50 text-amber-700",   btn: "Démarrer la préparation →" },
+  { value: "en_preparation",               label: "En préparation",           next: "en_livraison",   dot: "bg-blue-400",    badge: "border-blue-200 bg-blue-50 text-blue-700",      btn: "Marquer en livraison →" },
+  { value: "en_livraison",                 label: "En livraison",             next: "livree",         dot: "bg-violet-400",  badge: "border-indigo-200 bg-indigo-50 text-indigo-600", btn: "Confirmer la livraison →" },
+  { value: "livree",                       label: "Livrée · attente récep.",  next: null,             dot: "bg-sky-400",     badge: "border-sky-200 bg-sky-50 text-sky-700" },
+  { value: "receptionnee",                 label: "Réceptionnée ✓",           next: null,             dot: "bg-emerald-400", badge: "border-emerald-200 bg-emerald-50 text-emerald-700" },
+  { value: "receptionnee_avec_anomalies",  label: "Récep. avec anomalies",    next: null,             dot: "bg-rose-400",    badge: "border-rose-200 bg-rose-50 text-rose-700" },
+  { value: "annulee",                      label: "Annulée",                  next: null,             dot: "bg-red-400",     badge: "border-red-200 bg-red-50 text-red-700" },
 ];
 
 function getStatut(v: StatutCommande) {
@@ -76,6 +78,16 @@ function CommandeCard({
             <span className="font-semibold text-[#1A1A2E]">{displayName}</span>
             {commande.statut === "recue" && (
               <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">NOUVEAU</span>
+            )}
+            {commande.statut === "receptionnee" && (
+              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+                RÉCEPTIONNÉE ✓
+              </span>
+            )}
+            {commande.statut === "receptionnee_avec_anomalies" && (commande as DbCommande & { avoir_montant?: number }).avoir_montant != null && (
+              <span className="rounded-full border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700">
+                AVOIR {Number((commande as DbCommande & { avoir_montant?: number }).avoir_montant).toFixed(2)} €
+              </span>
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
@@ -169,7 +181,7 @@ export default function FournisseurCommandesPage() {
     const { data, error } = await supabase
       .from("commandes")
       .select(`
-        id, restaurateur_id, restaurateur_nom, fournisseur_id, statut, montant_total, created_at, updated_at,
+        id, restaurateur_id, restaurateur_nom, fournisseur_id, statut, montant_total, avoir_montant, receptionnee_at, created_at, updated_at,
         fournisseurs ( nom, initiale, avatar ),
         lignes_commande ( id, nom_snapshot, prix_snapshot, unite, quantite )
       `)
