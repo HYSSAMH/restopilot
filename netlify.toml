@@ -1,0 +1,31 @@
+# ============================================================
+# RestoPilot — configuration Netlify
+# ============================================================
+# Next.js 16 (App Router) + middleware + API route streaming.
+# Le plugin officiel @netlify/plugin-nextjs gère :
+#  - les Server/Client Components
+#  - les API routes (/api/mercuriale-import en runtime nodejs)
+#  - le middleware (/dashboard/* protection)
+# Il est auto-installé par Netlify si détecté via package.json.
+# ============================================================
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  # Next.js 16 requiert Node >= 18.18 ; on fige sur Node 20 LTS.
+  NODE_VERSION      = "20"
+  NPM_FLAGS         = "--no-audit --no-fund"
+  # Suppression des télémetries build
+  NEXT_TELEMETRY_DISABLED = "1"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# ── Variables d'environnement ───────────────────────────────
+# À configurer DANS Netlify Dashboard > Site settings > Environment variables
+# (ne PAS les mettre ici — ce fichier est commit). Liste :
+#   NEXT_PUBLIC_SUPABASE_URL
+#   NEXT_PUBLIC_SUPABASE_ANON_KEY
+#   ANTHROPIC_API_KEY
