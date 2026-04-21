@@ -366,32 +366,56 @@ function ReleveTab({ ctx }: { ctx: Ctx }) {
       const { data: { user } } = await ctx.supa.auth.getUser();
       if (!user) throw new Error("Session expirée");
 
+      type LigneImportee = {
+        date:            string | null;
+        libelle:         string;
+        montant_debit:   number;
+        montant_credit:  number;
+        solde_courant:   number | null;
+      };
       let parsed: {
         periode_debut: string | null; periode_fin: string | null;
-        solde_debut: number | null; solde_fin: number | null;
-        lignes: { date: string | null; libelle: string; debit: number; credit: number; solde: number | null }[];
+        solde_debut:   number | null; solde_fin:   number | null;
+        lignes:        LigneImportee[];
       };
 
       if (file.name.toLowerCase().endsWith(".csv")) {
         const text = await file.text();
         parsed = parseCsv(text);
       } else {
-        // PDF via Claude
-        const buf = await file.arrayBuffer();
-        const base64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
-        const res = await fetch("/api/releve-import", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fileBase64: base64 }),
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json?.error ?? "Import échoué");
+        // PDF via Claude — encodage base64 via FileReader pour éviter le stack
+        // overflow de btoa(String.fromCharCode(...large array)).
+        const base64 = await fileToBase64(file);
+        let res: Response;
+        try {
+          res = await fetch("/api/releve-import", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fileBase64: base64 }),
+          });
+        } catch (netErr) {
+          throw new Error("Connexion au serveur impossible : " + (netErr instanceof Error ? netErr.message : String(netErr)));
+        }
+        // Le serveur garantit du JSON, mais on se protège quand même contre
+        // une page HTML renvoyée par Netlify (413, 504 gateway…).
+        const raw = await res.text();
+        let json: { ok?: boolean; releve?: typeof parsed; error?: string };
+        try {
+          json = JSON.parse(raw);
+        } catch {
+          const snippet = raw.replace(/<[^>]+>/g, "").trim().slice(0, 200);
+          throw new Error(`Le serveur a renvoyé une réponse invalide (${res.status}). ${snippet || "Réessayez ou vérifiez les logs."}`);
+        }
+        if (!res.ok || !json.releve) {
+          throw new Error(json.error ?? `Import échoué (HTTP ${res.status}).`);
+        }
         parsed = json.releve;
       }
 
       // Créer l'en-tête de relevé
       const datesISO = parsed.lignes.map(l => l.date).filter(Boolean) as string[];
-      const pdeb = parsed.periode_debut ?? (datesISO.length ? datesISO.sort()[0] : new Date().toISOString().slice(0, 10));
-      const pfin = parsed.periode_fin   ?? (datesISO.length ? datesISO.sort().at(-1)! : new Date().toISOString().slice(0, 10));
+      const pdeb = parsed.periode_debut ?? (datesISO.length ? [...datesISO].sort()[0] : new Date().toISOString().slice(0, 10));
+      const pfin = parsed.periode_fin   ?? (datesISO.length ? [...datesISO].sort().at(-1)! : new Date().toISOString().slice(0, 10));
 
       const { data: rel, error: errR } = await ctx.supa.from("releves_bancaires").insert({
         restaurateur_id: user.id,
@@ -410,9 +434,9 @@ function ReleveTab({ ctx }: { ctx: Ctx }) {
         restaurateur_id: user.id,
         date_op:         l.date ?? pdeb,
         libelle:         l.libelle,
-        debit:           l.debit,
-        credit:          l.credit,
-        solde:           l.solde,
+        debit:           l.montant_debit,
+        credit:          l.montant_credit,
+        solde:           l.solde_courant,
       }));
       if (rows.length > 0) {
         const { error: errL } = await ctx.supa.from("releve_lignes").insert(rows);
@@ -606,14 +630,30 @@ function parseCsv(text: string) {
       else credit = num;
     }
     return {
-      date:    iDate >= 0 ? parseDate(r[iDate]) : null,
-      libelle: iLib  >= 0 ? (r[iLib] ?? "") : r.join(" "),
-      debit, credit,
-      solde:   iSolde >= 0 ? parseNum(r[iSolde]) : null,
+      date:            iDate >= 0 ? parseDate(r[iDate]) : null,
+      libelle:         iLib  >= 0 ? (r[iLib] ?? "") : r.join(" "),
+      montant_debit:   debit,
+      montant_credit:  credit,
+      solde_courant:   iSolde >= 0 ? parseNum(r[iSolde]) : null,
     };
   }).filter(l => l.libelle.length > 0);
 
   return { periode_debut: null, periode_fin: null, solde_debut: null, solde_fin: null, lignes };
+}
+
+/** Convertit un File en base64 sans stack overflow (via FileReader). */
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Lecture du fichier échouée"));
+    reader.onload  = () => {
+      const result = reader.result as string;
+      // result = "data:application/pdf;base64,XXXX…" → on garde le bloc après la virgule
+      const comma = result.indexOf(",");
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 // ── Charges récurrentes ─────────────────────────────────────────────
