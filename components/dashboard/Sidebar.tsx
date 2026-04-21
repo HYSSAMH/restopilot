@@ -15,7 +15,7 @@ const LINKS: Record<Role, { label: string; href: string; icon: React.ReactNode }
     { label: "Mes commandes",       href: "/dashboard/restaurateur/historique", icon: <IconList /> },
     { label: "Factures",            href: "/dashboard/restaurateur/factures",   icon: <IconInvoice /> },
     { label: "Fournisseurs externes", href: "/dashboard/restaurateur/fournisseurs-externes", icon: <IconTruck /> },
-    { label: "Rapports d'achats",   href: "/dashboard/restaurateur/rapports",   icon: <IconChart /> },
+    { label: "Gestion",             href: "/dashboard/restaurateur/gestion",    icon: <IconChart /> },
     { label: "Mon profil",          href: "/profile",                           icon: <IconUser /> },
   ],
   fournisseur: [
