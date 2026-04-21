@@ -24,11 +24,12 @@
   package = "@netlify/plugin-nextjs"
 
 # ── Functions (API routes & middleware) ─────────────────────
-# Plan payant Netlify : timeout étendu à 300 s pour les routes
-# qui font des appels Claude sur des PDFs volumineux.
+# Plan payant Netlify : timeout étendu à 300 s par fonction pour
+# les routes qui font des appels Claude sur des PDFs volumineux.
+# Le champ `timeout` n'est PAS valide dans la section [functions]
+# globale — il doit être défini par fonction.
 [functions]
   node_bundler = "esbuild"
-  timeout      = 300
 
 [functions."api/releve-import"]
   timeout = 300
