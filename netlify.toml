@@ -1,10 +1,10 @@
 # ============================================================
 # RestoPilot — configuration Netlify
 # ============================================================
-# Next.js 16 (App Router) + middleware + API route streaming.
+# Next.js 16 (App Router) + middleware + API routes.
 # Le plugin officiel @netlify/plugin-nextjs gère :
 #  - les Server/Client Components
-#  - les API routes (/api/mercuriale-import en runtime nodejs)
+#  - les API routes (runtime nodejs)
 #  - le middleware (/dashboard/* protection)
 # Il est auto-installé par Netlify si détecté via package.json.
 # ============================================================
@@ -24,19 +24,25 @@
   package = "@netlify/plugin-nextjs"
 
 # ── Functions (API routes & middleware) ─────────────────────
-# Le timeout MAX des fonctions synchrones dépend du plan Netlify :
-#   Free  : 10 s
-#   Pro   : 26 s
-#   Business+ : 30 s (configurable)
-# Le code (app/api/mercuriale-import/route.ts) déclare maxDuration=60
-# et parallélise l'extraction des pages PDF pour rentrer dans 10 s
-# même sur PDF de 3-5 pages.
+# Plan payant Netlify : timeout étendu à 300 s pour les routes
+# qui font des appels Claude sur des PDFs volumineux.
 [functions]
   node_bundler = "esbuild"
+  timeout      = 300
+
+[functions."api/releve-import"]
+  timeout = 300
+
+[functions."api/mercuriale-import"]
+  timeout = 300
+
+[functions."api/facture-import"]
+  timeout = 300
 
 # ── Variables d'environnement ───────────────────────────────
 # À configurer DANS Netlify Dashboard > Site settings > Environment variables
 # (ne PAS les mettre ici — ce fichier est commit). Liste :
 #   NEXT_PUBLIC_SUPABASE_URL
 #   NEXT_PUBLIC_SUPABASE_ANON_KEY
+#   SUPABASE_SERVICE_ROLE_KEY
 #   ANTHROPIC_API_KEY

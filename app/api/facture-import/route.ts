@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 
 export const runtime     = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const MODEL_ID = "claude-sonnet-4-5";
 

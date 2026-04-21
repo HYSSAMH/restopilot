@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 
 export const runtime     = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const MODEL_ID = "claude-sonnet-4-5";
 
@@ -164,7 +164,7 @@ export async function GET() {
     ok:             Boolean(apiKey) && apiKey !== "your_anthropic_api_key_here",
     model_id:       MODEL_ID,
     runtime:        "nodejs",
-    max_duration_s: 60,
+    max_duration_s: 300,
   });
 }
 

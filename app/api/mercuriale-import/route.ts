@@ -4,7 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 export const runtime     = "nodejs";
 // Demande explicite d'un timeout étendu (respecté par Next.js sur les
 // runtimes qui le supportent, dont Netlify Functions sur plan ≥ Pro).
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
