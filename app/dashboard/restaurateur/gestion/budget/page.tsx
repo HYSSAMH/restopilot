@@ -43,6 +43,49 @@ const NEW_ESP: EspDet = { "50": 0, "20": 0, "10": 0, "5": 0, pieces: 0 };
 const totalEspeces = (e: EspDet) =>
   (e["50"] || 0) * 50 + (e["20"] || 0) * 20 + (e["10"] || 0) * 10 + (e["5"] || 0) * 5 + (Number(e.pieces) || 0);
 
+// ── Filtre période ─────────────────────────────────────────────────────
+type PeriodPreset = "semaine" | "mois" | "3mois" | "6mois" | "annee" | "custom";
+
+const PRESETS: { id: Exclude<PeriodPreset, "custom">; label: string }[] = [
+  { id: "semaine", label: "Cette semaine" },
+  { id: "mois",    label: "Ce mois" },
+  { id: "3mois",   label: "3 mois" },
+  { id: "6mois",   label: "6 mois" },
+  { id: "annee",   label: "Cette année" },
+];
+
+const isoDay = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+function presetRange(preset: Exclude<PeriodPreset, "custom">): { from: string; to: string } {
+  const today = new Date();
+  const to = isoDay(today);
+  let from: string;
+  if (preset === "semaine") {
+    const d = new Date(today); d.setDate(today.getDate() - 6); from = isoDay(d);
+  } else if (preset === "mois") {
+    from = isoDay(new Date(today.getFullYear(), today.getMonth(), 1));
+  } else if (preset === "3mois") {
+    const d = new Date(today); d.setMonth(today.getMonth() - 3); d.setDate(d.getDate() + 1); from = isoDay(d);
+  } else if (preset === "6mois") {
+    const d = new Date(today); d.setMonth(today.getMonth() - 6); d.setDate(d.getDate() + 1); from = isoDay(d);
+  } else {
+    from = isoDay(new Date(today.getFullYear(), 0, 1));
+  }
+  return { from, to };
+}
+
+function formatPeriodLabel(preset: PeriodPreset, from: string, to: string): string {
+  const fd = new Date(from + "T00:00:00");
+  const td = new Date(to + "T00:00:00");
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  if (preset === "annee") return `Année ${fd.getFullYear()}`;
+  if (preset === "mois") {
+    return cap(fd.toLocaleDateString("fr-FR", { month: "long", year: "numeric" }));
+  }
+  return `${fd.toLocaleDateString("fr-FR")} au ${td.toLocaleDateString("fr-FR")}`;
+}
+
 export default function BudgetPage() {
   const { profile } = useProfile();
   const [commandes, setCommandes]   = useState<Commande[]>([]);
@@ -76,6 +119,18 @@ export default function BudgetPage() {
   const [rapportFrom, setRFrom] = useState<string>(() => { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().slice(0, 10); });
   const [rapportTo,   setRTo]   = useState<string>(new Date().toISOString().slice(0, 10));
   const [generating, setGenerating] = useState<string | null>(null);
+
+  // Filtre période (dashboard)
+  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("annee");
+  const [periodFrom, setPeriodFrom] = useState<string>(() => presetRange("annee").from);
+  const [periodTo,   setPeriodTo]   = useState<string>(() => presetRange("annee").to);
+
+  function applyPreset(p: Exclude<PeriodPreset, "custom">) {
+    const { from, to } = presetRange(p);
+    setPeriodPreset(p);
+    setPeriodFrom(from);
+    setPeriodTo(to);
+  }
 
   // ── Chargement ──
   const fetchAll = useCallback(async () => {
@@ -158,37 +213,80 @@ export default function BudgetPage() {
     return map;
   }, [caRows]);
 
-  // Dashboard 12 mois
-  const parMoisChart = useMemo(() => {
-    const map = new Map<string, { ca: number; depenses: number }>();
-    const now = new Date();
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      map.set(d.toISOString().slice(0, 7), { ca: 0, depenses: 0 });
-    }
-    caRows.forEach(r => {
-      const k = r.date.slice(0, 7);
-      if (map.has(k)) map.get(k)!.ca += Number(r.ca_total ?? 0);
-    });
-    commandes.forEach(c => {
-      const k = c.created_at.slice(0, 7);
-      if (map.has(k) && c.statut !== "annulee") map.get(k)!.depenses += montantNet(c);
-    });
-    return Array.from(map.entries()).map(([m, v]) => ({
-      mois:    m.slice(5),
-      ca:      Math.round(v.ca       * 100) / 100,
-      depenses:Math.round(v.depenses * 100) / 100,
-      marge:   Math.round((v.ca - v.depenses) * 100) / 100,
-      coutPct: v.ca > 0 ? Math.round((v.depenses / v.ca) * 100) : 0,
-    }));
-  }, [caRows, commandes]);
+  // ── Données filtrées par période ──
+  const filteredCaRows = useMemo(
+    () => caRows.filter(r => r.date >= periodFrom && r.date <= periodTo),
+    [caRows, periodFrom, periodTo],
+  );
+  const filteredCommandes = useMemo(
+    () => commandes.filter(c => {
+      if (c.statut === "annulee") return false;
+      const d = c.created_at.slice(0, 10);
+      return d >= periodFrom && d <= periodTo;
+    }),
+    [commandes, periodFrom, periodTo],
+  );
 
-  // Catégories mois courant
+  // Buckets (jour si ≤ 31 jours, sinon mois)
+  const chartData = useMemo(() => {
+    const f = new Date(periodFrom + "T00:00:00");
+    const t = new Date(periodTo   + "T00:00:00");
+    if (Number.isNaN(f.getTime()) || Number.isNaN(t.getTime()) || t < f) return [];
+    const days = Math.round((t.getTime() - f.getTime()) / 86400000) + 1;
+    const granularity: "day" | "month" = days <= 31 ? "day" : "month";
+
+    type Bucket = { key: string; label: string; ca: number; depenses: number };
+    const buckets: Bucket[] = [];
+
+    if (granularity === "day") {
+      const d = new Date(f);
+      while (d <= t) {
+        buckets.push({
+          key: isoDay(d),
+          label: d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }),
+          ca: 0, depenses: 0,
+        });
+        d.setDate(d.getDate() + 1);
+      }
+    } else {
+      const m = new Date(f.getFullYear(), f.getMonth(), 1);
+      const endM = new Date(t.getFullYear(), t.getMonth(), 1);
+      while (m <= endM) {
+        const k = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, "0")}`;
+        buckets.push({
+          key: k,
+          label: m.toLocaleDateString("fr-FR", { month: "short", year: "2-digit" }),
+          ca: 0, depenses: 0,
+        });
+        m.setMonth(m.getMonth() + 1);
+      }
+    }
+
+    const idx = new Map(buckets.map((b, i) => [b.key, i]));
+    const sliceKey = (s: string) => granularity === "day" ? s.slice(0, 10) : s.slice(0, 7);
+
+    filteredCaRows.forEach(r => {
+      const i = idx.get(sliceKey(r.date));
+      if (i !== undefined) buckets[i].ca += Number(r.ca_total ?? 0);
+    });
+    filteredCommandes.forEach(c => {
+      const i = idx.get(sliceKey(c.created_at));
+      if (i !== undefined) buckets[i].depenses += montantNet(c);
+    });
+
+    return buckets.map(b => ({
+      ...b,
+      ca:       Math.round(b.ca       * 100) / 100,
+      depenses: Math.round(b.depenses * 100) / 100,
+      marge:    Math.round((b.ca - b.depenses) * 100) / 100,
+      coutPct:  b.ca > 0 ? Math.round((b.depenses / b.ca) * 100) : 0,
+    }));
+  }, [filteredCaRows, filteredCommandes, periodFrom, periodTo]);
+
+  // Catégories sur la période
   const parCategorie = useMemo(() => {
-    const moisCourant = new Date().toISOString().slice(0, 7);
     const map = new Map<string, number>();
-    commandes.forEach(c => {
-      if (c.statut === "annulee" || !c.created_at.startsWith(moisCourant)) return;
+    filteredCommandes.forEach(c => {
       c.lignes_commande.forEach(l => {
         const cat = categories[l.nom_snapshot] ?? "epicerie";
         map.set(cat, (map.get(cat) ?? 0) + Number(l.prix_snapshot) * Number(l.quantite));
@@ -197,14 +295,20 @@ export default function BudgetPage() {
     return Array.from(map.entries())
       .map(([cat, v]) => ({ cat, label: CAT_LABELS[cat] ?? cat, value: Math.round(v * 100) / 100, color: CAT_COLORS[cat] ?? "#6366F1" }))
       .sort((a, b) => b.value - a.value);
-  }, [commandes, categories]);
+  }, [filteredCommandes, categories]);
 
+  // KPIs période
+  const caPeriod     = filteredCaRows.reduce((s, r) => s + Number(r.ca_total ?? 0), 0);
+  const depPeriod    = filteredCommandes.reduce((s, c) => s + montantNet(c), 0);
+  const margePeriod  = caPeriod - depPeriod;
+  const coutMatPeriodPct = caPeriod > 0 ? (depPeriod / caPeriod) * 100 : 0;
+
+  // Mois courant (pour alertes / objectif — reste figé au mois en cours)
   const moisCourant      = new Date().toISOString().slice(0, 7);
   const caMoisCourant    = caParMois.get(moisCourant) ?? 0;
   const depMoisCourant   = commandes.filter(c => c.created_at.startsWith(moisCourant) && c.statut !== "annulee")
                                     .reduce((s, c) => s + montantNet(c), 0);
   const coutMatierePct   = caMoisCourant > 0 ? (depMoisCourant / caMoisCourant) * 100 : 0;
-  const margeBrute       = caMoisCourant - depMoisCourant;
 
   // ── Alertes ──
   const alertes: { type: "rose" | "amber"; msg: string }[] = useMemo(() => {
@@ -333,6 +437,56 @@ export default function BudgetPage() {
   return (
     <div className="flex flex-col gap-5">
       <h2 className="text-lg font-semibold text-[#1A1A2E]">Budget &amp; coûts matières</h2>
+
+      {/* ── FILTRE PÉRIODE ─────────────────────── */}
+      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold text-[#1A1A2E]">Période analysée</h3>
+          <p className="text-xs text-gray-500">
+            {formatPeriodLabel(periodPreset, periodFrom, periodTo)}
+          </p>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {PRESETS.map(p => (
+            <button
+              key={p.id}
+              onClick={() => applyPreset(p.id)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                periodPreset === p.id
+                  ? "bg-indigo-500 text-white"
+                  : "border border-gray-200 bg-white text-gray-600 hover:border-indigo-300 hover:text-indigo-600"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <div className="mt-3 flex flex-wrap items-end gap-3">
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] font-medium text-gray-500">Du</span>
+            <input
+              type="date" value={periodFrom}
+              max={periodTo}
+              onChange={e => { setPeriodFrom(e.target.value); setPeriodPreset("custom"); }}
+              className={inputCls + " w-40"}
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] font-medium text-gray-500">Au</span>
+            <input
+              type="date" value={periodTo}
+              min={periodFrom}
+              onChange={e => { setPeriodTo(e.target.value); setPeriodPreset("custom"); }}
+              className={inputCls + " w-40"}
+            />
+          </label>
+          {periodPreset === "custom" && (
+            <span className="self-center rounded-md bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-600">
+              Personnalisé
+            </span>
+          )}
+        </div>
+      </section>
 
       {/* ── ALERTES ───────────────────────────── */}
       {alertes.length > 0 && (
@@ -550,11 +704,16 @@ export default function BudgetPage() {
 
       {/* ── HISTORIQUE DES SAISIES ───────────── */}
       <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h3 className="mb-3 text-sm font-semibold text-[#1A1A2E]">Historique des saisies CA</h3>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-[#1A1A2E]">Historique des saisies CA</h3>
+          <p className="text-xs text-gray-500">
+            {filteredCaRows.length} saisie{filteredCaRows.length > 1 ? "s" : ""} · {formatPeriodLabel(periodPreset, periodFrom, periodTo)}
+          </p>
+        </div>
         {loading ? (
           <div className="h-32 animate-pulse rounded-xl bg-gray-100" />
-        ) : caRows.length === 0 ? (
-          <p className="text-sm text-gray-500">Aucune saisie pour l&apos;instant.</p>
+        ) : filteredCaRows.length === 0 ? (
+          <p className="text-sm text-gray-500">Aucune saisie sur cette période.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-sm">
@@ -572,7 +731,7 @@ export default function BudgetPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {caRows.slice(0, 60).map(r => {
+                {filteredCaRows.slice(0, 60).map(r => {
                   const saisiLabel = !r.saisi_par
                     ? "—"
                     : r.saisi_par === profile?.id
@@ -609,52 +768,64 @@ export default function BudgetPage() {
 
       {/* ── DASHBOARD HISTORIQUE ─────────────── */}
       <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h3 className="mb-4 text-sm font-semibold text-[#1A1A2E]">Tableau de bord 12 mois</h3>
+        <h3 className="mb-4 text-sm font-semibold text-[#1A1A2E]">
+          Tableau de bord — {formatPeriodLabel(periodPreset, periodFrom, periodTo)}
+        </h3>
         <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Kpi label="CA mois courant"     value={fmt(caMoisCourant)} />
-          <Kpi label="Dépenses"            value={fmt(depMoisCourant)} />
-          <Kpi label="Marge brute"         value={fmt(margeBrute)} accent={margeBrute >= 0 ? "emerald" : "rose"} />
-          <Kpi label="Coût matière"        value={`${coutMatierePct.toFixed(1)}%`} accent={coutMatierePct > objectifPct ? "rose" : "emerald"} sub={`objectif ${objectifPct}%`} />
+          <Kpi label="CA total"     value={fmt(caPeriod)} />
+          <Kpi label="Dépenses"     value={fmt(depPeriod)} />
+          <Kpi label="Marge brute"  value={fmt(margePeriod)} accent={margePeriod >= 0 ? "emerald" : "rose"} />
+          <Kpi label="Coût matière" value={`${coutMatPeriodPct.toFixed(1)}%`} accent={coutMatPeriodPct > objectifPct ? "rose" : "emerald"} sub={`objectif ${objectifPct}%`} />
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
           <div>
-            <p className="mb-2 text-xs font-medium text-gray-600">CA vs Dépenses (12 mois)</p>
+            <p className="mb-2 text-xs font-medium text-gray-600">CA vs Dépenses</p>
             <div style={{ width: "100%", height: 240 }}>
-              <ResponsiveContainer>
-                <BarChart data={parMoisChart}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis dataKey="mois" tick={{ fontSize: 11, fill: "#6B7280" }} />
-                  <YAxis tick={{ fontSize: 11, fill: "#6B7280" }} />
-                  <Tooltip formatter={(v: unknown) => fmt(Number(v))} contentStyle={{ borderRadius: 8, border: "1px solid #E5E7EB" }} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="ca"       name="CA"       fill="#10B981" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="depenses" name="Dépenses" fill="#EF4444" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              {chartData.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-xs text-gray-400">Aucune donnée sur la période.</div>
+              ) : (
+                <ResponsiveContainer>
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#6B7280" }} />
+                    <YAxis tick={{ fontSize: 11, fill: "#6B7280" }} />
+                    <Tooltip formatter={(v: unknown) => fmt(Number(v))} contentStyle={{ borderRadius: 8, border: "1px solid #E5E7EB" }} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Bar dataKey="ca"       name="CA"       fill="#10B981" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="depenses" name="Dépenses" fill="#EF4444" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
 
           <div>
             <p className="mb-2 text-xs font-medium text-gray-600">Évolution marge brute</p>
             <div style={{ width: "100%", height: 240 }}>
-              <ResponsiveContainer>
-                <LineChart data={parMoisChart}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis dataKey="mois" tick={{ fontSize: 11, fill: "#6B7280" }} />
-                  <YAxis tick={{ fontSize: 11, fill: "#6B7280" }} />
-                  <Tooltip formatter={(v: unknown) => fmt(Number(v))} contentStyle={{ borderRadius: 8, border: "1px solid #E5E7EB" }} />
-                  <Line type="monotone" dataKey="marge" name="Marge" stroke="#6366F1" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
+              {chartData.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-xs text-gray-400">Aucune donnée sur la période.</div>
+              ) : (
+                <ResponsiveContainer>
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#6B7280" }} />
+                    <YAxis tick={{ fontSize: 11, fill: "#6B7280" }} />
+                    <Tooltip formatter={(v: unknown) => fmt(Number(v))} contentStyle={{ borderRadius: 8, border: "1px solid #E5E7EB" }} />
+                    <Line type="monotone" dataKey="marge" name="Marge" stroke="#6366F1" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
         </div>
 
-        {parCategorie.length > 0 && (
-          <div className="mt-4">
-            <p className="mb-2 text-xs font-medium text-gray-600">Répartition dépenses par catégorie (mois courant)</p>
-            <div style={{ width: "100%", height: 240 }}>
+        <div className="mt-4">
+          <p className="mb-2 text-xs font-medium text-gray-600">Répartition dépenses par catégorie</p>
+          <div style={{ width: "100%", height: 240 }}>
+            {parCategorie.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-xs text-gray-400">Aucune dépense sur la période.</div>
+            ) : (
               <ResponsiveContainer>
                 <PieChart>
                   <Pie data={parCategorie} dataKey="value" nameKey="label" cx="50%" cy="50%" outerRadius={90} innerRadius={40}>
@@ -664,9 +835,9 @@ export default function BudgetPage() {
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                 </PieChart>
               </ResponsiveContainer>
-            </div>
+            )}
           </div>
-        )}
+        </div>
       </section>
 
       {/* ── RAPPORTS PDF ─────────────────────── */}
