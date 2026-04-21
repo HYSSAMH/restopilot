@@ -57,7 +57,7 @@ create table if not exists lignes_commande (
   nom_snapshot   text    not null,
   prix_snapshot  numeric not null,
   unite          text    not null,
-  quantite       integer not null check (quantite > 0)
+  quantite       numeric not null check (quantite > 0)   -- numeric pour supporter les qtés décimales (ex : 2.5 kg)
 );
 
 -- ── Trigger updated_at ───────────────────────────────────────
