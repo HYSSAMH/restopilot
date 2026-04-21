@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { Suspense, useState, useCallback, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import Banniere from "@/components/commande/Banniere";
 import Catalogue from "@/components/commande/Catalogue";
@@ -52,7 +53,17 @@ function tarifsToProduitsFormat(
   return Array.from(map.values());
 }
 
-export default function CommandesPage() {
+export default function CommandesPageWrapper() {
+  return (
+    <Suspense fallback={null}>
+      <CommandesPage />
+    </Suspense>
+  );
+}
+
+function CommandesPage() {
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams.get("q") ?? "";
   const { profile } = useProfile();
   const [cartMap, setCartMap] = useState<CartMap>({});
   const [cartOpen, setCartOpen] = useState(false);
@@ -414,6 +425,7 @@ export default function CommandesPage() {
             onAutoFill={handleAutoFill}
             produitsReels={produitsReels}
             loading={loadingCatalogue}
+            initialSearch={initialSearch}
           />
         </div>
 

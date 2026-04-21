@@ -12,6 +12,8 @@ interface CatalogueProps {
   onAutoFill: () => void;
   produitsReels: Produit[];
   loading?: boolean;
+  /** Pré-remplit le champ recherche (ex: venant de l'URL ?q=…). */
+  initialSearch?: string;
 }
 
 function Stars({ note }: { note: number }) {
@@ -208,10 +210,10 @@ function ProduitCard({
   );
 }
 
-export default function Catalogue({ cartMap, onAdd, onRemove, onQtyChange, onAutoFill, produitsReels, loading = false }: CatalogueProps) {
+export default function Catalogue({ cartMap, onAdd, onRemove, onQtyChange, onAutoFill, produitsReels, loading = false, initialSearch = "" }: CatalogueProps) {
   const SOURCE = produitsReels;
   const [activeTab, setActiveTab] = useState<Categorie | "tous">("tous");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch);
 
   const displayTabs = [
     { id: "tous" as const,          label: "Tous",             icone: "🛒",  count: SOURCE.length },

@@ -1,9 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { createClient } from "@/lib/supabase/client";
 import { loadRestaurateurData, montantNet, fmt, fournIdOf, type Commande } from "@/lib/gestion-data";
+
+function detailHref(produit: string) {
+  return `/dashboard/restaurateur/gestion/prix/${encodeURIComponent(produit)}`;
+}
 
 interface AchatProduit {
   produit: string;
@@ -18,6 +24,7 @@ interface AchatProduit {
 }
 
 export default function PrixPage() {
+  const router = useRouter();
   const [commandes, setCommandes]   = useState<Commande[]>([]);
   const [fournNames, setFournNames] = useState<Record<string, string>>({});
   const [catalogueMin, setCatMin]   = useState<Record<string, { prix: number; fournId: string }>>({});
@@ -143,11 +150,14 @@ export default function PrixPage() {
               </p>
               <div className="mt-3 space-y-1.5">
                 {alertes.slice(0, 8).map(p => (
-                  <button key={p.produit} onClick={() => setSelected(p.produit)}
-                          className="flex w-full items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-sm hover:bg-rose-100">
+                  <Link key={p.produit} href={detailHref(p.produit)}
+                        className="flex w-full items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-sm transition-colors hover:bg-rose-100">
                     <span className="truncate text-[#1A1A2E]">{p.produit}</span>
-                    <span className="shrink-0 font-semibold text-rose-700">+{p.evolPct.toFixed(1)}%</span>
-                  </button>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <span className="font-semibold text-rose-700">+{p.evolPct.toFixed(1)}%</span>
+                      <span className="text-rose-500">→</span>
+                    </span>
+                  </Link>
                 ))}
               </div>
             </div>
@@ -220,8 +230,11 @@ export default function PrixPage() {
                   const economie = p.meilleurCatalogue && p.meilleurCatalogue.prix < p.dernierPrix
                     ? p.dernierPrix - p.meilleurCatalogue.prix : 0;
                   return (
-                    <tr key={p.produit} onClick={() => setSelected(p.produit)} className="cursor-pointer hover:bg-gray-50">
-                      <td className="px-4 py-2 text-[#1A1A2E]">{p.produit}</td>
+                    <tr key={p.produit} onClick={() => router.push(detailHref(p.produit))} className="cursor-pointer hover:bg-indigo-50">
+                      <td className="px-4 py-2 font-medium text-[#1A1A2E]">
+                        {p.produit}
+                        <span className="ml-1 text-gray-400">→</span>
+                      </td>
                       <td className="px-4 py-2 text-right font-semibold">{fmt(p.dernierPrix)}</td>
                       <td className={`px-4 py-2 text-right ${p.evolPct > 10 ? "text-rose-600" : p.evolPct < -5 ? "text-emerald-600" : "text-gray-500"}`}>
                         {p.dates.length < 2 ? "—" : `${p.evolPct >= 0 ? "+" : ""}${p.evolPct.toFixed(1)}%`}
