@@ -6,9 +6,10 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/auth/use-profile";
 
-type Role = "restaurateur" | "fournisseur";
+type Role = "restaurateur" | "fournisseur" | "admin" | "employe";
+type SidebarRole = "restaurateur" | "fournisseur";
 
-const LINKS: Record<Role, { label: string; href: string; icon: React.ReactNode }[]> = {
+const LINKS: Record<SidebarRole, { label: string; href: string; icon: React.ReactNode }[]> = {
   restaurateur: [
     { label: "Passer une commande", href: "/dashboard/restaurateur/commandes",  icon: <IconCart /> },
     { label: "À réceptionner",      href: "/dashboard/restaurateur/receptions", icon: <IconTruck /> },
@@ -42,8 +43,11 @@ export default function Sidebar({ role: roleOverride, isOpen = false, onClose }:
   const { profile, displayName } = useProfile();
   const [loggingOut, setLoggingOut] = useState(false);
 
-  const rawRole      = roleOverride ?? profile?.role ?? "restaurateur";
-  const role: Role   = rawRole === "admin" ? "restaurateur" : rawRole;
+  const rawRole         = roleOverride ?? profile?.role ?? "restaurateur";
+  // Sidebar n'affiche que des liens restaurateur/fournisseur.
+  // admin et employe sont repliés sur restaurateur par défaut — les
+  // employés ont leur propre layout sans sidebar et l'admin utilise /admin.
+  const role: SidebarRole = rawRole === "fournisseur" ? "fournisseur" : "restaurateur";
   const homeHref     = `/dashboard/${role}`;
   const entityName   = profile?.nom_commercial || profile?.nom_etablissement || displayName;
   const avatarLetter = (entityName || "?").charAt(0).toUpperCase();

@@ -11,7 +11,7 @@ import { useProfile } from "@/lib/auth/use-profile";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-type Role = "restaurateur" | "fournisseur";
+type Role = "restaurateur" | "fournisseur" | "admin" | "employe";
 
 interface ProfileData {
   id: string;
@@ -224,9 +224,10 @@ export default function ProfilePage() {
 
   const backHref = `/dashboard/${p.role}`;
   const isFour   = p.role === "fournisseur";
+  const layoutRole: "restaurateur" | "fournisseur" = isFour ? "fournisseur" : "restaurateur";
 
   return (
-    <DashboardLayout role={p.role}>
+    <DashboardLayout role={layoutRole}>
         <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
         {/* Breadcrumb */}
         <div className="mb-6 flex items-center gap-2 text-sm text-gray-400">

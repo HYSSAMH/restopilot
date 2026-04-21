@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-type Role = "restaurateur" | "fournisseur";
+type Role = "restaurateur" | "fournisseur" | "admin" | "employe";
 
 const ROLES: { id: Role; label: string; icon: string; sub: string; gradient: string }[] = [
   {
