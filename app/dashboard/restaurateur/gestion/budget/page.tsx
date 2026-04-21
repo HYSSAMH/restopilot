@@ -33,6 +33,7 @@ interface CaRow {
   autres_total:    number;
   ca_total:        number;
   notes:           string | null;
+  saisi_par:       string | null;
 }
 
 const EMETTEURS_TR = ["Swile", "Edenred", "Sodexo / Pluxee", "Up - Chèque Déjeuner", "Apetiz", "Autre"];
@@ -48,6 +49,7 @@ export default function BudgetPage() {
   const [categories, setCategories] = useState<Record<string, string>>({});
   const [fournNames, setFournNames] = useState<Record<string, string>>({});
   const [caRows, setCaRows]         = useState<CaRow[]>([]);
+  const [saisisParNames, setSaisisParNames] = useState<Record<string, string>>({});
   const [loading, setLoading]       = useState(true);
 
   // Config objectif (localStorage)
@@ -91,7 +93,26 @@ export default function BudgetPage() {
         .select("*")
         .eq("restaurateur_id", user.id)
         .order("date", { ascending: false });
-      setCaRows((data ?? []) as CaRow[]);
+      const rows = (data ?? []) as CaRow[];
+      setCaRows(rows);
+
+      // Charge le nom des employés pour la colonne "Saisi par"
+      const authorIds = Array.from(new Set(
+        rows.map(r => r.saisi_par).filter((v): v is string => !!v && v !== user.id),
+      ));
+      if (authorIds.length > 0) {
+        const { data: auths } = await supabase
+          .from("profiles")
+          .select("id, prenom, nom")
+          .in("id", authorIds);
+        const map: Record<string, string> = {};
+        (auths ?? []).forEach((a: { id: string; prenom: string | null; nom: string | null }) => {
+          map[a.id] = [a.prenom, a.nom].filter(Boolean).join(" ").trim() || "Employé";
+        });
+        setSaisisParNames(map);
+      } else {
+        setSaisisParNames({});
+      }
     }
     setLoading(false);
   }, []);
@@ -218,6 +239,7 @@ export default function BudgetPage() {
       const payload = mode === "journalier"
         ? {
             restaurateur_id: user.id,
+            saisi_par:      user.id,
             date, mode_saisie: mode,
             especes_detail: especes,
             especes_total:  totalEspeces(especes),
@@ -232,6 +254,7 @@ export default function BudgetPage() {
           }
         : {
             restaurateur_id: user.id,
+            saisi_par:       user.id,
             date, mode_saisie: mode,
             ca_total:        parseFloat(caMensuel) || 0,
             notes:           notes || null,
@@ -534,11 +557,12 @@ export default function BudgetPage() {
           <p className="text-sm text-gray-500">Aucune saisie pour l&apos;instant.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
+            <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b border-gray-200 text-xs font-medium uppercase tracking-wide text-gray-500">
                   <th className="px-3 py-2 text-left">Date</th>
                   <th className="px-3 py-2 text-left">Mode</th>
+                  <th className="px-3 py-2 text-left">Saisi par</th>
                   <th className="px-3 py-2 text-right">Espèces</th>
                   <th className="px-3 py-2 text-right">CB</th>
                   <th className="px-3 py-2 text-right">TR</th>
@@ -548,7 +572,13 @@ export default function BudgetPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {caRows.slice(0, 60).map(r => (
+                {caRows.slice(0, 60).map(r => {
+                  const saisiLabel = !r.saisi_par
+                    ? "—"
+                    : r.saisi_par === profile?.id
+                      ? "Vous"
+                      : saisisParNames[r.saisi_par] ?? "Employé";
+                  return (
                   <tr key={r.id} className="hover:bg-gray-50">
                     <td className="px-3 py-2 text-[#1A1A2E]">
                       {r.mode_saisie === "mensuel"
@@ -556,6 +586,7 @@ export default function BudgetPage() {
                         : new Date(r.date).toLocaleDateString("fr-FR")}
                     </td>
                     <td className="px-3 py-2 text-gray-500">{r.mode_saisie === "mensuel" ? "Mensuel" : "Journalier"}</td>
+                    <td className="px-3 py-2 text-gray-600">{saisiLabel}</td>
                     <td className="px-3 py-2 text-right text-gray-600">{r.mode_saisie === "mensuel" ? "—" : fmt(Number(r.especes_total ?? 0))}</td>
                     <td className="px-3 py-2 text-right text-gray-600">{r.mode_saisie === "mensuel" ? "—" : fmt(Number(r.cb_montant ?? 0))}</td>
                     <td className="px-3 py-2 text-right text-gray-600">{r.mode_saisie === "mensuel" ? "—" : fmt(Number(r.tr_total ?? 0))}</td>
@@ -568,7 +599,8 @@ export default function BudgetPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

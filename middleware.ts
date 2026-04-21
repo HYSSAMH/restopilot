@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-type Role = "restaurateur" | "fournisseur" | "admin";
+type Role = "restaurateur" | "fournisseur" | "admin" | "employe";
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -44,37 +44,75 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // On lit le rôle depuis profiles (source de vérité) plutôt que le metadata
+  // pour capter les rôles créés côté serveur (employes).
+  let role: Role = "restaurateur";
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+    const candidate = (profile?.role as Role | undefined)
+      ?? (user.user_metadata?.role as Role | undefined);
+    if (candidate === "restaurateur" || candidate === "fournisseur"
+      || candidate === "admin" || candidate === "employe") {
+      role = candidate;
+    }
+  }
+
   // Authentifié + accès /login ou /register → son propre dashboard
   if (isAuthRoute && user) {
-    const role = (user.user_metadata?.role as Role | undefined) ?? "restaurateur";
     const url = request.nextUrl.clone();
-    url.pathname = role === "admin" ? "/admin" : `/dashboard/${role}`;
+    if (role === "admin")          url.pathname = "/admin";
+    else if (role === "employe")   url.pathname = "/dashboard/employe";
+    else                           url.pathname = `/dashboard/${role}`;
     url.search = "";
     return NextResponse.redirect(url);
   }
 
   if (user) {
-    const role = (user.user_metadata?.role as Role | undefined) ?? "restaurateur";
-
-    // /admin/* réservé aux admins
-    if (isAdmin && role !== "admin") {
-      const url = request.nextUrl.clone();
-      url.pathname = `/dashboard/${role === "fournisseur" ? "fournisseur" : "restaurateur"}`;
-      return NextResponse.redirect(url);
-    }
-
-    // Cloisonnement par rôle dans /dashboard/*
-    // Exception : admin peut accéder à /dashboard/* pour agir "en tant que"
-    if (isDashboard && role !== "admin") {
-      if (path.startsWith("/dashboard/fournisseur") && role !== "fournisseur") {
+    // Un employé est strictement confiné à /dashboard/employe.
+    if (role === "employe") {
+      const isEmployeZone = path.startsWith("/dashboard/employe");
+      if (isProtected && !isEmployeZone) {
         const url = request.nextUrl.clone();
-        url.pathname = "/dashboard/restaurateur";
+        url.pathname = "/dashboard/employe";
+        url.search = "";
         return NextResponse.redirect(url);
       }
-      if (path.startsWith("/dashboard/restaurateur") && role !== "restaurateur") {
+    } else {
+      // /admin/* réservé aux admins
+      if (isAdmin && role !== "admin") {
         const url = request.nextUrl.clone();
-        url.pathname = "/dashboard/fournisseur";
+        url.pathname = role === "fournisseur"
+          ? "/dashboard/fournisseur"
+          : "/dashboard/restaurateur";
         return NextResponse.redirect(url);
+      }
+
+      // Non-employés ne doivent pas tomber sur la zone employé
+      if (path.startsWith("/dashboard/employe")) {
+        const url = request.nextUrl.clone();
+        url.pathname = role === "admin"
+          ? "/admin"
+          : `/dashboard/${role}`;
+        return NextResponse.redirect(url);
+      }
+
+      // Cloisonnement par rôle dans /dashboard/*
+      // Exception : admin peut accéder à /dashboard/* pour agir "en tant que"
+      if (isDashboard && role !== "admin") {
+        if (path.startsWith("/dashboard/fournisseur") && role !== "fournisseur") {
+          const url = request.nextUrl.clone();
+          url.pathname = "/dashboard/restaurateur";
+          return NextResponse.redirect(url);
+        }
+        if (path.startsWith("/dashboard/restaurateur") && role !== "restaurateur") {
+          const url = request.nextUrl.clone();
+          url.pathname = "/dashboard/fournisseur";
+          return NextResponse.redirect(url);
+        }
       }
     }
   }

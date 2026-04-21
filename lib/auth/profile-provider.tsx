@@ -9,13 +9,16 @@ import { createClient } from "@/lib/supabase/client";
 
 export interface Profile {
   id: string;
-  role: "restaurateur" | "fournisseur" | "admin";
+  role: "restaurateur" | "fournisseur" | "admin" | "employe";
   nom_etablissement: string;
   prenom: string | null;
   nom: string | null;
   email: string;
   actif?: boolean;
   notes_admin?: string | null;
+
+  // Employé : pointe vers le patron
+  restaurant_id?: string | null;
 
   // Profil détaillé (nullable)
   nom_commercial?:   string | null;
