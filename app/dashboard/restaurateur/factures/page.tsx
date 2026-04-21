@@ -6,13 +6,17 @@ import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { createClient } from "@/lib/supabase/client";
 import type { StatutCommande } from "@/lib/supabase/types";
 import { regenerateFacturePDF } from "@/lib/facture-from-db";
+import FactureImportModal from "@/components/factures/FactureImportModal";
 
 interface Commande {
   id: string;
-  fournisseur_id: string;
+  fournisseur_id: string | null;
+  fournisseur_externe_id: string | null;
   statut: StatutCommande;
   montant_total: number;
   avoir_montant: number | null;
+  source: string | null;
+  numero_facture_externe: string | null;
   created_at: string;
   lignes_commande: {
     id: string;
@@ -48,8 +52,11 @@ export default function FacturesPage() {
   const [tab, setTab] = useState<"factures" | "produits">("factures");
   const [commandes, setCommandes]   = useState<Commande[]>([]);
   const [fournNames, setFournNames] = useState<Record<string, string>>({});
+  const [cheaperAlerts, setCheaperAlerts] = useState<Record<string, { fournNom: string; prix: number }>>({});
   const [loading, setLoading]       = useState(true);
   const [downloading, setDL]        = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [reloadKey, setReloadKey]   = useState(0);
 
   // Filtres factures
   const [search, setSearch] = useState("");
@@ -64,7 +71,8 @@ export default function FacturesPage() {
       const { data } = await supabase
         .from("commandes")
         .select(`
-          id, fournisseur_id, statut, montant_total, avoir_montant, created_at,
+          id, fournisseur_id, fournisseur_externe_id, statut, montant_total, avoir_montant,
+          source, numero_facture_externe, created_at,
           lignes_commande ( id, nom_snapshot, prix_snapshot, unite, quantite )
         `)
         .eq("restaurateur_id", user.id)
@@ -73,25 +81,68 @@ export default function FacturesPage() {
       const typed = (data ?? []) as unknown as Commande[];
       setCommandes(typed);
 
-      const fournIds = Array.from(new Set(typed.map(c => c.fournisseur_id)));
-      if (fournIds.length > 0) {
+      // Fournisseurs internes (profiles) + externes → noms affichés
+      const fIds = Array.from(new Set(typed.map(c => c.fournisseur_id).filter((x): x is string => !!x)));
+      const fExtIds = Array.from(new Set(typed.map(c => c.fournisseur_externe_id).filter((x): x is string => !!x)));
+      const map: Record<string, string> = {};
+      if (fIds.length > 0) {
         const { data: profs } = await supabase
-          .from("profiles")
-          .select("id, nom_commercial, nom_etablissement")
-          .in("id", fournIds);
-        const map: Record<string, string> = {};
-        (profs ?? []).forEach(p => {
-          map[p.id] = p.nom_commercial || p.nom_etablissement || "—";
-        });
-        setFournNames(map);
+          .from("profiles").select("id, nom_commercial, nom_etablissement").in("id", fIds);
+        (profs ?? []).forEach(p => { map[p.id] = p.nom_commercial || p.nom_etablissement || "—"; });
       }
+      if (fExtIds.length > 0) {
+        const { data: ext } = await supabase
+          .from("fournisseurs_externes").select("id, nom").in("id", fExtIds);
+        (ext ?? []).forEach(e => { map[e.id] = `${e.nom} (externe)`; });
+      }
+      setFournNames(map);
+
+      // Alertes "disponible moins cher" : compare chaque nom de produit acheté
+      // avec les tarifs actifs du catalogue RestoPilot et le dernier prix payé.
+      const nomProduits = Array.from(new Set(
+        typed.flatMap(c => c.lignes_commande.map(l => l.nom_snapshot.toLowerCase().trim())),
+      ));
+      if (nomProduits.length > 0) {
+        const { data: tarifs } = await supabase
+          .from("tarifs")
+          .select("prix, unite, fournisseur_id, produits!inner ( nom )")
+          .eq("actif", true).is("archived_at", null);
+        type TarifRow = {
+          prix: number; unite: string; fournisseur_id: string;
+          produits: { nom: string };
+        };
+        const tarifsMap = new Map<string, { fournId: string; prix: number }[]>();
+        ((tarifs ?? []) as unknown as TarifRow[]).forEach(t => {
+          const key = t.produits.nom.toLowerCase().trim();
+          if (!tarifsMap.has(key)) tarifsMap.set(key, []);
+          tarifsMap.get(key)!.push({ fournId: t.fournisseur_id, prix: Number(t.prix) });
+        });
+        // Dernier prix payé par produit
+        const dernierPrixPaye = new Map<string, number>();
+        typed.slice().reverse().forEach(c => {
+          c.lignes_commande.forEach(l => {
+            dernierPrixPaye.set(l.nom_snapshot.toLowerCase().trim(), Number(l.prix_snapshot));
+          });
+        });
+        const alerts: Record<string, { fournNom: string; prix: number }> = {};
+        for (const [nom, paye] of dernierPrixPaye.entries()) {
+          const candidats = tarifsMap.get(nom);
+          if (!candidats) continue;
+          const meilleur = candidats.reduce((m, c) => c.prix < m.prix ? c : m, candidats[0]);
+          if (meilleur.prix < paye) {
+            alerts[nom] = { fournNom: map[meilleur.fournId] ?? "—", prix: meilleur.prix };
+          }
+        }
+        setCheaperAlerts(alerts);
+      }
+
       setLoading(false);
     })();
-  }, []);
+  }, [reloadKey]);
 
   const filtered = useMemo(() => {
     let arr = commandes;
-    if (fournFilter !== "tous") arr = arr.filter(c => c.fournisseur_id === fournFilter);
+    if (fournFilter !== "tous") arr = arr.filter(c => (c.fournisseur_id ?? c.fournisseur_externe_id) === fournFilter);
     if (dateFilter !== "tous") {
       const ref = new Date();
       if (dateFilter === "jour")    ref.setHours(0, 0, 0, 0);
@@ -101,19 +152,19 @@ export default function FacturesPage() {
     }
     if (search) {
       const s = search.toLowerCase();
-      arr = arr.filter(c => (fournNames[c.fournisseur_id] ?? "").toLowerCase().includes(s));
+      arr = arr.filter(c => (fournNames[c.fournisseur_id ?? c.fournisseur_externe_id ?? ""] ?? "").toLowerCase().includes(s));
     }
     return arr;
   }, [commandes, fournFilter, dateFilter, search, fournNames]);
 
-  const fournUniques = Array.from(new Set(commandes.map(c => c.fournisseur_id)));
+  const fournUniques = Array.from(new Set(commandes.map(c => c.fournisseur_id ?? c.fournisseur_externe_id).filter((x): x is string => !!x)));
   const totalFiltre = filtered.filter(c => c.statut !== "annulee").reduce((s, c) => s + Number(c.montant_total), 0);
 
   // Vue par produit
   const parProduit: LignesByProduit[] = useMemo(() => {
     const map = new Map<string, LignesByProduit>();
     filtered.forEach(c => {
-      const fournNom = fournNames[c.fournisseur_id] ?? "—";
+      const fournNom = fournNames[c.fournisseur_id ?? c.fournisseur_externe_id ?? ""] ?? "—";
       c.lignes_commande.forEach(l => {
         const key = l.nom_snapshot.toLowerCase().trim();
         if (!map.has(key)) {
@@ -123,7 +174,7 @@ export default function FacturesPage() {
         p.totalQte    += Number(l.quantite);
         p.totalValeur += Number(l.quantite) * Number(l.prix_snapshot);
         p.occurrences.push({
-          fournisseurId:  c.fournisseur_id,
+          fournisseurId:  c.fournisseur_id ?? c.fournisseur_externe_id ?? "",
           fournisseurNom: fournNom,
           prix:           Number(l.prix_snapshot),
           qte:            Number(l.quantite),
@@ -150,11 +201,20 @@ export default function FacturesPage() {
           <span className="text-gray-600">Factures</span>
         </div>
 
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-[#1A1A2E]">Factures &amp; historique</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            {commandes.length} facture{commandes.length > 1 ? "s" : ""} au total.
-          </p>
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-[#1A1A2E]">Factures &amp; historique</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              {commandes.length} facture{commandes.length > 1 ? "s" : ""} au total.
+            </p>
+          </div>
+          <button
+            onClick={() => setImportOpen(true)}
+            className="flex min-h-[44px] items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
+          >
+            <span>📄</span>
+            <span>Importer une facture</span>
+          </button>
         </div>
 
         {/* Tabs */}
@@ -243,7 +303,7 @@ export default function FacturesPage() {
                         <td className="px-5 py-3 text-gray-500">
                           {new Date(c.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}
                         </td>
-                        <td className="px-5 py-3 font-medium text-[#1A1A2E]">{fournNames[c.fournisseur_id] ?? "—"}</td>
+                        <td className="px-5 py-3 font-medium text-[#1A1A2E]">{fournNames[c.fournisseur_id ?? c.fournisseur_externe_id ?? ""] ?? "—"}</td>
                         <td className="px-5 py-3">
                           <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${chip.cls}`}>
                             {chip.label}
@@ -279,11 +339,22 @@ export default function FacturesPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {parProduit.map((p) => (
+              {parProduit.map((p) => {
+                const alert = cheaperAlerts[p.nom.toLowerCase().trim()];
+                const dernierPrix = p.occurrences[p.occurrences.length - 1]?.prix ?? 0;
+                const economie = alert ? (dernierPrix - alert.prix) : 0;
+                return (
                 <details key={p.nom} className="group overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
                   <summary className="flex cursor-pointer items-center justify-between p-4 list-none">
                     <div className="flex-1 min-w-0">
-                      <p className="truncate font-semibold text-[#1A1A2E]">{p.nom}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="truncate font-semibold text-[#1A1A2E]">{p.nom}</p>
+                        {alert && (
+                          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                            🏷 Disponible à {fmt(alert.prix)} chez {alert.fournNom} · économie {fmt(economie)}/u
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-gray-500">
                         {p.occurrences.length} achat{p.occurrences.length > 1 ? "s" : ""} · {p.totalQte} unités · {fmt(p.totalValeur)}
                       </p>
@@ -319,11 +390,22 @@ export default function FacturesPage() {
                     </div>
                   </div>
                 </details>
-              ))}
+              );
+              })}
             </div>
           )
         )}
       </div>
+
+      {importOpen && (
+        <FactureImportModal
+          onClose={() => setImportOpen(false)}
+          onSaved={() => {
+            setImportOpen(false);
+            setReloadKey(k => k + 1);
+          }}
+        />
+      )}
     </DashboardLayout>
   );
 }
