@@ -6,6 +6,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/auth/use-profile";
 import { fmt } from "@/lib/gestion-data";
+import { loadProduitSources, type ProduitSource } from "@/lib/mercuriale-sources";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -44,14 +45,9 @@ interface Ingredient {
   prix_derniere_maj: string | null;
   ordre: number;
 }
-interface TarifOption {
-  id: string;
-  prix: number;
-  unite: string;
-  produit_id: string;
-  produit_nom: string;
-  fournisseur_nom: string | null;
-}
+// Alias pour garder la compatibilité avec le code existant.
+// La source est désormais la même que pour la mercuriale consultative.
+type TarifOption = ProduitSource;
 interface SousRecetteOption {
   id: string;
   nom: string;
@@ -113,13 +109,12 @@ export default function FicheTechniquePage() {
   const load = useCallback(async () => {
     if (!platId || !profile?.id) return;
     setLoading(true);
-    const [pRes, cRes, iRes, tRes, srRes] = await Promise.all([
+    const [pRes, cRes, iRes, produits, srRes] = await Promise.all([
       supa.from("menu_plats").select("*").eq("id", platId).maybeSingle(),
       supa.from("menu_categories").select("*").eq("restaurateur_id", profile.id).order("ordre"),
       supa.from("fiche_ingredients").select("*").eq("plat_id", platId).order("ordre"),
-      supa.from("tarifs")
-          .select("id, prix, unite, produit_id, produits(nom), fournisseurs(nom)")
-          .eq("actif", true),
+      // Source unifiée : tarifs + historique + factures importées
+      loadProduitSources(supa, profile.id, { debug: true }),
       // Autres plats du restaurateur (hors le plat courant) comme sous-recettes candidates
       supa.from("menu_plats")
           .select("id, nom, portions_par_recette, cout_revient_total, menu_categories(nom)")
@@ -138,18 +133,7 @@ export default function FicheTechniquePage() {
     setForm(p);
     setCategories((cRes.data ?? []) as Categorie[]);
     setIngredients((iRes.data ?? []) as Ingredient[]);
-
-    type TarifRaw = {
-      id: string; prix: number; unite: string; produit_id: string;
-      produits: { nom: string } | null;
-      fournisseurs: { nom: string } | null;
-    };
-    const opts: TarifOption[] = ((tRes.data ?? []) as unknown as TarifRaw[]).map((t) => ({
-      id: t.id, prix: Number(t.prix), unite: t.unite, produit_id: t.produit_id,
-      produit_nom: t.produits?.nom ?? "—",
-      fournisseur_nom: t.fournisseurs?.nom ?? null,
-    }));
-    setTarifs(opts);
+    setTarifs(produits);
 
     type SousRecRaw = {
       id: string; nom: string;
@@ -229,14 +213,17 @@ export default function FicheTechniquePage() {
   // ── Ingredients ──
   async function addIngredientFromTarif(t: TarifOption) {
     if (!plat) return;
+    // Si la source est la mercuriale (tarif_id non nul) → on relie le tarif
+    // pour bénéficier de la sync auto. Sinon (historique / facture importée)
+    // on insère en ingrédient libre avec le nom et le dernier prix payé.
     const { error } = await supa.from("fiche_ingredients").insert({
       plat_id:       plat.id,
-      tarif_id:      t.id,
+      tarif_id:      t.tarif_id,
       produit_id:    t.produit_id,
       nom:           t.produit_nom,
       quantite:      1,
       unite:         t.unite,
-      prix_unitaire: t.prix,
+      prix_unitaire: t.prix_ht,
       ordre:         ingredients.length,
     });
     if (error) { setToast({ type: "error", msg: error.message }); return; }
@@ -586,16 +573,28 @@ export default function FicheTechniquePage() {
                 {tarifsFiltered.length === 0 ? (
                   <p className="p-3 text-xs text-gray-500">Aucun produit trouvé.</p>
                 ) : (
-                  tarifsFiltered.map(t => (
-                    <button key={t.id} onClick={() => addIngredientFromTarif(t)}
-                            className="flex w-full items-center justify-between border-b border-gray-100 px-3 py-2 text-left text-sm hover:bg-indigo-50 last:border-b-0">
-                      <div>
-                        <p className="font-medium text-[#1A1A2E]">🛒 {t.produit_nom}</p>
-                        <p className="text-xs text-gray-500">{t.fournisseur_nom} · {t.unite}</p>
-                      </div>
-                      <span className="text-sm font-semibold text-indigo-600">{fmt(t.prix)}</span>
-                    </button>
-                  ))
+                  tarifsFiltered.map(t => {
+                    const srcIcon  = t.source === "mercuriale" ? "🛒" : t.source === "historique" ? "📦" : "📄";
+                    const srcLabel = t.source === "mercuriale"
+                      ? (t.tarif_id ? "Mercuriale — lié" : "Mercuriale")
+                      : t.source === "historique" ? "Historique" : "Facture importée";
+                    const srcBadge = t.source === "mercuriale" ? "bg-indigo-50 text-indigo-700"
+                                   : t.source === "historique" ? "bg-emerald-50 text-emerald-700"
+                                   : "bg-amber-50 text-amber-700";
+                    return (
+                      <button key={t.id} onClick={() => addIngredientFromTarif(t)}
+                              className="flex w-full items-center justify-between border-b border-gray-100 px-3 py-2 text-left text-sm hover:bg-indigo-50 last:border-b-0">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-[#1A1A2E]">{srcIcon} {t.produit_nom}</p>
+                          <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs">
+                            <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${srcBadge}`}>{srcLabel}</span>
+                            <span className="text-gray-500">{t.fournisseur_nom ?? "—"} · {t.unite}</span>
+                          </div>
+                        </div>
+                        <span className="shrink-0 text-sm font-semibold text-indigo-600">{fmt(t.prix_ht)} HT</span>
+                      </button>
+                    );
+                  })
                 )}
               </div>
             </div>

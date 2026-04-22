@@ -177,14 +177,30 @@ function ProduitCard({
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => qty <= 1 ? onRemove(produit.id) : onQtyChange(produit.id, -1)}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/15 bg-gray-100 text-sm text-gray-600 transition-colors hover:bg-white/15 hover:text-[#1A1A2E]"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-sm text-gray-700 transition-colors hover:border-indigo-300 hover:bg-indigo-50"
+                      aria-label={qty <= 1 ? "Retirer du panier" : "Diminuer la quantité"}
                     >
                       {qty <= 1 ? "×" : "−"}
                     </button>
-                    <span className="w-7 text-center text-sm font-semibold text-[#1A1A2E]">{qty}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={qty}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value, 10);
+                        if (Number.isNaN(v)) return;
+                        if (v === 0) { onRemove(produit.id); return; }
+                        onQtyChange(produit.id, v - qty);
+                      }}
+                      onFocus={(e) => e.currentTarget.select()}
+                      className="h-8 w-12 rounded-lg border border-gray-200 bg-white text-center text-sm font-semibold text-[#1A1A2E] outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      aria-label="Quantité"
+                    />
                     <button
                       onClick={() => onQtyChange(produit.id, +1)}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500 text-sm text-[#1A1A2E] transition-colors hover:bg-violet-500"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500 text-sm font-semibold text-white transition-colors hover:bg-indigo-600"
+                      aria-label="Augmenter la quantité"
                     >
                       +
                     </button>

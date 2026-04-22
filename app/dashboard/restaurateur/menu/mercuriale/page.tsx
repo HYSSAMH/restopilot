@@ -5,25 +5,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/auth/use-profile";
 import { fmt, CAT_LABELS } from "@/lib/gestion-data";
+import { loadProduitSources, type ProduitSource, type ProduitSourceKind } from "@/lib/mercuriale-sources";
 
-type Source = "mercuriale" | "historique" | "import";
+type Source = ProduitSourceKind;
 
-interface ProduitRow {
-  id:                 string;         // identifiant unique ligne (tarif:id ou histo:nom)
-  source:             Source;
-  tarif_id:           string | null;
-  produit_id:         string | null;
-  produit_nom:        string;
-  produit_categorie:  string;
-  fournisseur_id:     string | null;
-  fournisseur_nom:    string | null;
-  unite:              string;
-  prix_ht:            number;
-  tva_taux:           number;          // 20 par défaut pour achat pro
-  prix_precedent:     number | null;
-  prix_precedent_maj: string | null;
-  updated_at:         string;
-  used_in_fiches:     number;
+interface ProduitRow extends ProduitSource {
+  used_in_fiches: number;
 }
 
 type SortKey = "nom" | "prix_asc" | "prix_desc" | "updated";
@@ -59,123 +46,9 @@ export default function MercurialePage() {
     setLoading(true);
     console.group("[mercuriale] chargement sources");
 
-    // ── 1. MERCURIALE — tarifs fournisseurs ──
-    // Requête résiliente : on utilise select("*") pour ne pas casser si des
-    // colonnes (tva_taux, prix_precedent...) n'existent pas encore en DB.
-    // Les champs potentiels sont ensuite lus avec fallback `?? défaut`.
-    const tarifsRes = await supa
-      .from("tarifs")
-      .select("*, produits(nom, categorie), fournisseurs(id, nom)")
-      .eq("actif", true);
-    if (tarifsRes.error) console.error("[mercuriale] tarifs ERROR:", tarifsRes.error);
-    console.log(`[mercuriale] tarifs actifs   → ${tarifsRes.data?.length ?? 0}`);
+    const sources = await loadProduitSources(supa, profile.id, { debug: true });
 
-    type TarifRaw = {
-      id: string; prix: number | null; unite: string; produit_id: string;
-      actif?: boolean;
-      tva_taux?: number | null;
-      prix_precedent?: number | null;
-      prix_precedent_maj?: string | null;
-      updated_at?: string;
-      produits: { nom: string; categorie: string } | null;
-      fournisseurs: { id: string; nom: string } | null;
-    };
-
-    const fromTarifs: ProduitRow[] = ((tarifsRes.data ?? []) as unknown as TarifRaw[]).map(t => ({
-      id:                 `tarif:${t.id}`,
-      source:             "mercuriale",
-      tarif_id:           t.id,
-      produit_id:         t.produit_id,
-      produit_nom:        t.produits?.nom ?? "—",
-      produit_categorie:  t.produits?.categorie ?? "autre",
-      fournisseur_id:     t.fournisseurs?.id ?? null,
-      fournisseur_nom:    t.fournisseurs?.nom ?? null,
-      unite:              t.unite ?? "pièce",
-      prix_ht:            Number(t.prix ?? 0),
-      tva_taux:           Number(t.tva_taux ?? 20),
-      prix_precedent:     t.prix_precedent != null ? Number(t.prix_precedent) : null,
-      prix_precedent_maj: t.prix_precedent_maj ?? null,
-      updated_at:         t.updated_at ?? new Date(0).toISOString(),
-      used_in_fiches:     0,  // rempli plus bas
-    }));
-
-    // ── 2. HISTORIQUE D'ACHATS — dernier prix payé par produit ──
-    // On lit commandes + lignes_commande du restaurateur et on déduplique par
-    // (nom_snapshot, fournisseur_id ou fournisseur_externe_id) en gardant la
-    // dernière occurrence chronologique.
-    const cmdRes = await supa
-      .from("commandes")
-      .select(`
-        id, fournisseur_id, fournisseur_externe_id, source, created_at,
-        fournisseurs(nom),
-        fournisseurs_externes(nom),
-        lignes_commande(id, nom_snapshot, prix_snapshot, unite)
-      `)
-      .eq("restaurateur_id", profile.id)
-      .neq("statut", "annulee")
-      .order("created_at", { ascending: false })
-      .limit(500);
-    if (cmdRes.error) console.error("[mercuriale] commandes ERROR:", cmdRes.error);
-
-    type CmdRaw = {
-      id: string;
-      fournisseur_id: string | null;
-      fournisseur_externe_id: string | null;
-      source: string | null;
-      created_at: string;
-      fournisseurs: { nom: string } | null;
-      fournisseurs_externes: { nom: string } | null;
-      lignes_commande: { id: string; nom_snapshot: string; prix_snapshot: number; unite: string }[] | null;
-    };
-    const fromLignes: ProduitRow[] = [];
-    const dedupHisto = new Map<string, ProduitRow>();   // key = nom|four_id
-    let totalLignes = 0;
-    ((cmdRes.data ?? []) as unknown as CmdRaw[]).forEach(c => {
-      const isImport = c.source === "import";
-      const fournNom = c.fournisseurs?.nom ?? c.fournisseurs_externes?.nom ?? null;
-      const fournId  = c.fournisseur_id ?? c.fournisseur_externe_id ?? null;
-      (c.lignes_commande ?? []).forEach(l => {
-        totalLignes += 1;
-        const nom = (l.nom_snapshot ?? "").trim();
-        if (!nom) return;
-        const key = `${nom.toLowerCase()}|${fournId ?? "none"}`;
-        if (dedupHisto.has(key)) return;  // on garde la 1ère = la + récente
-        dedupHisto.set(key, {
-          id:                 `histo:${l.id}`,
-          source:             isImport ? "import" : "historique",
-          tarif_id:           null,
-          produit_id:         null,
-          produit_nom:        nom,
-          produit_categorie:  "autre",
-          fournisseur_id:     fournId,
-          fournisseur_nom:    fournNom,
-          unite:              l.unite ?? "pièce",
-          prix_ht:            Number(l.prix_snapshot ?? 0),
-          tva_taux:           20,  // achat pro par défaut
-          prix_precedent:     null,
-          prix_precedent_maj: null,
-          updated_at:         c.created_at,
-          used_in_fiches:     0,
-        });
-      });
-    });
-    dedupHisto.forEach(v => fromLignes.push(v));
-    console.log(`[mercuriale] lignes_commande → ${totalLignes} lignes, ${fromLignes.length} produits uniques (histo+import)`);
-
-    // ── 3. Fusion : si un produit existe dans tarifs ET historique, on garde tarifs ──
-    const merged = new Map<string, ProduitRow>();
-    fromTarifs.forEach(r => {
-      const k = `${r.produit_nom.toLowerCase()}|${r.fournisseur_id ?? "none"}`;
-      merged.set(k, r);
-    });
-    fromLignes.forEach(r => {
-      const k = `${r.produit_nom.toLowerCase()}|${r.fournisseur_id ?? "none"}`;
-      if (!merged.has(k)) merged.set(k, r);
-    });
-    const allRows = Array.from(merged.values());
-    console.log(`[mercuriale] fusion          → ${allRows.length} produits au total`);
-
-    // ── 4. Comptage : utilisations dans les fiches techniques ──
+    // Comptage utilisations dans les fiches
     const usageRes = await supa
       .from("fiche_ingredients")
       .select("tarif_id, nom, menu_plats!inner(restaurateur_id)")
@@ -192,15 +65,18 @@ export default function MercurialePage() {
         byNom.set(k, (byNom.get(k) ?? 0) + 1);
       }
     });
-    allRows.forEach(r => {
-      if (r.tarif_id) r.used_in_fiches = byTarif.get(r.tarif_id) ?? 0;
-      else            r.used_in_fiches = byNom.get(r.produit_nom.toLowerCase().trim()) ?? 0;
-    });
 
-    setRows(allRows);
+    const withUsage: ProduitRow[] = sources.map(s => ({
+      ...s,
+      used_in_fiches: s.tarif_id
+        ? (byTarif.get(s.tarif_id) ?? 0)
+        : (byNom.get(s.produit_nom.toLowerCase().trim()) ?? 0),
+    }));
+
+    setRows(withUsage);
     setCounts({
-      tarifs: fromTarifs.length,
-      lignes: fromLignes.length,
+      tarifs: sources.filter(s => s.source === "mercuriale").length,
+      lignes: sources.filter(s => s.source !== "mercuriale").length,
       fiches: usageRes.data?.length ?? 0,
     });
     setLoading(false);

@@ -107,23 +107,39 @@ export default function Panier({ cartMap, onRemove, onQtyChange, onValidate, gen
                   {items.map(({ produit, qty }) => (
                     <div key={produit.id} className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2">
                       <span className="text-base">{produit.icone}</span>
-                      <span className="flex-1 truncate text-xs text-white/65">{produit.nom}</span>
+                      <span className="flex-1 truncate text-xs font-medium text-[#1A1A2E]">{produit.nom}</span>
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => qty <= 1 ? onRemove(produit.id) : onQtyChange(produit.id, -1)}
-                          className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-white/10 hover:text-[#1A1A2E] text-xs"
+                          className="flex h-6 w-6 items-center justify-center rounded border border-gray-200 bg-white text-xs text-gray-700 hover:border-indigo-300 hover:bg-indigo-50"
+                          aria-label={qty <= 1 ? "Retirer" : "Diminuer"}
                         >
                           {qty <= 1 ? "×" : "−"}
                         </button>
-                        <span className="w-5 text-center text-xs font-semibold text-[#1A1A2E]">{qty}</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={qty}
+                          onChange={(e) => {
+                            const v = parseInt(e.target.value, 10);
+                            if (Number.isNaN(v)) return;
+                            if (v === 0) { onRemove(produit.id); return; }
+                            onQtyChange(produit.id, v - qty);
+                          }}
+                          onFocus={(e) => e.currentTarget.select()}
+                          className="h-6 w-10 rounded border border-gray-200 bg-white text-center text-xs font-semibold text-[#1A1A2E] outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500/30 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                          aria-label="Quantité"
+                        />
                         <button
                           onClick={() => onQtyChange(produit.id, +1)}
-                          className="flex h-5 w-5 items-center justify-center rounded text-gray-500 hover:bg-white/10 hover:text-[#1A1A2E] text-xs"
+                          className="flex h-6 w-6 items-center justify-center rounded border border-gray-200 bg-white text-xs text-gray-700 hover:border-indigo-300 hover:bg-indigo-50"
+                          aria-label="Augmenter"
                         >
                           +
                         </button>
                       </div>
-                      <span className="w-14 text-right text-xs font-medium text-[#1A1A2E]">
+                      <span className="w-16 text-right text-xs font-semibold text-[#1A1A2E]">
                         {fmt(fournisseur.prix * qty)} €
                       </span>
                     </div>
@@ -133,29 +149,29 @@ export default function Panier({ cartMap, onRemove, onQtyChange, onValidate, gen
                 {/* Subtotal + minimum progress */}
                 <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
                   <div className="mb-2 flex items-center justify-between text-xs">
-                    <span className="text-gray-500">
+                    <span className="text-gray-600">
                       Sous-total · min. {fmt(fournisseur.minimum)} €
                     </span>
-                    <span className={`font-semibold ${minInfo.ok ? "text-emerald-400" : "text-amber-300"}`}>
+                    <span className={`font-semibold ${minInfo.ok ? "text-emerald-700" : "text-amber-700"}`}>
                       {fmt(subtotal)} €
                     </span>
                   </div>
                   {/* Progress bar */}
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${
-                        minInfo.ok ? "bg-emerald-500" : "bg-amber-400"
+                        minInfo.ok ? "bg-emerald-500" : "bg-amber-500"
                       }`}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
                   {!minInfo.ok && (
-                    <p className="mt-1.5 text-xs text-amber-400/80">
+                    <p className="mt-1.5 text-xs font-medium text-amber-700">
                       Encore {fmt(fournisseur.minimum - subtotal)} € pour atteindre le minimum
                     </p>
                   )}
                   {minInfo.ok && (
-                    <p className="mt-1.5 flex items-center gap-1 text-xs text-emerald-400/80">
+                    <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-emerald-700">
                       <span>✓</span> Minimum de commande atteint
                     </p>
                   )}
@@ -167,12 +183,12 @@ export default function Panier({ cartMap, onRemove, onQtyChange, onValidate, gen
 
         {/* Économies */}
         {economies > 0 && (
-          <div className="mx-4 mb-3 flex items-center justify-between rounded-xl border border-emerald-500/20 bg-emerald-500/8 px-4 py-3">
+          <div className="mx-4 mb-3 flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
             <div className="flex items-center gap-2">
               <span className="text-base">💰</span>
-              <span className="text-sm text-gray-600">Économies réalisées</span>
+              <span className="text-sm font-medium text-emerald-800">Économies réalisées</span>
             </div>
-            <span className="text-base font-bold text-emerald-400">−{fmt(economies)} €</span>
+            <span className="text-base font-bold text-emerald-700">−{fmt(economies)} €</span>
           </div>
         )}
       </div>
@@ -187,7 +203,7 @@ export default function Panier({ cartMap, onRemove, onQtyChange, onValidate, gen
 
         {/* Minimums warning — non-bloquant */}
         {hasItems && !allMinimumsOk && (
-          <div className="mb-3 rounded-xl border border-amber-500/20 bg-amber-500/8 px-3 py-2 text-xs text-amber-400/80">
+          <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
             ⚠️ {minimumsStatus.filter((m) => !m.ok).length} fournisseur
             {minimumsStatus.filter((m) => !m.ok).length > 1 ? "s n'atteignent" : " n'atteint"} pas son minimum — vous pouvez quand même valider.
           </div>
@@ -198,7 +214,7 @@ export default function Panier({ cartMap, onRemove, onQtyChange, onValidate, gen
           disabled={!canValidate || generatingPdf}
           className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-all ${
             canValidate && !generatingPdf
-              ? "bg-gradient-to-r from-indigo-500 to-violet-500 text-[#1A1A2E] shadow-lg shadow-indigo-500/20 hover:from-indigo-600 hover:to-violet-600 hover:shadow-xl"
+              ? "bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-500/20 hover:from-indigo-600 hover:to-violet-600 hover:shadow-xl"
               : "cursor-not-allowed bg-gray-100 text-gray-400"
           }`}
         >
