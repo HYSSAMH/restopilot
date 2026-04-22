@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from "recharts";
-import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/auth/use-profile";
 import { fmt } from "@/lib/gestion-data";
@@ -164,16 +163,10 @@ export default function MenuDashboardPage() {
   }, [plats, categories]);
 
   return (
-    <DashboardLayout role="restaurateur">
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-10">
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-[#1A1A2E]">Mon menu</h1>
-            <p className="mt-1.5 text-sm text-gray-500">
-              Fiches techniques, coûts de revient et rentabilité.
-            </p>
-          </div>
-        </div>
+    <div className="mx-auto max-w-6xl px-4 pb-10 sm:px-8">
+      <p className="mb-6 text-sm text-gray-500">
+        Fiches techniques, coûts de revient et rentabilité.
+      </p>
 
         {loading ? (
           <div className="h-40 animate-pulse rounded-2xl bg-gray-100" />
@@ -372,8 +365,7 @@ export default function MenuDashboardPage() {
             </section>
           </>
         )}
-      </div>
-    </DashboardLayout>
+    </div>
   );
 }
 

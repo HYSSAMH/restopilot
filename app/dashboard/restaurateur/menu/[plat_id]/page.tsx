@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/auth/use-profile";
 import { fmt } from "@/lib/gestion-data";
@@ -418,17 +417,14 @@ export default function FicheTechniquePage() {
 
   if (loading || !plat || !form) {
     return (
-      <DashboardLayout role="restaurateur">
-        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-8 sm:py-10">
-          <div className="h-40 animate-pulse rounded-2xl bg-gray-100" />
-        </div>
-      </DashboardLayout>
+      <div className="mx-auto max-w-4xl px-4 py-6 sm:px-8 sm:py-10">
+        <div className="h-40 animate-pulse rounded-2xl bg-gray-100" />
+      </div>
     );
   }
 
   return (
-    <DashboardLayout role="restaurateur">
-      <div className="mx-auto max-w-4xl px-4 py-6 sm:px-8 sm:py-10">
+    <div className="mx-auto max-w-4xl px-4 py-6 sm:px-8 sm:py-10">
         {/* Breadcrumb */}
         <Link href="/dashboard/restaurateur/menu"
               className="mb-4 inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 hover:border-indigo-300">
@@ -909,8 +905,7 @@ export default function FicheTechniquePage() {
             <p className="text-sm font-medium">{toast.msg}</p>
           </div>
         )}
-      </div>
-    </DashboardLayout>
+    </div>
   );
 }
 
