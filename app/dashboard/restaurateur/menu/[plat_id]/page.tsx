@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/auth/use-profile";
@@ -35,6 +35,7 @@ interface Ingredient {
   plat_id: string;
   tarif_id: string | null;
   produit_id: string | null;
+  sous_recette_id: string | null;
   nom: string;
   quantite: number;
   unite: string;
@@ -51,6 +52,14 @@ interface TarifOption {
   produit_id: string;
   produit_nom: string;
   fournisseur_nom: string | null;
+}
+interface SousRecetteOption {
+  id: string;
+  nom: string;
+  categorie_nom: string | null;
+  portions_par_recette: number;
+  cout_revient_total: number;
+  cout_par_portion: number;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────
@@ -79,6 +88,7 @@ export default function FicheTechniquePage() {
   const [categories, setCategories]   = useState<Categorie[]>([]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [tarifs, setTarifs]           = useState<TarifOption[]>([]);
+  const [sousRecettes, setSousRecettes] = useState<SousRecetteOption[]>([]);
   const [loading, setLoading]         = useState(true);
   const [saving,  setSaving]          = useState(false);
   const [toast,   setToast]           = useState<{ type: "success" | "error"; msg: string } | null>(null);
@@ -89,20 +99,32 @@ export default function FicheTechniquePage() {
   // Simulation
   const [portionsParJour, setPortionsJour] = useState<number>(10);
 
-  // Recherche mercuriale
+  // Recherche (onglets : mercuriale vs sous-recette)
   const [search, setSearch] = useState("");
+  const [searchMode, setSearchMode] = useState<"mercuriale" | "sous_recette">("mercuriale");
+
+  // Sous-recettes dépliées : map id-ingrédient → liste d'ingrédients enfants
+  const [expanded, setExpanded] = useState<Record<string, Ingredient[]>>({});
+  const [loadingExpand, setLoadingExpand] = useState<string | null>(null);
 
   // ── Load ──
   const load = useCallback(async () => {
     if (!platId || !profile?.id) return;
     setLoading(true);
-    const [pRes, cRes, iRes, tRes] = await Promise.all([
+    const [pRes, cRes, iRes, tRes, srRes] = await Promise.all([
       supa.from("menu_plats").select("*").eq("id", platId).maybeSingle(),
       supa.from("menu_categories").select("*").eq("restaurateur_id", profile.id).order("ordre"),
       supa.from("fiche_ingredients").select("*").eq("plat_id", platId).order("ordre"),
       supa.from("tarifs")
           .select("id, prix, unite, produit_id, produits(nom), fournisseurs(nom)")
           .eq("actif", true),
+      // Autres plats du restaurateur (hors le plat courant) comme sous-recettes candidates
+      supa.from("menu_plats")
+          .select("id, nom, portions_par_recette, cout_revient_total, menu_categories(nom)")
+          .eq("restaurateur_id", profile.id)
+          .eq("actif", true)
+          .neq("id", platId)
+          .order("nom"),
     ]);
     if (!pRes.data) {
       setToast({ type: "error", msg: "Plat introuvable." });
@@ -126,6 +148,22 @@ export default function FicheTechniquePage() {
       fournisseur_nom: t.fournisseurs?.nom ?? null,
     }));
     setTarifs(opts);
+
+    type SousRecRaw = {
+      id: string; nom: string;
+      portions_par_recette: number;
+      cout_revient_total: number;
+      menu_categories: { nom: string } | null;
+    };
+    const srOpts: SousRecetteOption[] = ((srRes.data ?? []) as unknown as SousRecRaw[]).map((s) => ({
+      id: s.id, nom: s.nom,
+      portions_par_recette: s.portions_par_recette,
+      cout_revient_total:   Number(s.cout_revient_total),
+      cout_par_portion:     s.portions_par_recette > 0
+        ? Number(s.cout_revient_total) / s.portions_par_recette : 0,
+      categorie_nom: s.menu_categories?.nom ?? null,
+    }));
+    setSousRecettes(srOpts);
     setLoading(false);
   }, [supa, platId, profile?.id]);
 
@@ -202,6 +240,50 @@ export default function FicheTechniquePage() {
     if (error) { setToast({ type: "error", msg: error.message }); return; }
     setSearch("");
     await load();
+  }
+
+  async function addIngredientFromSousRecette(sr: SousRecetteOption) {
+    if (!plat) return;
+    if (sr.cout_par_portion <= 0) {
+      setToast({ type: "error", msg: "Cette sous-recette n'a pas encore de coût (ajoutez-lui des ingrédients)." });
+      return;
+    }
+    const { error } = await supa.from("fiche_ingredients").insert({
+      plat_id:          plat.id,
+      sous_recette_id:  sr.id,
+      nom:              sr.nom,
+      quantite:         1,
+      unite:            "portion",
+      prix_unitaire:    sr.cout_par_portion,
+      ordre:            ingredients.length,
+    });
+    if (error) {
+      // Le trigger anti-cycle peut remonter une erreur SQL explicite
+      setToast({ type: "error", msg: error.message });
+      return;
+    }
+    setSearch("");
+    await load();
+  }
+
+  async function toggleExpand(ing: Ingredient) {
+    if (!ing.sous_recette_id) return;
+    if (expanded[ing.id]) {
+      setExpanded(prev => {
+        const next = { ...prev };
+        delete next[ing.id];
+        return next;
+      });
+      return;
+    }
+    setLoadingExpand(ing.id);
+    const { data } = await supa
+      .from("fiche_ingredients")
+      .select("*")
+      .eq("plat_id", ing.sous_recette_id)
+      .order("ordre");
+    setExpanded(prev => ({ ...prev, [ing.id]: (data ?? []) as Ingredient[] }));
+    setLoadingExpand(null);
   }
 
   async function addIngredientManual() {
@@ -300,6 +382,22 @@ export default function FicheTechniquePage() {
       t.produit_nom.toLowerCase().includes(s) || (t.fournisseur_nom ?? "").toLowerCase().includes(s)
     ).slice(0, 20);
   }, [tarifs, search]);
+
+  // Filtre recherche sous-recettes
+  const sousRecettesFiltered = useMemo(() => {
+    if (!search.trim()) return sousRecettes.slice(0, 20);
+    const s = search.toLowerCase();
+    return sousRecettes.filter(sr =>
+      sr.nom.toLowerCase().includes(s) || (sr.categorie_nom ?? "").toLowerCase().includes(s)
+    ).slice(0, 20);
+  }, [sousRecettes, search]);
+
+  // Répartition du coût total : ingrédients simples vs sous-recettes
+  const coutBreakdown = useMemo(() => {
+    const direct = ingredients.filter(i => !i.sous_recette_id).reduce((s, i) => s + Number(i.cout_total), 0);
+    const sr     = ingredients.filter(i =>  i.sous_recette_id).reduce((s, i) => s + Number(i.cout_total), 0);
+    return { direct, sr, total: direct + sr };
+  }, [ingredients]);
 
   // Alertes hausse > 5% sur ingrédients
   const alertesHausse = ingredients
@@ -427,12 +525,34 @@ export default function FicheTechniquePage() {
             </div>
           </div>
 
-          {/* Recherche mercuriale */}
+          {/* Recherche avec onglets mercuriale / sous-recette */}
           <div className="mb-3">
+            <div className="mb-2 flex gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1">
+              <button
+                type="button"
+                onClick={() => setSearchMode("mercuriale")}
+                className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                  searchMode === "mercuriale" ? "bg-indigo-500 text-white" : "text-gray-500 hover:text-[#1A1A2E]"
+                }`}
+              >
+                🛒 Mercuriale ({tarifs.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSearchMode("sous_recette")}
+                className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                  searchMode === "sous_recette" ? "bg-violet-600 text-white" : "text-gray-500 hover:text-[#1A1A2E]"
+                }`}
+              >
+                📋 Sous-recettes ({sousRecettes.length})
+              </button>
+            </div>
             <input value={search} onChange={e => setSearch(e.target.value)}
-                   placeholder="🔍 Ajouter depuis la mercuriale (nom du produit ou fournisseur)…"
+                   placeholder={searchMode === "mercuriale"
+                     ? "🔍 Nom du produit ou du fournisseur…"
+                     : "🔍 Nom de la fiche technique à utiliser comme sous-recette…"}
                    className={inputCls + " w-full"} />
-            {search.trim().length > 0 && (
+            {search.trim().length > 0 && searchMode === "mercuriale" && (
               <div className="mt-2 max-h-48 overflow-auto rounded-xl border border-gray-200 bg-white">
                 {tarifsFiltered.length === 0 ? (
                   <p className="p-3 text-xs text-gray-500">Aucun produit trouvé.</p>
@@ -441,10 +561,33 @@ export default function FicheTechniquePage() {
                     <button key={t.id} onClick={() => addIngredientFromTarif(t)}
                             className="flex w-full items-center justify-between border-b border-gray-100 px-3 py-2 text-left text-sm hover:bg-indigo-50 last:border-b-0">
                       <div>
-                        <p className="font-medium text-[#1A1A2E]">{t.produit_nom}</p>
+                        <p className="font-medium text-[#1A1A2E]">🛒 {t.produit_nom}</p>
                         <p className="text-xs text-gray-500">{t.fournisseur_nom} · {t.unite}</p>
                       </div>
                       <span className="text-sm font-semibold text-indigo-600">{fmt(t.prix)}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+            {search.trim().length > 0 && searchMode === "sous_recette" && (
+              <div className="mt-2 max-h-48 overflow-auto rounded-xl border border-gray-200 bg-white">
+                {sousRecettesFiltered.length === 0 ? (
+                  <p className="p-3 text-xs text-gray-500">Aucune sous-recette trouvée.</p>
+                ) : (
+                  sousRecettesFiltered.map(sr => (
+                    <button key={sr.id} onClick={() => addIngredientFromSousRecette(sr)}
+                            disabled={sr.cout_par_portion <= 0}
+                            className="flex w-full items-center justify-between border-b border-gray-100 px-3 py-2 text-left text-sm hover:bg-violet-50 disabled:opacity-50 last:border-b-0">
+                      <div>
+                        <p className="font-medium text-[#1A1A2E]">📋 {sr.nom}</p>
+                        <p className="text-xs text-gray-500">
+                          {sr.categorie_nom ?? "Sans catégorie"} · {sr.portions_par_recette} portion{sr.portions_par_recette > 1 ? "s" : ""}
+                        </p>
+                      </div>
+                      <span className="text-sm font-semibold text-violet-600">
+                        {sr.cout_par_portion > 0 ? `${fmt(sr.cout_par_portion)}/portion` : "coût ∅"}
+                      </span>
                     </button>
                   ))
                 )}
@@ -469,44 +612,104 @@ export default function FicheTechniquePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {ingredients.map(i => (
-                    <tr key={i.id} className={i.tarif_id ? "" : "bg-gray-50/50"}>
-                      <td className="px-2 py-1.5">
-                        <input defaultValue={i.nom} onBlur={e => {
-                          const v = e.target.value.trim();
-                          if (v && v !== i.nom) updateIngredient(i, { nom: v });
-                        }} className={inputCls + " w-full"} />
-                        {i.tarif_id && <p className="mt-0.5 text-[10px] text-indigo-600">🔗 lié mercuriale</p>}
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <input type="number" min="0" step="0.001" defaultValue={i.quantite}
-                               onBlur={e => {
-                                 const v = parseFloat(e.target.value) || 0;
-                                 if (v !== Number(i.quantite)) updateIngredient(i, { quantite: v });
-                               }} className={inputCls + " w-20 text-right"} />
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <input defaultValue={i.unite} onBlur={e => {
-                          const v = e.target.value.trim();
-                          if (v !== i.unite) updateIngredient(i, { unite: v });
-                        }} className={inputCls + " w-16"} />
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <input type="number" min="0" step="0.01" defaultValue={i.prix_unitaire}
-                               onBlur={e => {
-                                 const v = parseFloat(e.target.value) || 0;
-                                 if (v !== Number(i.prix_unitaire)) updateIngredient(i, { prix_unitaire: v });
-                               }} className={inputCls + " w-24 text-right"} />
-                      </td>
-                      <td className="px-2 py-1.5 text-right font-semibold text-[#1A1A2E]">{fmt(Number(i.cout_total))}</td>
-                      <td className="px-2 py-1.5 text-right">
-                        <button onClick={() => deleteIngredient(i.id)}
-                                className="rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-600 hover:bg-red-100">×</button>
-                      </td>
-                    </tr>
-                  ))}
+                  {ingredients.map(i => {
+                    const isSR = !!i.sous_recette_id;
+                    const isOpen = isSR && !!expanded[i.id];
+                    const rowBg = isSR ? "bg-violet-50/50" : i.tarif_id ? "" : "bg-gray-50/50";
+                    return (
+                      <Fragment key={i.id}>
+                        <tr className={rowBg}>
+                          <td className="px-2 py-1.5">
+                            <div className="flex items-start gap-1.5">
+                              {isSR && (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleExpand(i)}
+                                  className="mt-1 shrink-0 rounded-md border border-violet-200 bg-white px-1.5 py-0.5 text-[10px] text-violet-700 hover:bg-violet-100"
+                                  title={isOpen ? "Replier" : "Déplier les ingrédients"}
+                                >
+                                  {loadingExpand === i.id ? "…" : isOpen ? "▼" : "▶"}
+                                </button>
+                              )}
+                              <div className="flex-1">
+                                <input defaultValue={i.nom} onBlur={e => {
+                                  const v = e.target.value.trim();
+                                  if (v && v !== i.nom) updateIngredient(i, { nom: v });
+                                }} className={inputCls + " w-full"} readOnly={isSR} />
+                                {isSR && <p className="mt-0.5 text-[10px] font-medium text-violet-700">📋 sous-recette — coût synchronisé</p>}
+                                {!isSR && i.tarif_id && <p className="mt-0.5 text-[10px] text-indigo-600">🔗 lié mercuriale</p>}
+                                {!isSR && !i.tarif_id && <p className="mt-0.5 text-[10px] text-gray-500">✏ saisi manuel</p>}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <input type="number" min="0" step="0.001" defaultValue={i.quantite}
+                                   onBlur={e => {
+                                     const v = parseFloat(e.target.value) || 0;
+                                     if (v !== Number(i.quantite)) updateIngredient(i, { quantite: v });
+                                   }} className={inputCls + " w-20 text-right"} />
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <input defaultValue={i.unite} onBlur={e => {
+                              const v = e.target.value.trim();
+                              if (v !== i.unite) updateIngredient(i, { unite: v });
+                            }} className={inputCls + " w-16"} readOnly={isSR} />
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <input type="number" min="0" step="0.01" defaultValue={i.prix_unitaire}
+                                   onBlur={e => {
+                                     const v = parseFloat(e.target.value) || 0;
+                                     if (v !== Number(i.prix_unitaire)) updateIngredient(i, { prix_unitaire: v });
+                                   }} className={inputCls + " w-24 text-right"} readOnly={isSR} />
+                          </td>
+                          <td className="px-2 py-1.5 text-right font-semibold text-[#1A1A2E]">{fmt(Number(i.cout_total))}</td>
+                          <td className="px-2 py-1.5 text-right">
+                            <button onClick={() => deleteIngredient(i.id)}
+                                    className="rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-600 hover:bg-red-100">×</button>
+                          </td>
+                        </tr>
+                        {isOpen && expanded[i.id] && (
+                          <tr className="bg-violet-50/30">
+                            <td colSpan={6} className="px-4 py-2">
+                              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-violet-700">
+                                Composition de « {i.nom} » ({expanded[i.id].length} ingrédient{expanded[i.id].length > 1 ? "s" : ""})
+                              </p>
+                              {expanded[i.id].length === 0 ? (
+                                <p className="text-xs text-gray-500 italic">Aucun ingrédient dans cette sous-recette.</p>
+                              ) : (
+                                <ul className="divide-y divide-violet-100 text-xs">
+                                  {expanded[i.id].map(c => (
+                                    <li key={c.id} className="flex items-center justify-between py-1">
+                                      <span>
+                                        {c.sous_recette_id ? "📋" : c.tarif_id ? "🛒" : "✏"} {c.nom}
+                                      </span>
+                                      <span className="text-gray-500">
+                                        {Number(c.quantite)} {c.unite} × {fmt(Number(c.prix_unitaire))} = <span className="font-semibold text-[#1A1A2E]">{fmt(Number(c.cout_total))}</span>
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
                 </tbody>
                 <tfoot>
+                  <tr className="border-t border-gray-200 bg-gray-50/50">
+                    <td colSpan={4} className="px-2 py-1 text-right text-xs text-gray-500">Ingrédients directs :</td>
+                    <td className="px-2 py-1 text-right text-sm text-[#1A1A2E]">{fmt(coutBreakdown.direct)}</td>
+                    <td />
+                  </tr>
+                  {coutBreakdown.sr > 0 && (
+                    <tr className="bg-violet-50/30">
+                      <td colSpan={4} className="px-2 py-1 text-right text-xs text-violet-700">Sous-recettes :</td>
+                      <td className="px-2 py-1 text-right text-sm text-violet-700">{fmt(coutBreakdown.sr)}</td>
+                      <td />
+                    </tr>
+                  )}
                   <tr className="border-t-2 border-gray-200 bg-gray-50">
                     <td colSpan={4} className="px-2 py-2 text-right text-sm font-semibold">Coût total recette :</td>
                     <td className="px-2 py-2 text-right font-bold text-[#1A1A2E]">{fmt(Number(plat.cout_revient_total))}</td>
