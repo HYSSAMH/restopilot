@@ -124,27 +124,6 @@ export default function MercurialePage() {
     return copy;
   }, [rows, search, catFilter, fournFilter, srcFilter, sort]);
 
-  // Comparateur : regroupe par produit_nom les offres de plusieurs fournisseurs
-  const comparator = useMemo(() => {
-    const groups = new Map<string, ProduitRow[]>();
-    filtered.forEach(r => {
-      const key = r.produit_nom.toLowerCase().trim();
-      const arr = groups.get(key) ?? [];
-      arr.push(r);
-      groups.set(key, arr);
-    });
-    return Array.from(groups.values())
-      .filter(arr => arr.length > 1)
-      .map(arr => {
-        const sorted = [...arr].sort((a, b) => a.prix_ht - b.prix_ht);
-        const econ  = sorted[sorted.length - 1].prix_ht - sorted[0].prix_ht;
-        const pct   = sorted[sorted.length - 1].prix_ht > 0 ? (econ / sorted[sorted.length - 1].prix_ht) * 100 : 0;
-        return { offers: sorted, economie: econ, economiePct: pct };
-      })
-      .sort((a, b) => b.economie - a.economie)
-      .slice(0, 10);
-  }, [filtered]);
-
   // Alertes : tarifs utilisés dans fiche + variation > 5 %
   const alertes = useMemo(() => rows.filter(r =>
     r.used_in_fiches > 0
@@ -258,47 +237,6 @@ export default function MercurialePage() {
               )}
             </div>
           </section>
-
-          {/* Comparateur multi-fournisseurs */}
-          {comparator.length > 0 && (
-            <section className="mb-6 rounded-2xl border border-indigo-200 bg-indigo-50/30 p-5 shadow-sm">
-              <h3 className="mb-3 text-sm font-semibold text-indigo-900">
-                💰 Comparateur — économies potentielles
-              </h3>
-              <p className="mb-3 text-xs text-indigo-700">
-                Produits disponibles chez plusieurs fournisseurs : le moins cher vs le plus cher.
-              </p>
-              <div className="space-y-2">
-                {comparator.map((c, i) => (
-                  <div key={i} className="rounded-xl border border-indigo-100 bg-white p-3">
-                    <div className="mb-2 flex items-center justify-between">
-                      <p className="font-semibold text-[#1A1A2E]">{c.offers[0].produit_nom}</p>
-                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-                        Économie {fmt(c.economie)} HT (−{c.economiePct.toFixed(1)} %)
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {c.offers.map((o, j) => (
-                        <div key={o.id}
-                             className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs ${
-                               j === 0 ? "border-emerald-300 bg-emerald-50" : "border-gray-200 bg-gray-50"
-                             }`}>
-                          <span className="font-medium text-[#1A1A2E]">{o.fournisseur_nom ?? "—"}</span>
-                          <span className={j === 0 ? "font-bold text-emerald-700" : "font-semibold text-gray-700"}>
-                            {fmt(o.prix_ht)} HT / {o.unite}
-                          </span>
-                          <span className="text-gray-500">
-                            ({fmt(o.prix_ht * (1 + o.tva_taux / 100))} TTC)
-                          </span>
-                          {j === 0 && <span className="text-xs font-bold text-emerald-600">✓ moins cher</span>}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
 
           {/* Liste complète */}
           <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">

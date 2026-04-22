@@ -2,9 +2,6 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-} from "recharts";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/auth/use-profile";
 import { fmt } from "@/lib/gestion-data";
@@ -50,7 +47,6 @@ export default function MenuDashboardPage() {
   const [categories, setCategories] = useState<Categorie[]>([]);
   const [plats, setPlats]           = useState<Plat[]>([]);
   const [loading, setLoading]       = useState(true);
-  const [simPct, setSimPct]         = useState(5);
 
   const [newCat, setNewCat]         = useState("");
   const [newPlatNom, setNewPlatNom] = useState("");
@@ -126,28 +122,8 @@ export default function MenuDashboardPage() {
     const top5Rentables     = sortedRentables.slice(0, 5);
     const top5NonRentables  = sortedRentables.slice(-5).reverse();
 
-    const byCategorie = new Map<string, { label: string; marge: number; count: number }>();
-    infos.forEach(i => {
-      const catId = i.plat.categorie_id ?? "__none";
-      const catName = categories.find(c => c.id === catId)?.nom ?? "Sans catégorie";
-      const cur = byCategorie.get(catId) ?? { label: catName, marge: 0, count: 0 };
-      cur.marge += i.margePct;
-      cur.count += 1;
-      byCategorie.set(catId, cur);
-    });
-    const margeParCategorie = Array.from(byCategorie.values())
-      .map(v => ({ label: v.label, margePct: v.count > 0 ? v.marge / v.count : 0 }));
-
-    return { infos, coutMatiereGlobal, prixHTGlobal, margeGlobalePct, top5Rentables, top5NonRentables, margeParCategorie };
-  }, [plats, categories]);
-
-  const simulationImpact = useMemo(() => {
-    const pctFactor = 1 + simPct / 100;
-    const nouveauPrixHT = analyse.prixHTGlobal * pctFactor;
-    const nouvelleMarge = nouveauPrixHT - analyse.coutMatiereGlobal;
-    const nouvelleMargePct = nouveauPrixHT > 0 ? (nouvelleMarge / nouveauPrixHT) * 100 : 0;
-    return { nouveauPrixHT, nouvelleMargePct, deltaPts: nouvelleMargePct - analyse.margeGlobalePct };
-  }, [simPct, analyse]);
+    return { infos, coutMatiereGlobal, prixHTGlobal, margeGlobalePct, top5Rentables, top5NonRentables };
+  }, [plats]);
 
   // Groupes par catégorie pour la liste
   const parCategorie = useMemo(() => {
@@ -224,42 +200,6 @@ export default function MenuDashboardPage() {
                 )}
               </section>
             </div>
-
-            {/* Analyse par catégorie + simulation */}
-            <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h3 className="mb-3 text-sm font-semibold text-[#1A1A2E]">Marge moyenne par catégorie</h3>
-              {analyse.margeParCategorie.length === 0 ? (
-                <p className="text-sm text-gray-500">Aucun plat.</p>
-              ) : (
-                <div style={{ width: "100%", height: 240 }}>
-                  <ResponsiveContainer>
-                    <BarChart data={analyse.margeParCategorie}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                      <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#6B7280" }} />
-                      <YAxis unit="%" tick={{ fontSize: 11, fill: "#6B7280" }} />
-                      <Tooltip formatter={(v: unknown) => `${Number(v).toFixed(1)}%`} contentStyle={{ borderRadius: 8, border: "1px solid #E5E7EB" }} />
-                      <Legend wrapperStyle={{ fontSize: 11 }} />
-                      <Bar dataKey="margePct" name="Marge %" fill="#6366F1" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-
-              <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/40 p-4">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-indigo-700">Simulation — tous les prix +X%</h4>
-                <div className="mt-2 flex flex-wrap items-center gap-3">
-                  <input type="range" min="-20" max="30" step="0.5" value={simPct}
-                         onChange={e => setSimPct(parseFloat(e.target.value))}
-                         className="flex-1 min-w-[200px]" />
-                  <span className="w-16 text-center font-bold text-[#1A1A2E]">{simPct > 0 ? "+" : ""}{simPct}%</span>
-                </div>
-                <p className="mt-2 text-xs text-gray-600">
-                  Nouvelle marge globale : <span className="font-semibold text-[#1A1A2E]">{simulationImpact.nouvelleMargePct.toFixed(1)}%</span>
-                  {" "}({simulationImpact.deltaPts >= 0 ? "+" : ""}{simulationImpact.deltaPts.toFixed(1)} pts) ·{" "}
-                  CA HT projeté : <span className="font-semibold text-[#1A1A2E]">{fmt(simulationImpact.nouveauPrixHT)}</span>
-                </p>
-              </div>
-            </section>
 
             {/* Création rapide */}
             <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
