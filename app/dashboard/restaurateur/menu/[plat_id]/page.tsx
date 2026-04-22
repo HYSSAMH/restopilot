@@ -70,6 +70,58 @@ const TVA_OPTIONS = [
 ];
 const inputCls = "min-h-[40px] rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20";
 
+// ── Unités disponibles pour un ingrédient donné ───────────────────────
+// Pour chaque unité proposée, on connaît son prix. On dérive les variantes
+// par pattern : kg↔g, L↔cL↔mL.
+function computeUnitOptions(
+  currentUnit: string,
+  currentPrix: number,
+  source: ProduitSource | null,
+): Array<{ unite: string; prix: number }> {
+  const opts = new Map<string, { unite: string; prix: number }>();
+
+  const addUnit = (u: string, p: number) => {
+    if (!u || p <= 0) return;
+    const key = u.trim();
+    if (!key) return;
+    if (!opts.has(key)) opts.set(key, { unite: key, prix: Math.round(p * 10000) / 10000 });
+  };
+
+  const addWithPatterns = (u: string, p: number) => {
+    addUnit(u, p);
+    const lu = u.toLowerCase();
+    if (lu === "kg")       { addUnit("g",  p / 1000); }
+    else if (lu === "g")   { addUnit("kg", p * 1000); }
+    else if (lu === "l")   { addUnit("cL", p / 100); addUnit("mL", p / 1000); }
+    else if (lu === "cl")  { addUnit("L",  p * 100); addUnit("mL", p / 10); }
+    else if (lu === "ml")  { addUnit("cL", p * 10);  addUnit("L",  p * 1000); }
+  };
+
+  addWithPatterns(currentUnit, currentPrix);
+
+  if (source) {
+    if (source.prix_ht > 0)        addWithPatterns(source.unite, source.prix_ht);
+    if (source.unite_travail && source.prix_unite_travail != null && source.prix_unite_travail > 0) {
+      addWithPatterns(source.unite_travail, source.prix_unite_travail);
+    }
+  }
+
+  return Array.from(opts.values());
+}
+
+/** Trouve la source d'un ingrédient dans la liste chargée. */
+function findSourceFor(
+  ing: { tarif_id: string | null; nom: string },
+  sources: ProduitSource[],
+): ProduitSource | null {
+  if (ing.tarif_id) {
+    const match = sources.find(s => s.tarif_id === ing.tarif_id);
+    if (match) return match;
+  }
+  const nomKey = ing.nom.toLowerCase().trim();
+  return sources.find(s => s.produit_nom.toLowerCase().trim() === nomKey) ?? null;
+}
+
 // ── Page ──────────────────────────────────────────────────────────────
 
 export default function FicheTechniquePage() {
@@ -303,6 +355,29 @@ export default function FicheTechniquePage() {
 
   async function updateIngredient(ing: Ingredient, patch: Partial<Ingredient>) {
     const { error } = await supa.from("fiche_ingredients").update(patch).eq("id", ing.id);
+    if (error) { setToast({ type: "error", msg: error.message }); return; }
+    await load();
+  }
+
+  /** Change l'unité d'un ingrédient tout en conservant le coût total :
+   *  quantite × prix_unitaire reste inchangé ; les deux sont recalculés
+   *  selon le facteur de conversion entre l'ancienne et la nouvelle unité. */
+  async function changeIngredientUnit(ing: Ingredient, newUnit: string, newPrix: number) {
+    const oldPrix = Number(ing.prix_unitaire);
+    if (oldPrix <= 0 || newPrix <= 0) {
+      // Fallback : on change juste l'unité et le prix, quantité conservée
+      await updateIngredient(ing, { unite: newUnit, prix_unitaire: newPrix });
+      return;
+    }
+    // Facteur : 1 (ancienne unité) = factor (nouvelle unité)
+    // factor = oldPrix / newPrix  (préserve le coût : 1×oldPrix = factor×newPrix)
+    const factor = oldPrix / newPrix;
+    const newQty = Math.round((Number(ing.quantite) * factor) * 1000) / 1000;
+    const { error } = await supa.from("fiche_ingredients").update({
+      unite:         newUnit,
+      prix_unitaire: newPrix,
+      quantite:      newQty,
+    }).eq("id", ing.id);
     if (error) { setToast({ type: "error", msg: error.message }); return; }
     await load();
   }
@@ -752,10 +827,35 @@ export default function FicheTechniquePage() {
                                    }} className={inputCls + " w-20 text-right"} />
                           </td>
                           <td className="px-2 py-1.5">
-                            <input defaultValue={i.unite} onBlur={e => {
-                              const v = e.target.value.trim();
-                              if (v !== i.unite) updateIngredient(i, { unite: v });
-                            }} className={inputCls + " w-16"} readOnly={isSR} />
+                            {(() => {
+                              if (isSR) {
+                                return <input defaultValue={i.unite} className={inputCls + " w-20"} readOnly />;
+                              }
+                              const src = findSourceFor(i, tarifs);
+                              const opts = computeUnitOptions(i.unite, Number(i.prix_unitaire), src);
+                              if (opts.length <= 1) {
+                                // Pas de conversion connue → input libre
+                                return (
+                                  <input defaultValue={i.unite} onBlur={e => {
+                                    const v = e.target.value.trim();
+                                    if (v && v !== i.unite) updateIngredient(i, { unite: v });
+                                  }} className={inputCls + " w-20"} />
+                                );
+                              }
+                              return (
+                                <select value={i.unite} onChange={e => {
+                                  const opt = opts.find(o => o.unite === e.target.value);
+                                  if (!opt || opt.unite === i.unite) return;
+                                  changeIngredientUnit(i, opt.unite, opt.prix);
+                                }} className={inputCls + " w-28"} title="Unité de travail — le prix se recalcule automatiquement">
+                                  {opts.map(o => (
+                                    <option key={o.unite} value={o.unite}>
+                                      {o.unite} ({fmt(o.prix)})
+                                    </option>
+                                  ))}
+                                </select>
+                              );
+                            })()}
                           </td>
                           <td className="px-2 py-1.5">
                             <input type="number" min="0" step="0.01" defaultValue={i.prix_unitaire}
