@@ -1,10 +1,23 @@
 import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
 export const runtime     = "nodejs";
 // Demande explicite d'un timeout étendu (respecté par Next.js sur les
 // runtimes qui le supportent, dont Netlify Functions sur plan ≥ Pro).
 export const maxDuration = 300;
+
+async function requireUser() {
+  const cookieStore = await cookies();
+  const supa = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } },
+  );
+  const { data: { user } } = await supa.auth.getUser();
+  return user;
+}
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -236,6 +249,12 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  // ── AUTH ─────────────────────────────────────────────────────
+  const user = await requireUser();
+  if (!user) {
+    return Response.json({ error: "Non authentifié." }, { status: 401 });
+  }
+
   // ── DIAG 1 : env vars ─────────────────────────────────────────
   const apiKey = process.env.ANTHROPIC_API_KEY;
   console.log("═══════════════════════════════════════════════════════════");

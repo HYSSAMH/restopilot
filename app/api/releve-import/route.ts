@@ -76,6 +76,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Vérif magic bytes : un PDF valide commence par "%PDF"
+    // (on décode seulement les 8 premiers octets pour rester léger).
+    const head = Buffer.from(fileBase64.slice(0, 12), "base64").subarray(0, 4).toString("ascii");
+    if (head !== "%PDF") {
+      return Response.json(
+        { error: `Fichier invalide : ce n'est pas un PDF (signature "${head}"). Seuls les PDFs sont acceptés.` },
+        { status: 415 },
+      );
+    }
+
     const admin = adminClient();
 
     // 1. Création du job

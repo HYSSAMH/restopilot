@@ -1,8 +1,21 @@
 import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
 export const runtime     = "nodejs";
 export const maxDuration = 300;
+
+async function requireUser() {
+  const cookieStore = await cookies();
+  const supa = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } },
+  );
+  const { data: { user } } = await supa.auth.getUser();
+  return user;
+}
 
 const MODEL_ID = "claude-sonnet-4-5";
 
@@ -140,6 +153,12 @@ export async function GET() {
 // ── POST ───────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  // Auth requise : endpoint privé (consomme des crédits Anthropic)
+  const user = await requireUser();
+  if (!user) {
+    return Response.json({ error: "Non authentifié." }, { status: 401 });
+  }
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey || apiKey === "your_anthropic_api_key_here") {
     return Response.json({ error: "ANTHROPIC_API_KEY non configurée." }, { status: 500 });
