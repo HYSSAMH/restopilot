@@ -99,9 +99,12 @@ export default function FicheTechniquePage() {
   // Simulation
   const [portionsParJour, setPortionsJour] = useState<number>(10);
 
-  // Recherche (onglets : mercuriale vs sous-recette)
+  // Panneau d'ajout : aucun, mercuriale, sous-recette
+  const [panel, setPanel] = useState<"none" | "mercuriale" | "sous_recette">("none");
   const [search, setSearch] = useState("");
-  const [searchMode, setSearchMode] = useState<"mercuriale" | "sous_recette">("mercuriale");
+  // Pour sous-recette : saisie portions avant ajout
+  const [srQtyFor, setSrQtyFor] = useState<string | null>(null);  // id du plat sélectionné
+  const [srQty, setSrQty]       = useState<number>(1);
 
   // Sous-recettes dépliées : map id-ingrédient → liste d'ingrédients enfants
   const [expanded, setExpanded] = useState<Record<string, Ingredient[]>>({});
@@ -239,20 +242,22 @@ export default function FicheTechniquePage() {
     });
     if (error) { setToast({ type: "error", msg: error.message }); return; }
     setSearch("");
+    setPanel("none");
     await load();
   }
 
-  async function addIngredientFromSousRecette(sr: SousRecetteOption) {
+  async function addIngredientFromSousRecette(sr: SousRecetteOption, quantite: number) {
     if (!plat) return;
     if (sr.cout_par_portion <= 0) {
       setToast({ type: "error", msg: "Cette sous-recette n'a pas encore de coût (ajoutez-lui des ingrédients)." });
       return;
     }
+    const qte = quantite > 0 ? quantite : 1;
     const { error } = await supa.from("fiche_ingredients").insert({
       plat_id:          plat.id,
       sous_recette_id:  sr.id,
       nom:              sr.nom,
-      quantite:         1,
+      quantite:         qte,
       unite:            "portion",
       prix_unitaire:    sr.cout_par_portion,
       ordre:            ingredients.length,
@@ -263,6 +268,9 @@ export default function FicheTechniquePage() {
       return;
     }
     setSearch("");
+    setPanel("none");
+    setSrQtyFor(null);
+    setSrQty(1);
     await load();
   }
 
@@ -509,51 +517,76 @@ export default function FicheTechniquePage() {
           </div>
         </section>
 
+        {/* Tutoriel sous-recettes */}
+        <div className="mb-6 rounded-2xl border border-violet-200 bg-gradient-to-r from-violet-50 to-indigo-50 p-4">
+          <p className="text-sm font-semibold text-violet-900">💡 Comment composer une fiche technique ?</p>
+          <p className="mt-1.5 text-xs leading-relaxed text-violet-800">
+            Deux types d&apos;éléments peuvent composer votre recette :
+          </p>
+          <ul className="mt-1 list-disc pl-5 text-xs leading-relaxed text-violet-800">
+            <li><strong>➕ Ingrédient</strong> — un produit de la mercuriale (ex : tomates, poulet) ou saisi manuellement.</li>
+            <li><strong>📋 Sous-recette</strong> — une autre fiche technique utilisée comme composant. Ex : si votre <em>Crousti</em> contient votre <em>Sauce Originale</em>, créez d&apos;abord la fiche <em>Sauce Originale</em>, puis ajoutez-la comme sous-recette dans <em>Crousti</em>. Son coût de revient par portion s&apos;intègre automatiquement.</li>
+          </ul>
+        </div>
+
         {/* Ingrédients */}
         <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-[#1A1A2E]">Ingrédients ({ingredients.length})</h3>
-            <div className="flex gap-2">
-              <button onClick={syncPrix} disabled={saving}
-                      className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50">
-                🔄 Mettre à jour les prix
-              </button>
-              <button onClick={addIngredientManual}
-                      className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold hover:border-indigo-300">
-                + Ingrédient manuel
-              </button>
-            </div>
+            <h3 className="text-sm font-semibold text-[#1A1A2E]">Composition ({ingredients.length})</h3>
+            <button onClick={syncPrix} disabled={saving}
+                    className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50">
+              🔄 Mettre à jour les prix
+            </button>
           </div>
 
-          {/* Recherche avec onglets mercuriale / sous-recette */}
-          <div className="mb-3">
-            <div className="mb-2 flex gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1">
-              <button
-                type="button"
-                onClick={() => setSearchMode("mercuriale")}
-                className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                  searchMode === "mercuriale" ? "bg-indigo-500 text-white" : "text-gray-500 hover:text-[#1A1A2E]"
-                }`}
-              >
-                🛒 Mercuriale ({tarifs.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setSearchMode("sous_recette")}
-                className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                  searchMode === "sous_recette" ? "bg-violet-600 text-white" : "text-gray-500 hover:text-[#1A1A2E]"
-                }`}
-              >
-                📋 Sous-recettes ({sousRecettes.length})
-              </button>
-            </div>
-            <input value={search} onChange={e => setSearch(e.target.value)}
-                   placeholder={searchMode === "mercuriale"
-                     ? "🔍 Nom du produit ou du fournisseur…"
-                     : "🔍 Nom de la fiche technique à utiliser comme sous-recette…"}
-                   className={inputCls + " w-full"} />
-            {search.trim().length > 0 && searchMode === "mercuriale" && (
-              <div className="mt-2 max-h-48 overflow-auto rounded-xl border border-gray-200 bg-white">
+          {/* Boutons d'action clairs */}
+          <div className="mb-4 grid gap-2 sm:grid-cols-3">
+            <button
+              type="button"
+              onClick={() => { setPanel(panel === "mercuriale" ? "none" : "mercuriale"); setSearch(""); }}
+              className={`flex flex-col items-start gap-0.5 rounded-xl border p-3 text-left transition-all ${
+                panel === "mercuriale"
+                  ? "border-indigo-500 bg-indigo-50 shadow-sm"
+                  : "border-gray-200 bg-white hover:border-indigo-300"
+              }`}
+            >
+              <span className="text-sm font-semibold text-[#1A1A2E]">➕ Ajouter un ingrédient</span>
+              <span className="text-xs text-gray-500">Depuis la mercuriale ({tarifs.length} dispo.)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setPanel(panel === "sous_recette" ? "none" : "sous_recette"); setSearch(""); setSrQtyFor(null); }}
+              className={`flex flex-col items-start gap-0.5 rounded-xl border p-3 text-left transition-all ${
+                panel === "sous_recette"
+                  ? "border-violet-500 bg-violet-50 shadow-sm"
+                  : "border-gray-200 bg-white hover:border-violet-300"
+              }`}
+            >
+              <span className="text-sm font-semibold text-[#1A1A2E]">📋 Ajouter une sous-recette</span>
+              <span className="text-xs text-gray-500">
+                {sousRecettes.length === 0
+                  ? "Aucune autre fiche existante"
+                  : `Utiliser une autre fiche (${sousRecettes.length} dispo.)`}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={addIngredientManual}
+              className="flex flex-col items-start gap-0.5 rounded-xl border border-gray-200 bg-white p-3 text-left transition-all hover:border-gray-400"
+            >
+              <span className="text-sm font-semibold text-[#1A1A2E]">✏ Saisir manuellement</span>
+              <span className="text-xs text-gray-500">Ingrédient hors mercuriale</span>
+            </button>
+          </div>
+
+          {/* Panneau mercuriale */}
+          {panel === "mercuriale" && (
+            <div className="mb-4 rounded-xl border border-indigo-200 bg-indigo-50/30 p-3">
+              <input value={search} onChange={e => setSearch(e.target.value)}
+                     autoFocus
+                     placeholder="🔍 Rechercher un produit (nom ou fournisseur)…"
+                     className={inputCls + " w-full"} />
+              <div className="mt-2 max-h-60 overflow-auto rounded-xl border border-indigo-100 bg-white">
                 {tarifsFiltered.length === 0 ? (
                   <p className="p-3 text-xs text-gray-500">Aucun produit trouvé.</p>
                 ) : (
@@ -569,31 +602,91 @@ export default function FicheTechniquePage() {
                   ))
                 )}
               </div>
-            )}
-            {search.trim().length > 0 && searchMode === "sous_recette" && (
-              <div className="mt-2 max-h-48 overflow-auto rounded-xl border border-gray-200 bg-white">
-                {sousRecettesFiltered.length === 0 ? (
-                  <p className="p-3 text-xs text-gray-500">Aucune sous-recette trouvée.</p>
-                ) : (
-                  sousRecettesFiltered.map(sr => (
-                    <button key={sr.id} onClick={() => addIngredientFromSousRecette(sr)}
-                            disabled={sr.cout_par_portion <= 0}
-                            className="flex w-full items-center justify-between border-b border-gray-100 px-3 py-2 text-left text-sm hover:bg-violet-50 disabled:opacity-50 last:border-b-0">
-                      <div>
-                        <p className="font-medium text-[#1A1A2E]">📋 {sr.nom}</p>
-                        <p className="text-xs text-gray-500">
-                          {sr.categorie_nom ?? "Sans catégorie"} · {sr.portions_par_recette} portion{sr.portions_par_recette > 1 ? "s" : ""}
-                        </p>
-                      </div>
-                      <span className="text-sm font-semibold text-violet-600">
-                        {sr.cout_par_portion > 0 ? `${fmt(sr.cout_par_portion)}/portion` : "coût ∅"}
-                      </span>
-                    </button>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* Panneau sous-recettes */}
+          {panel === "sous_recette" && (
+            <div className="mb-4 rounded-xl border border-violet-200 bg-violet-50/30 p-3">
+              {sousRecettes.length === 0 ? (
+                <div className="rounded-lg bg-white p-4 text-center">
+                  <p className="text-sm font-medium text-gray-700">Aucune sous-recette disponible</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Créez d&apos;abord d&apos;autres fiches techniques (ex : Sauce Originale, Pâte à pizza…),
+                    puis revenez les ajouter ici comme composants.
+                  </p>
+                  <Link href="/dashboard/restaurateur/menu"
+                        className="mt-3 inline-block rounded-lg border border-violet-300 bg-white px-3 py-1.5 text-xs font-semibold text-violet-700 hover:bg-violet-100">
+                    ← Aller au menu pour créer une fiche
+                  </Link>
+                </div>
+              ) : (
+                <>
+                  <input value={search} onChange={e => setSearch(e.target.value)}
+                         autoFocus
+                         placeholder="🔍 Rechercher une fiche technique…"
+                         className={inputCls + " w-full"} />
+                  <div className="mt-2 max-h-72 overflow-auto rounded-xl border border-violet-100 bg-white">
+                    {sousRecettesFiltered.length === 0 ? (
+                      <p className="p-3 text-xs text-gray-500">Aucune fiche trouvée.</p>
+                    ) : (
+                      sousRecettesFiltered.map(sr => {
+                        const isSelected = srQtyFor === sr.id;
+                        const disabled   = sr.cout_par_portion <= 0;
+                        return (
+                          <div key={sr.id} className="border-b border-gray-100 last:border-b-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (disabled) return;
+                                setSrQtyFor(isSelected ? null : sr.id);
+                                setSrQty(1);
+                              }}
+                              disabled={disabled}
+                              className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors ${
+                                disabled ? "opacity-50" : isSelected ? "bg-violet-100" : "hover:bg-violet-50"
+                              }`}
+                            >
+                              <div>
+                                <p className="font-medium text-[#1A1A2E]">📋 {sr.nom}</p>
+                                <p className="text-xs text-gray-500">
+                                  {sr.categorie_nom ?? "Sans catégorie"} ·{" "}
+                                  {sr.portions_par_recette} portion{sr.portions_par_recette > 1 ? "s" : ""} par recette
+                                </p>
+                              </div>
+                              <span className="text-sm font-semibold text-violet-600">
+                                {sr.cout_par_portion > 0 ? `${fmt(sr.cout_par_portion)}/portion` : "coût ∅ — ajoutez-lui des ingrédients"}
+                              </span>
+                            </button>
+                            {isSelected && !disabled && (
+                              <div className="flex flex-wrap items-center gap-2 border-t border-violet-100 bg-violet-50/50 px-3 py-2">
+                                <span className="text-xs text-violet-800">Combien de portions utilisez-vous dans cette recette ?</span>
+                                <input type="number" min="0.01" step="0.01" value={srQty}
+                                       onChange={e => setSrQty(parseFloat(e.target.value) || 0)}
+                                       className={inputCls + " w-24"} />
+                                <span className="text-xs text-gray-600">×</span>
+                                <span className="text-xs font-semibold text-violet-700">{fmt(sr.cout_par_portion)}</span>
+                                <span className="text-xs text-gray-600">=</span>
+                                <span className="text-sm font-bold text-[#1A1A2E]">{fmt(srQty * sr.cout_par_portion)}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => addIngredientFromSousRecette(sr, srQty)}
+                                  disabled={srQty <= 0}
+                                  className="ml-auto rounded-lg bg-gradient-to-r from-violet-500 to-indigo-500 px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:opacity-95 disabled:opacity-50"
+                                >
+                                  Ajouter à la recette
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Liste */}
           {ingredients.length === 0 ? (
