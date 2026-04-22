@@ -18,6 +18,12 @@ export interface ProduitSource {
   prix_precedent:     number | null;
   prix_precedent_maj: string | null;
   updated_at:         string;
+  // Conditionnement (si configuré sur le tarif) — tous null par défaut
+  conditionnement_nb:     number | null;
+  conditionnement_taille: number | null;
+  conditionnement_unite:  string | null;
+  unite_travail:          string | null;
+  prix_unite_travail:     number | null;
 }
 
 /**
@@ -55,6 +61,11 @@ export async function loadProduitSources(
     prix_precedent?: number | null;
     prix_precedent_maj?: string | null;
     updated_at?: string;
+    conditionnement_nb?: number | null;
+    conditionnement_taille?: number | null;
+    conditionnement_unite?: string | null;
+    unite_travail?: string | null;
+    prix_unite_travail?: number | null;
     produits: { nom: string; categorie: string } | null;
     fournisseurs: { id: string; nom: string } | null;
   };
@@ -73,6 +84,11 @@ export async function loadProduitSources(
     prix_precedent:     t.prix_precedent != null ? Number(t.prix_precedent) : null,
     prix_precedent_maj: t.prix_precedent_maj ?? null,
     updated_at:         t.updated_at ?? new Date(0).toISOString(),
+    conditionnement_nb:     t.conditionnement_nb ?? null,
+    conditionnement_taille: t.conditionnement_taille != null ? Number(t.conditionnement_taille) : null,
+    conditionnement_unite:  t.conditionnement_unite ?? null,
+    unite_travail:          t.unite_travail ?? null,
+    prix_unite_travail:     t.prix_unite_travail != null ? Number(t.prix_unite_travail) : null,
   }));
 
   // 2. Historique + factures importées
@@ -128,6 +144,11 @@ export async function loadProduitSources(
         prix_precedent:     null,
         prix_precedent_maj: null,
         updated_at:         c.created_at,
+        conditionnement_nb:     null,
+        conditionnement_taille: null,
+        conditionnement_unite:  null,
+        unite_travail:          null,
+        prix_unite_travail:     null,
       });
     });
   });

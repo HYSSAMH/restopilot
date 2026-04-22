@@ -216,14 +216,17 @@ export default function FicheTechniquePage() {
     // Si la source est la mercuriale (tarif_id non nul) → on relie le tarif
     // pour bénéficier de la sync auto. Sinon (historique / facture importée)
     // on insère en ingrédient libre avec le nom et le dernier prix payé.
+    // Si un conditionnement est configuré sur le tarif → on utilise
+    // prix_unite_travail + unite_travail (prix d'achat original conservé en DB).
+    const useTravail = t.prix_unite_travail != null && t.unite_travail != null;
     const { error } = await supa.from("fiche_ingredients").insert({
       plat_id:       plat.id,
       tarif_id:      t.tarif_id,
       produit_id:    t.produit_id,
       nom:           t.produit_nom,
       quantite:      1,
-      unite:         t.unite,
-      prix_unitaire: t.prix_ht,
+      unite:         useTravail ? t.unite_travail! : t.unite,
+      prix_unitaire: useTravail ? t.prix_unite_travail! : t.prix_ht,
       ordre:         ingredients.length,
     });
     if (error) { setToast({ type: "error", msg: error.message }); return; }
@@ -581,6 +584,7 @@ export default function FicheTechniquePage() {
                     const srcBadge = t.source === "mercuriale" ? "bg-indigo-50 text-indigo-700"
                                    : t.source === "historique" ? "bg-emerald-50 text-emerald-700"
                                    : "bg-amber-50 text-amber-700";
+                    const hasCondit = t.prix_unite_travail != null && t.unite_travail != null;
                     return (
                       <button key={t.id} onClick={() => addIngredientFromTarif(t)}
                               className="flex w-full items-center justify-between border-b border-gray-100 px-3 py-2 text-left text-sm hover:bg-indigo-50 last:border-b-0">
@@ -589,7 +593,17 @@ export default function FicheTechniquePage() {
                           <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs">
                             <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${srcBadge}`}>{srcLabel}</span>
                             <span className="text-gray-500">{t.fournisseur_nom ?? "—"} · {t.unite}</span>
+                            {hasCondit && (
+                              <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+                                ⚙ {fmt(t.prix_unite_travail!)} / {t.unite_travail}
+                              </span>
+                            )}
                           </div>
+                          {hasCondit && (
+                            <p className="mt-0.5 text-[10px] text-gray-500">
+                              Prix achat : {fmt(t.prix_ht)}/{t.unite} → ajouté en {fmt(t.prix_unite_travail!)}/{t.unite_travail}
+                            </p>
+                          )}
                         </div>
                         <span className="shrink-0 text-sm font-semibold text-indigo-600">{fmt(t.prix_ht)} HT</span>
                       </button>

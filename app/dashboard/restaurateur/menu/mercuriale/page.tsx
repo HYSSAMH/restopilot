@@ -41,6 +41,9 @@ export default function MercurialePage() {
   const [srcFilter, setSrcFilter] = useState<Source | "">("");
   const [sort, setSort]           = useState<SortKey>("nom");
 
+  // Modale conditionnement
+  const [condModal, setCondModal] = useState<ProduitRow | null>(null);
+
   const load = useCallback(async () => {
     if (!profile?.id) return;
     setLoading(true);
@@ -336,7 +339,14 @@ export default function MercurialePage() {
                           </td>
                           <td className="px-3 py-2 text-gray-600">{r.fournisseur_nom ?? "—"}</td>
                           <td className="px-3 py-2 text-gray-500">{r.unite}</td>
-                          <td className="px-3 py-2 text-right font-semibold text-[#1A1A2E]">{fmt(r.prix_ht)}</td>
+                          <td className="px-3 py-2 text-right">
+                            <div className="font-semibold text-[#1A1A2E]">{fmt(r.prix_ht)}</div>
+                            {r.prix_unite_travail != null && r.unite_travail && (
+                              <div className="text-[10px] font-medium text-emerald-700">
+                                → {fmt(r.prix_unite_travail)} / {r.unite_travail}
+                              </div>
+                            )}
+                          </td>
                           <td className="px-3 py-2 text-right text-gray-500">{r.tva_taux}%</td>
                           <td className="px-3 py-2 text-right text-gray-600">{fmt(ttc)}</td>
                           <td className="px-3 py-2 text-right">
@@ -361,16 +371,31 @@ export default function MercurialePage() {
                             ) : "—"}
                           </td>
                           <td className="px-3 py-2 text-right">
-                            {r.produit_id ? (
-                              <Link
-                                href={`/dashboard/restaurateur/commandes?produit=${r.produit_id}`}
-                                className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
-                              >
-                                Commander
-                              </Link>
-                            ) : (
-                              <span className="text-xs text-gray-400">—</span>
-                            )}
+                            <div className="flex justify-end gap-1">
+                              {r.tarif_id && (
+                                <button
+                                  onClick={() => setCondModal(r)}
+                                  className={`rounded-lg border px-2 py-1 text-xs font-semibold transition-colors ${
+                                    r.prix_unite_travail != null
+                                      ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                                      : "border-gray-200 bg-white text-gray-600 hover:border-violet-300 hover:text-violet-600"
+                                  }`}
+                                  title={r.prix_unite_travail != null
+                                    ? `Prix de travail : ${fmt(r.prix_unite_travail)} / ${r.unite_travail}`
+                                    : "Configurer le conditionnement"}
+                                >
+                                  {r.prix_unite_travail != null ? "⚙ Conf." : "⚙ Conditionnement"}
+                                </button>
+                              )}
+                              {r.produit_id ? (
+                                <Link
+                                  href={`/dashboard/restaurateur/commandes?produit=${r.produit_id}`}
+                                  className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+                                >
+                                  Commander
+                                </Link>
+                              ) : null}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -382,6 +407,208 @@ export default function MercurialePage() {
           </section>
         </>
       )}
+
+      {condModal && (
+        <ConditionnementModal
+          produit={condModal}
+          onClose={() => setCondModal(null)}
+          onSaved={async () => { setCondModal(null); await load(); }}
+          supa={supa}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Modale conditionnement ────────────────────────────────────────
+
+const UNITES_SOUS = ["g", "kg", "mL", "cL", "L", "piece", "portion"];
+const UNITES_TRAVAIL = ["kg", "g", "L", "cL", "mL", "piece", "portion"];
+
+function computePreviewPrix(
+  prix: number,
+  nb: number | null,
+  taille: number | null,
+  uniteSous: string | null,
+  uniteTravail: string | null,
+): number | null {
+  if (!nb || !taille || !uniteSous || !uniteTravail) return null;
+  const total = nb * taille;
+  if (total <= 0 || prix <= 0) return null;
+  if (uniteTravail === "piece" || uniteTravail === "portion") return Math.round((prix / nb) * 10000) / 10000;
+  if (uniteTravail === uniteSous)                              return Math.round((prix / nb) * 10000) / 10000;
+
+  const factor = (() => {
+    if (uniteSous === "g"  && uniteTravail === "kg") return 1 / 1000;
+    if (uniteSous === "kg" && uniteTravail === "g")  return 1000;
+    if (uniteSous === "mL" && uniteTravail === "L")  return 1 / 1000;
+    if (uniteSous === "L"  && uniteTravail === "mL") return 1000;
+    if (uniteSous === "cL" && uniteTravail === "L")  return 1 / 100;
+    if (uniteSous === "L"  && uniteTravail === "cL") return 100;
+    if (uniteSous === "mL" && uniteTravail === "cL") return 1 / 10;
+    if (uniteSous === "cL" && uniteTravail === "mL") return 10;
+    if (uniteSous === uniteTravail)                  return 1;
+    return null;
+  })();
+  if (factor == null) return null;
+  const totalEnTravail = total * factor;
+  if (totalEnTravail <= 0) return null;
+  return Math.round((prix / totalEnTravail) * 10000) / 10000;
+}
+
+function ConditionnementModal({
+  produit, onClose, onSaved, supa,
+}: {
+  produit: ProduitRow;
+  onClose: () => void;
+  onSaved: () => void;
+  supa: ReturnType<typeof createClient>;
+}) {
+  const [nb, setNb]               = useState<number>(produit.conditionnement_nb ?? 1);
+  const [taille, setTaille]       = useState<number>(Number(produit.conditionnement_taille ?? 0));
+  const [uniteSous, setUniteSous] = useState<string>(produit.conditionnement_unite ?? "g");
+  const [uniteTravail, setUniteTravail] = useState<string>(produit.unite_travail ?? "kg");
+  const [saving, setSaving]       = useState(false);
+  const [error, setError]         = useState<string | null>(null);
+
+  const preview = computePreviewPrix(produit.prix_ht, nb, taille, uniteSous, uniteTravail);
+
+  async function save() {
+    if (!produit.tarif_id) return;
+    setSaving(true); setError(null);
+    const { error: err } = await supa.from("tarifs")
+      .update({
+        conditionnement_nb:     nb > 0 ? nb : null,
+        conditionnement_taille: taille > 0 ? taille : null,
+        conditionnement_unite:  uniteSous || null,
+        unite_travail:          uniteTravail || null,
+      })
+      .eq("id", produit.tarif_id);
+    if (err) { setError(err.message); setSaving(false); return; }
+    await onSaved();
+    setSaving(false);
+  }
+
+  async function reset() {
+    if (!produit.tarif_id) return;
+    if (!confirm("Retirer le conditionnement de ce produit ?")) return;
+    setSaving(true);
+    await supa.from("tarifs")
+      .update({
+        conditionnement_nb:     null,
+        conditionnement_taille: null,
+        conditionnement_unite:  null,
+        unite_travail:          null,
+      })
+      .eq("id", produit.tarif_id);
+    await onSaved();
+    setSaving(false);
+  }
+
+  const inputCls = "min-h-[40px] w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={onClose}>
+      <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="mb-4 flex items-start justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-[#1A1A2E]">Configurer le conditionnement</h2>
+            <p className="mt-0.5 text-sm text-gray-500">{produit.produit_nom}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700">✕</button>
+        </div>
+
+        {/* Base facture (non modifiable) */}
+        <div className="mb-5 rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm">
+          <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Prix d&apos;achat (facture — non modifiable)</p>
+          <p className="mt-1 text-lg font-bold text-[#1A1A2E]">{fmt(produit.prix_ht)} HT / {produit.unite}</p>
+        </div>
+
+        {/* Contenu du conditionnement */}
+        <div className="mb-4">
+          <p className="mb-2 text-sm font-semibold text-[#1A1A2E]">Contenu du conditionnement</p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-gray-600">Nombre de sous-unités</span>
+              <input type="number" min="1" step="1" value={nb || ""}
+                     onChange={e => setNb(parseInt(e.target.value) || 0)}
+                     className={inputCls} />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-gray-600">Taille par sous-unité</span>
+              <input type="number" min="0" step="0.001" value={taille || ""}
+                     onChange={e => setTaille(parseFloat(e.target.value) || 0)}
+                     className={inputCls} />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-gray-600">Unité sous-unité</span>
+              <select value={uniteSous} onChange={e => setUniteSous(e.target.value)} className={inputCls}>
+                {UNITES_SOUS.map(u => <option key={u} value={u}>{u}</option>)}
+              </select>
+            </label>
+          </div>
+          <p className="mt-2 text-xs text-gray-500">
+            Ex : « 8 paquets de 800 g » → nb = 8, taille = 800, unité = g
+          </p>
+        </div>
+
+        {/* Unité de travail */}
+        <div className="mb-4">
+          <p className="mb-2 text-sm font-semibold text-[#1A1A2E]">Unité utilisée dans les fiches techniques</p>
+          <select value={uniteTravail} onChange={e => setUniteTravail(e.target.value)} className={inputCls}>
+            {UNITES_TRAVAIL.map(u => <option key={u} value={u}>{u}</option>)}
+          </select>
+        </div>
+
+        {/* Preview */}
+        <div className={`mb-5 rounded-xl border p-4 ${
+          preview != null ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"
+        }`}>
+          {preview != null ? (
+            <>
+              <p className="text-xs font-medium uppercase tracking-wider text-emerald-700">Prix unitaire de travail calculé</p>
+              <p className="mt-1 text-2xl font-bold text-emerald-800">
+                {fmt(preview)} / {uniteTravail}
+              </p>
+              <p className="mt-2 text-xs text-emerald-700">
+                {fmt(produit.prix_ht)} ÷ ({nb} × {taille} {uniteSous})
+                {uniteTravail !== uniteSous && uniteTravail !== "piece" && uniteTravail !== "portion"
+                  ? ` converti en ${uniteTravail}`
+                  : ""}
+                {" "}= {fmt(preview)}/{uniteTravail}
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-amber-800">
+              Complétez tous les champs pour voir le calcul.
+              {uniteSous && uniteTravail && uniteSous !== uniteTravail
+               && !["piece","portion"].includes(uniteTravail)
+               && " Conversion impossible entre les unités choisies — essayez kg ↔ g, L ↔ mL ou cL ↔ L."}
+            </p>
+          )}
+        </div>
+
+        {error && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {produit.conditionnement_nb != null ? (
+            <button onClick={reset} disabled={saving}
+                    className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 disabled:opacity-50">
+              Retirer le conditionnement
+            </button>
+          ) : <span />}
+          <div className="flex gap-2">
+            <button onClick={onClose} disabled={saving}
+                    className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm">
+              Annuler
+            </button>
+            <button onClick={save} disabled={saving || preview == null}
+                    className="rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-5 py-2 text-sm font-semibold text-white shadow-md disabled:opacity-50">
+              {saving ? "Enregistrement…" : "Enregistrer"}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
