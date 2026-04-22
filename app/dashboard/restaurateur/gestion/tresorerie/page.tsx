@@ -383,35 +383,61 @@ function ReleveTab({ ctx }: { ctx: Ctx }) {
         const text = await file.text();
         parsed = parseCsv(text);
       } else {
-        // PDF via Claude — encodage base64 via FileReader pour éviter le stack
-        // overflow de btoa(String.fromCharCode(...large array)).
+        // PDF → upload + job asynchrone (Supabase Edge Function)
         const base64 = await fileToBase64(file);
         const pageCount = detectPdfPageCount(base64);
         console.log(`[tresorerie] import PDF : ${pageCount} page(s) détectées`);
-        let res: Response;
-        try {
-          res = await fetch("/api/releve-import", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ fileBase64: base64, pageCount }),
-          });
-        } catch (netErr) {
-          throw new Error("Connexion au serveur impossible : " + (netErr instanceof Error ? netErr.message : String(netErr)));
+
+        // 1. Création du job
+        const startRes = await fetch("/api/releve-import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fileBase64: base64, pageCount, filename: file.name }),
+        });
+        const startRaw = await startRes.text();
+        let startJson: { ok?: boolean; job_id?: string; error?: string };
+        try { startJson = JSON.parse(startRaw); }
+        catch { throw new Error(`Réponse serveur invalide (HTTP ${startRes.status}).`); }
+        if (!startRes.ok || !startJson.job_id) {
+          throw new Error(startJson.error ?? `Création job échouée (HTTP ${startRes.status}).`);
         }
-        // Le serveur garantit du JSON, mais on se protège quand même contre
-        // une page HTML renvoyée par Netlify (413, 504 gateway…).
-        const raw = await res.text();
-        let json: { ok?: boolean; releve?: typeof parsed; error?: string };
-        try {
-          json = JSON.parse(raw);
-        } catch {
-          const snippet = raw.replace(/<[^>]+>/g, "").trim().slice(0, 200);
-          throw new Error(`Le serveur a renvoyé une réponse invalide (${res.status}). ${snippet || "Réessayez ou vérifiez les logs."}`);
+        const jobId = startJson.job_id;
+        ctx.notify("success", "PDF envoyé. Analyse en cours côté serveur…");
+
+        // 2. Poll jusqu'à done / error (max 5 min)
+        const start = Date.now();
+        const MAX_WAIT_MS = 5 * 60 * 1000;
+        type JobRow = {
+          id: string; status: "pending" | "processing" | "done" | "error";
+          page_count: number | null;
+          result: { periode_debut: string | null; periode_fin: string | null;
+                    solde_debut: number | null; solde_fin: number | null;
+                    lignes: { date: string | null; libelle: string;
+                              montant_debit: number; montant_credit: number;
+                              solde_courant: number | null }[] } | null;
+          error_message: string | null;
+        };
+
+        let job: JobRow | null = null;
+        while (Date.now() - start < MAX_WAIT_MS) {
+          await new Promise((r) => setTimeout(r, 3000));
+          const pollRes = await fetch(`/api/releve-status/${jobId}`);
+          if (!pollRes.ok) continue;  // tolérance aux hiccups
+          const pollJson = await pollRes.json() as { job?: JobRow };
+          if (!pollJson.job) continue;
+          job = pollJson.job;
+          if (job.status === "done" || job.status === "error") break;
+          console.log(`[tresorerie] job ${jobId} status=${job.status}`);
         }
-        if (!res.ok || !json.releve) {
-          throw new Error(json.error ?? `Import échoué (HTTP ${res.status}).`);
+
+        if (!job || (job.status !== "done" && job.status !== "error")) {
+          throw new Error("Délai dépassé : l'analyse du relevé prend plus de 5 minutes.");
         }
-        parsed = json.releve;
+        if (job.status === "error" || !job.result) {
+          throw new Error(job.error_message ?? "Analyse échouée.");
+        }
+        // Normalise vers le format attendu (montant_debit/credit/solde_courant déjà bons)
+        parsed = job.result;
       }
 
       // Créer l'en-tête de relevé
