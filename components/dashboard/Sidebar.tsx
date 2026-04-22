@@ -16,6 +16,7 @@ const LINKS: Record<SidebarRole, { label: string; href: string; icon: React.Reac
     { label: "Mes commandes",       href: "/dashboard/restaurateur/historique", icon: <IconList /> },
     { label: "Factures",            href: "/dashboard/restaurateur/factures",   icon: <IconInvoice /> },
     { label: "Fournisseurs externes", href: "/dashboard/restaurateur/fournisseurs-externes", icon: <IconTruck /> },
+    { label: "Menu",                href: "/dashboard/restaurateur/menu",       icon: <IconCatalog /> },
     { label: "Gestion",             href: "/dashboard/restaurateur/gestion",    icon: <IconChart /> },
     { label: "Équipe",              href: "/dashboard/restaurateur/equipe",     icon: <IconUsers /> },
     { label: "Mon profil",          href: "/profile",                           icon: <IconUser /> },
