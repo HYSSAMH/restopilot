@@ -372,21 +372,19 @@ export default function MercurialePage() {
                           </td>
                           <td className="px-3 py-2 text-right">
                             <div className="flex justify-end gap-1">
-                              {r.tarif_id && (
-                                <button
-                                  onClick={() => setCondModal(r)}
-                                  className={`rounded-lg border px-2 py-1 text-xs font-semibold transition-colors ${
-                                    r.prix_unite_travail != null
-                                      ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                                      : "border-gray-200 bg-white text-gray-600 hover:border-violet-300 hover:text-violet-600"
-                                  }`}
-                                  title={r.prix_unite_travail != null
-                                    ? `Prix de travail : ${fmt(r.prix_unite_travail)} / ${r.unite_travail}`
-                                    : "Configurer le conditionnement"}
-                                >
-                                  {r.prix_unite_travail != null ? "⚙ Conf." : "⚙ Conditionnement"}
-                                </button>
-                              )}
+                              <button
+                                onClick={() => setCondModal(r)}
+                                className={`rounded-lg border px-2 py-1 text-xs font-semibold transition-colors ${
+                                  r.prix_unite_travail != null
+                                    ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                                    : "border-gray-200 bg-white text-gray-600 hover:border-violet-300 hover:text-violet-600"
+                                }`}
+                                title={r.prix_unite_travail != null
+                                  ? `Prix de travail : ${fmt(r.prix_unite_travail)} / ${r.unite_travail}`
+                                  : "Configurer le conditionnement"}
+                              >
+                                {r.prix_unite_travail != null ? "⚙ Configuré" : "⚙ Conditionnement"}
+                              </button>
                               {r.produit_id ? (
                                 <Link
                                   href={`/dashboard/restaurateur/commandes?produit=${r.produit_id}`}
@@ -408,11 +406,23 @@ export default function MercurialePage() {
         </>
       )}
 
-      {condModal && (
+      {condModal && profile?.id && (
         <ConditionnementModal
           produit={condModal}
+          restaurateurId={profile.id}
           onClose={() => setCondModal(null)}
-          onSaved={async () => { setCondModal(null); await load(); }}
+          onSaved={async (msg) => {
+            setCondModal(null);
+            await load();
+            // Toast simple (alert remplaçable par un système de notif centralisé)
+            if (typeof window !== "undefined") {
+              const el = document.createElement("div");
+              el.textContent = msg;
+              el.className = "fixed bottom-6 right-6 z-[100] rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 shadow-2xl";
+              document.body.appendChild(el);
+              setTimeout(() => el.remove(), 3500);
+            }
+          }}
           supa={supa}
         />
       )}
@@ -457,11 +467,12 @@ function computePreviewPrix(
 }
 
 function ConditionnementModal({
-  produit, onClose, onSaved, supa,
+  produit, restaurateurId, onClose, onSaved, supa,
 }: {
   produit: ProduitRow;
+  restaurateurId: string;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (msg: string) => void;
   supa: ReturnType<typeof createClient>;
 }) {
   const [nb, setNb]               = useState<number>(produit.conditionnement_nb ?? 1);
@@ -474,34 +485,52 @@ function ConditionnementModal({
   const preview = computePreviewPrix(produit.prix_ht, nb, taille, uniteSous, uniteTravail);
 
   async function save() {
-    if (!produit.tarif_id) return;
     setSaving(true); setError(null);
-    const { error: err } = await supa.from("tarifs")
-      .update({
+    try {
+      // Upsert dans la table unifiée produit_conditionnements :
+      // fonctionne pour tarif, historique et facture importée indifféremment.
+      const payload = {
+        restaurateur_id:        restaurateurId,
+        produit_key:            produit.produit_key,
+        produit_nom:            produit.produit_nom,
+        tarif_id:               produit.tarif_id,
+        fournisseur_id:         produit.fournisseur_id,
+        prix_reference:         produit.prix_ht,
         conditionnement_nb:     nb > 0 ? nb : null,
         conditionnement_taille: taille > 0 ? taille : null,
         conditionnement_unite:  uniteSous || null,
         unite_travail:          uniteTravail || null,
-      })
-      .eq("id", produit.tarif_id);
-    if (err) { setError(err.message); setSaving(false); return; }
-    await onSaved();
-    setSaving(false);
+      };
+      const { error: err } = await supa.from("produit_conditionnements")
+        .upsert(payload, { onConflict: "restaurateur_id,produit_key" });
+      if (err) {
+        console.error("[conditionnement] upsert error:", err);
+        setError(err.message);
+        setSaving(false);
+        return;
+      }
+      onSaved("Conditionnement enregistré ✓");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur inattendue");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function reset() {
-    if (!produit.tarif_id) return;
     if (!confirm("Retirer le conditionnement de ce produit ?")) return;
     setSaving(true);
-    await supa.from("tarifs")
-      .update({
-        conditionnement_nb:     null,
-        conditionnement_taille: null,
-        conditionnement_unite:  null,
-        unite_travail:          null,
-      })
-      .eq("id", produit.tarif_id);
-    await onSaved();
+    const { error: err } = await supa.from("produit_conditionnements")
+      .delete()
+      .eq("restaurateur_id", restaurateurId)
+      .eq("produit_key", produit.produit_key);
+    if (err) {
+      console.error("[conditionnement] delete error:", err);
+      setError(err.message);
+      setSaving(false);
+      return;
+    }
+    onSaved("Conditionnement retiré");
     setSaving(false);
   }
 

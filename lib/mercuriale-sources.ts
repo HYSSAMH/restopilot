@@ -18,12 +18,18 @@ export interface ProduitSource {
   prix_precedent:     number | null;
   prix_precedent_maj: string | null;
   updated_at:         string;
-  // Conditionnement (si configuré sur le tarif) — tous null par défaut
+  // Conditionnement (si configuré) — tous null par défaut
+  produit_key:            string;          // clé stable pour upsert dans produit_conditionnements
   conditionnement_nb:     number | null;
   conditionnement_taille: number | null;
   conditionnement_unite:  string | null;
   unite_travail:          string | null;
   prix_unite_travail:     number | null;
+}
+
+/** Normalise un produit en clé stable : "nom_lower|fournisseur_id_ou_none" */
+export function produitKeyFor(nom: string, fournisseurId: string | null): string {
+  return `${nom.toLowerCase().trim()}|${fournisseurId ?? "none"}`;
 }
 
 /**
@@ -69,27 +75,34 @@ export async function loadProduitSources(
     produits: { nom: string; categorie: string } | null;
     fournisseurs: { id: string; nom: string } | null;
   };
-  const fromTarifs: ProduitSource[] = ((tarifsRes.data ?? []) as unknown as TarifRaw[]).map(t => ({
-    id:                 `tarif:${t.id}`,
-    source:             "mercuriale",
-    tarif_id:           t.id,
-    produit_id:         t.produit_id,
-    produit_nom:        t.produits?.nom ?? "—",
-    produit_categorie:  t.produits?.categorie ?? "autre",
-    fournisseur_id:     t.fournisseurs?.id ?? null,
-    fournisseur_nom:    t.fournisseurs?.nom ?? null,
-    unite:              t.unite ?? "pièce",
-    prix_ht:            Number(t.prix ?? 0),
-    tva_taux:           Number(t.tva_taux ?? 20),
-    prix_precedent:     t.prix_precedent != null ? Number(t.prix_precedent) : null,
-    prix_precedent_maj: t.prix_precedent_maj ?? null,
-    updated_at:         t.updated_at ?? new Date(0).toISOString(),
-    conditionnement_nb:     t.conditionnement_nb ?? null,
-    conditionnement_taille: t.conditionnement_taille != null ? Number(t.conditionnement_taille) : null,
-    conditionnement_unite:  t.conditionnement_unite ?? null,
-    unite_travail:          t.unite_travail ?? null,
-    prix_unite_travail:     t.prix_unite_travail != null ? Number(t.prix_unite_travail) : null,
-  }));
+  const fromTarifs: ProduitSource[] = ((tarifsRes.data ?? []) as unknown as TarifRaw[]).map(t => {
+    const nom = t.produits?.nom ?? "—";
+    const fourId = t.fournisseurs?.id ?? null;
+    return {
+      id:                 `tarif:${t.id}`,
+      source:             "mercuriale",
+      tarif_id:           t.id,
+      produit_id:         t.produit_id,
+      produit_nom:        nom,
+      produit_categorie:  t.produits?.categorie ?? "autre",
+      fournisseur_id:     fourId,
+      fournisseur_nom:    t.fournisseurs?.nom ?? null,
+      unite:              t.unite ?? "pièce",
+      prix_ht:            Number(t.prix ?? 0),
+      tva_taux:           Number(t.tva_taux ?? 20),
+      prix_precedent:     t.prix_precedent != null ? Number(t.prix_precedent) : null,
+      prix_precedent_maj: t.prix_precedent_maj ?? null,
+      updated_at:         t.updated_at ?? new Date(0).toISOString(),
+      produit_key:        produitKeyFor(nom, fourId),
+      // Ces champs seront écrasés par la lecture de produit_conditionnements
+      // en-dessous. On expose le fallback éventuel des colonnes tarifs.
+      conditionnement_nb:     t.conditionnement_nb ?? null,
+      conditionnement_taille: t.conditionnement_taille != null ? Number(t.conditionnement_taille) : null,
+      conditionnement_unite:  t.conditionnement_unite ?? null,
+      unite_travail:          t.unite_travail ?? null,
+      prix_unite_travail:     t.prix_unite_travail != null ? Number(t.prix_unite_travail) : null,
+    };
+  });
 
   // 2. Historique + factures importées
   const cmdRes = await supa
@@ -144,6 +157,7 @@ export async function loadProduitSources(
         prix_precedent:     null,
         prix_precedent_maj: null,
         updated_at:         c.created_at,
+        produit_key:        produitKeyFor(nom, fournId),
         conditionnement_nb:     null,
         conditionnement_taille: null,
         conditionnement_unite:  null,
@@ -157,12 +171,41 @@ export async function loadProduitSources(
   // 3. Fusion avec priorité aux tarifs
   const merged = new Map<string, ProduitSource>();
   fromTarifs.forEach(r => {
-    const k = `${r.produit_nom.toLowerCase()}|${r.fournisseur_id ?? "none"}`;
-    merged.set(k, r);
+    merged.set(r.produit_key, r);
   });
   dedupHisto.forEach((r, k) => {
     if (!merged.has(k)) merged.set(k, r);
   });
+
+  // 4. Overlay des conditionnements configurés (table unifiée)
+  const condRes = await supa
+    .from("produit_conditionnements")
+    .select("produit_key, conditionnement_nb, conditionnement_taille, conditionnement_unite, unite_travail, prix_unite_travail, prix_reference")
+    .eq("restaurateur_id", restaurateurId);
+  if (condRes.error) console.error("[mercuriale-sources] conditionnements:", condRes.error);
+
+  type CondRaw = {
+    produit_key: string;
+    conditionnement_nb: number | null;
+    conditionnement_taille: number | null;
+    conditionnement_unite: string | null;
+    unite_travail: string | null;
+    prix_unite_travail: number | null;
+    prix_reference: number | null;
+  };
+  let overlaid = 0;
+  ((condRes.data ?? []) as unknown as CondRaw[]).forEach(c => {
+    const src = merged.get(c.produit_key);
+    if (!src) return;
+    src.conditionnement_nb     = c.conditionnement_nb;
+    src.conditionnement_taille = c.conditionnement_taille != null ? Number(c.conditionnement_taille) : null;
+    src.conditionnement_unite  = c.conditionnement_unite;
+    src.unite_travail          = c.unite_travail;
+    src.prix_unite_travail     = c.prix_unite_travail != null ? Number(c.prix_unite_travail) : null;
+    overlaid += 1;
+  });
+  log(`[mercuriale-sources] conditionnements → ${overlaid} produits overlayés`);
+
   const out = Array.from(merged.values());
   log(`[mercuriale-sources] fusion → ${out.length} produits`);
 
