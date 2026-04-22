@@ -5,21 +5,14 @@ export const runtime     = "nodejs";
 export const maxDuration = 300;
 
 const MODEL_ID = "claude-sonnet-4-5";
+const MAX_TOKENS_PER_PAGE = 2000;
 
 // ── Types ────────────────────────────────────────────────────────────────
 
 type Categorie =
-  | "remise_cb"          // REMCB — encaissement CB
-  | "commission_cb"      // COMCB — commissions CB
-  | "prelevement"        // PRLV SEPA — charges fixes
-  | "salaire"            // VIR SALAIRE — masse salariale
-  | "virement"           // VIR — autre virement
-  | "paiement_cb"        // PAIEMENT CB — dépense CB
-  | "charges_sociales"   // URSSAF
-  | "prevoyance"         // KLESIA / AG2R / MALAKOFF / mutuelle
-  | "cheque"             // CHEQUE
-  | "frais_bancaires"    // FRAIS, COTIS CARTE…
-  | "autre";
+  | "remise_cb" | "commission_cb" | "prelevement" | "salaire" | "virement"
+  | "paiement_cb" | "charges_sociales" | "prevoyance" | "cheque"
+  | "frais_bancaires" | "autre";
 
 interface ParsedLigne {
   date:            string | null;
@@ -43,55 +36,13 @@ type DocBlock = {
 };
 type MsgContent = Anthropic.TextBlockParam | DocBlock;
 
-// ── Prompt ───────────────────────────────────────────────────────────────
-
-const PROMPT = `Tu analyses un RELEVÉ DE COMPTE BANCAIRE français (typiquement Crédit Mutuel, BNP, Société Générale…) et tu extrais TOUTES les lignes d'opération en JSON strict.
-
-FORMAT TYPIQUE CRÉDIT MUTUEL — 5 colonnes :
-  Date | Date valeur | Opération | Débit EUROS | Crédit EUROS
-Le solde courant figure en haut (solde initial) et en bas (solde final). Un solde progressif peut apparaître après chaque ligne : capture-le si visible.
-
-RÈGLES STRICTES :
-- Retourne TOUTES les lignes visibles du relevé, même nombreuses (> 100), sans troncature.
-- Format date : YYYY-MM-DD (convertis depuis JJ/MM/AAAA ou JJ/MM).
-- Les montants sont TOUJOURS positifs dans le JSON. Une ligne est :
-    • un débit   → montant_debit  = montant, montant_credit = 0
-    • un crédit  → montant_credit = montant, montant_debit  = 0
-- "solde_courant" = solde après l'opération si visible ligne par ligne, sinon null.
-- "libelle" = le texte brut de la colonne Opération (peut tenir sur plusieurs lignes dans le PDF — concatène-les en une seule chaîne).
-- Si un champ est illisible : date et solde_courant → null ; libelle obligatoire, ne jamais inventer.
-- Pas de symbole € dans les nombres, pas de séparateur de milliers.
-
-CATÉGORISATION automatique de chaque ligne (champ "categorie"). Inspecte le libellé :
-  - Contient "REMCB" ou "REMISE CB" ou "REM CB"      → "remise_cb"
-  - Contient "COMCB" ou "COMMISSION CB"              → "commission_cb"
-  - Contient "PRLV" ou "PRELEVEMENT" ou "PRELV"      → "prelevement"
-  - Contient "VIR" + "SAL" (salaire, paye, payroll)  → "salaire"
-  - Contient "VIR" ou "VIREMENT" (autre)             → "virement"
-  - Contient "PAIEMENT CB", "ACHAT CB", "CB *"       → "paiement_cb"
-  - Contient "URSSAF"                                → "charges_sociales"
-  - Contient "KLESIA", "AG2R", "MALAKOFF", "MUTUEL"  → "prevoyance"
-  - Contient "CHEQUE" ou "CHQ"                       → "cheque"
-  - Contient "FRAIS", "COTIS CARTE", "AGIOS"         → "frais_bancaires"
-  - Sinon                                            → "autre"
-
-Retourne UNIQUEMENT le JSON brut (pas de markdown, pas de texte avant/après, pas de commentaire) :
-{
-  "periode_debut": "YYYY-MM-DD",
-  "periode_fin":   "YYYY-MM-DD",
-  "solde_debut":   1234.56,
-  "solde_fin":     2345.67,
-  "lignes": [
-    {
-      "date":           "2026-04-01",
-      "libelle":        "VIR SEPA EDF CLIENTS 4200123",
-      "montant_debit":  120.50,
-      "montant_credit": 0,
-      "solde_courant":  3400.21,
-      "categorie":      "prelevement"
-    }
-  ]
-}`;
+// ── Prompt court page par page ──────────────────────────────────────────
+// Très concis et strict : max_tokens 2000, renvoie un tableau JSON brut.
+// Le format demandé à Claude est minimal (date JJ/MM/AAAA, debit, credit),
+// on enrichit ensuite côté serveur (normalisation date + catégorisation).
+function pagePrompt(page: number, total: number): string {
+  return `Extrais les lignes du tableau bancaire de la page ${page}/${total}. JSON uniquement, aucun texte. Format: [{"date":"JJ/MM/AAAA","libelle":"...","debit":0,"credit":0}]. Les montants sont toujours positifs (utilise debit OU credit). Ignore entêtes, pieds de page, totaux intermédiaires, numéros de page. Si la page ne contient pas de tableau bancaire (page de garde, conditions, etc.), retourne [].`;
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -106,53 +57,155 @@ function num(v: unknown): number | null {
   return isNaN(n) ? null : Math.round(n * 100) / 100;
 }
 
-/** Re-catégorise côté serveur (filet de sécurité au cas où Claude se trompe). */
-function categorize(libelle: string, fallback: unknown): Categorie {
-  const s = libelle.toUpperCase();
-  if (/REMCB|REMISE\s*CB|REM\.\s*CB/.test(s)) return "remise_cb";
-  if (/COMCB|COMMISSION\s*CB/.test(s))         return "commission_cb";
-  if (/URSSAF/.test(s))                         return "charges_sociales";
-  if (/KLESIA|AG2R|MALAKOFF|MUTUEL/.test(s))   return "prevoyance";
-  if (/PRLV|PRELEVEMENT|PRELV/.test(s))         return "prelevement";
-  if (/\bVIR\b.*(SAL|PAYE|PAYROLL|SALAIRE)/.test(s)) return "salaire";
-  if (/\bVIR\b|VIREMENT/.test(s))               return "virement";
-  if (/PAIEMENT\s*CB|ACHAT\s*CB|\bCB\s*\*/.test(s)) return "paiement_cb";
-  if (/CHEQUE|\bCHQ\b/.test(s))                 return "cheque";
-  if (/FRAIS|COTIS\s*CARTE|AGIOS/.test(s))     return "frais_bancaires";
-  const f = typeof fallback === "string" ? fallback as Categorie : "autre";
-  return VALID_CATEGORIES.has(f) ? f : "autre";
+function parseDateFr(s: string | null | undefined): string | null {
+  if (!s) return null;
+  const str = String(s).trim();
+  // JJ/MM/AAAA → YYYY-MM-DD
+  const m = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (m) {
+    const [, d, mo, y] = m;
+    const yyyy = y.length === 2 ? (Number(y) > 50 ? "19" + y : "20" + y) : y;
+    return `${yyyy}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+  const m2 = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m2 ? m2[0] : null;
 }
 
-function parseReleve(text: string): ParsedReleve | null {
+function categorize(libelle: string): Categorie {
+  const s = libelle.toUpperCase();
+  if (/REMCB|REMISE\s*CB|REM\.\s*CB/.test(s))     return "remise_cb";
+  if (/COMCB|COMMISSION\s*CB/.test(s))              return "commission_cb";
+  if (/URSSAF/.test(s))                              return "charges_sociales";
+  if (/KLESIA|AG2R|MALAKOFF|MUTUEL/.test(s))        return "prevoyance";
+  if (/PRLV|PRELEVEMENT|PRELV/.test(s))              return "prelevement";
+  if (/\bVIR\b.*(SAL|PAYE|PAYROLL|SALAIRE)/.test(s)) return "salaire";
+  if (/\bVIR\b|VIREMENT/.test(s))                    return "virement";
+  if (/PAIEMENT\s*CB|ACHAT\s*CB|\bCB\s*\*/.test(s)) return "paiement_cb";
+  if (/CHEQUE|\bCHQ\b/.test(s))                      return "cheque";
+  if (/FRAIS|COTIS\s*CARTE|AGIOS/.test(s))          return "frais_bancaires";
+  return "autre";
+}
+
+/** Parse la réponse JSON d'UNE page (tableau court). */
+function parsePageResponse(text: string): ParsedLigne[] {
+  if (!text) return [];
   const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
-  const match = cleaned.match(/\{[\s\S]*\}/);
-  if (!match) return null;
+  const match = cleaned.match(/\[[\s\S]*\]/);
+  if (!match) return [];
   try {
-    const raw = JSON.parse(match[0]) as Partial<ParsedReleve>;
-    const lignesRaw = Array.isArray(raw.lignes) ? raw.lignes : [];
-    return {
-      periode_debut: raw.periode_debut ? String(raw.periode_debut) : null,
-      periode_fin:   raw.periode_fin   ? String(raw.periode_fin)   : null,
-      solde_debut:   num(raw.solde_debut),
-      solde_fin:     num(raw.solde_fin),
-      lignes: lignesRaw.map((l: Partial<ParsedLigne> & { debit?: number; credit?: number; solde?: number }) => {
-        const libelle = l.libelle ? String(l.libelle).trim().replace(/\s+/g, " ") : "";
-        const debitIn  = (l.montant_debit  ?? l.debit)  as unknown;
-        const creditIn = (l.montant_credit ?? l.credit) as unknown;
-        const soldeIn  = (l.solde_courant  ?? l.solde)  as unknown;
+    const raw = JSON.parse(match[0]);
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .filter((l): l is Record<string, unknown> => typeof l === "object" && l !== null)
+      .map(l => {
+        const libelle = String(l.libelle ?? "").trim().replace(/\s+/g, " ");
+        const date    = parseDateFr(l.date as string | null);
+        const debit   = num(l.debit  ?? l.montant_debit)  ?? 0;
+        const credit  = num(l.credit ?? l.montant_credit) ?? 0;
+        const fallbackCat = typeof l.categorie === "string" ? l.categorie as Categorie : undefined;
+        const cat = fallbackCat && VALID_CATEGORIES.has(fallbackCat) ? fallbackCat : categorize(libelle);
         return {
-          date:            l.date ? String(l.date) : null,
+          date,
           libelle,
-          montant_debit:   num(debitIn)  ?? 0,
-          montant_credit:  num(creditIn) ?? 0,
-          solde_courant:   num(soldeIn),
-          categorie:       categorize(libelle, l.categorie),
-        };
-      }).filter(l => l.libelle.length > 0),
-    };
+          montant_debit:  debit,
+          montant_credit: credit,
+          solde_courant:  null,
+          categorie:      cat,
+        } as ParsedLigne;
+      })
+      .filter(l => l.libelle.length > 0 && (l.montant_debit > 0 || l.montant_credit > 0));
   } catch (e) {
-    console.error("[releve-import] parse JSON error:", e);
-    return null;
+    console.error("[releve-import] parse page JSON error:", e);
+    return [];
+  }
+}
+
+// ── Appel Claude par page (en parallèle via Promise.all) ─────────────────
+
+async function extractPage(
+  anthropic: Anthropic,
+  pdfBase64: string,
+  page: number,
+  total: number,
+): Promise<{ page: number; lignes: ParsedLigne[]; ms: number; empty: boolean; error?: string }> {
+  const t0 = Date.now();
+  try {
+    const content: MsgContent[] = [
+      { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBase64 } },
+      { type: "text", text: pagePrompt(page, total) },
+    ];
+    const msg = await (anthropic.messages.create as (
+      body: Omit<Anthropic.MessageCreateParamsNonStreaming, "messages"> & {
+        messages: { role: "user"; content: MsgContent[] }[];
+      },
+      opts?: Anthropic.RequestOptions,
+    ) => Promise<Anthropic.Message>)(
+      { model: MODEL_ID, max_tokens: MAX_TOKENS_PER_PAGE, messages: [{ role: "user", content }] },
+      { headers: { "anthropic-beta": "pdfs-2024-09-25" } },
+    );
+    const text = msg.content[0]?.type === "text" ? msg.content[0].text : "";
+    const ms = Date.now() - t0;
+
+    // Page sans tableau bancaire → Claude renvoie [] ou chaîne vide
+    const trimmed = text.trim();
+    if (trimmed === "[]" || trimmed.length === 0) {
+      console.log(`[releve-import] page ${page}/${total} — vide (${ms}ms)`);
+      return { page, lignes: [], ms, empty: true };
+    }
+
+    const lignes = parsePageResponse(text);
+    console.log(`[releve-import] page ${page}/${total} — ${ms}ms, ${text.length} chars → ${lignes.length} lignes`);
+    return { page, lignes, ms, empty: lignes.length === 0 };
+  } catch (e) {
+    const ms = Date.now() - t0;
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`[releve-import] page ${page}/${total} ❌ ${ms}ms — ${msg}`);
+    return { page, lignes: [], ms, empty: true, error: msg };
+  }
+}
+
+// ── Agrège les résultats pages → ParsedReleve ────────────────────────────
+
+function aggregate(pages: { page: number; lignes: ParsedLigne[] }[]): ParsedReleve {
+  // Trie par numéro de page pour préserver l'ordre chronologique
+  const lignes = pages
+    .sort((a, b) => a.page - b.page)
+    .flatMap(p => p.lignes);
+
+  // Déduplication simple (date + libelle + montant)
+  const seen = new Set<string>();
+  const deduped = lignes.filter(l => {
+    const key = `${l.date ?? ""}|${l.libelle}|${l.montant_debit}|${l.montant_credit}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  const dates = deduped.map(l => l.date).filter((d): d is string => !!d).sort();
+  return {
+    periode_debut: dates[0]             ?? null,
+    periode_fin:   dates.at(-1)         ?? null,
+    solde_debut:   null,  // non extrait — le client peut le saisir manuellement
+    solde_fin:     null,
+    lignes:        deduped,
+  };
+}
+
+// ── Détection page count depuis le base64 (fallback serveur) ─────────────
+
+function detectPageCount(base64: string): number {
+  try {
+    const binary = Buffer.from(base64, "base64").toString("binary");
+    let max = 0;
+    const re = /\/Count\s+(\d+)/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(binary)) !== null) {
+      const n = parseInt(m[1], 10);
+      if (n > max && n < 9999) max = n;
+    }
+    return max > 0 ? max : 1;
+  } catch {
+    return 1;
   }
 }
 
@@ -165,15 +218,15 @@ export async function GET() {
     model_id:       MODEL_ID,
     runtime:        "nodejs",
     max_duration_s: 300,
+    strategy:       "per-page parallel",
+    max_tokens_per_page: MAX_TOKENS_PER_PAGE,
   });
 }
 
 // ── POST ─────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  // Garde-fou GLOBAL : toute erreur (y compris parse body) produit du JSON,
-  // jamais du HTML. Sans ce wrapper, Netlify peut renvoyer une page d'erreur
-  // et le client reçoit "Unexpected token '<'".
+  const tStart = Date.now();
   try {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey || apiKey === "your_anthropic_api_key_here") {
@@ -183,13 +236,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1. Lecture du body
+    // 1. Body
     let fileBase64: string;
+    let pageCountClient: number | undefined;
     try {
       const body = await req.json();
-      fileBase64 = typeof body?.fileBase64 === "string" ? body.fileBase64 : "";
+      fileBase64      = typeof body?.fileBase64 === "string" ? body.fileBase64 : "";
+      pageCountClient = typeof body?.pageCount  === "number" ? body.pageCount  : undefined;
       if (!fileBase64) {
-        return Response.json({ error: "Paramètre fileBase64 manquant dans le corps de la requête." }, { status: 400 });
+        return Response.json({ error: "Paramètre fileBase64 manquant." }, { status: 400 });
       }
     } catch (e) {
       return Response.json(
@@ -198,71 +253,61 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Vérif taille raisonnable (base64 d'un PDF de ~20 Mo ≈ 27 Mo de string)
+    // 2. Taille
     const approxBytes = Math.ceil(fileBase64.length * 0.75);
-    console.log(`[releve-import] POST — base64 len=${fileBase64.length}, ≈ ${(approxBytes / 1024 / 1024).toFixed(1)} Mo`);
     if (approxBytes > 25 * 1024 * 1024) {
       return Response.json(
-        { error: `Fichier trop volumineux (${(approxBytes / 1024 / 1024).toFixed(1)} Mo). Maximum accepté : 25 Mo.` },
+        { error: `Fichier trop volumineux (${(approxBytes / 1024 / 1024).toFixed(1)} Mo). Max 25 Mo.` },
         { status: 413 },
       );
     }
 
-    // 3. Appel Claude
+    // 3. Nombre de pages (client prioritaire, sinon détection /Count)
+    const detected = detectPageCount(fileBase64);
+    const pageCount = Math.min(Math.max(1, pageCountClient ?? detected), 30);
+    console.log(`[releve-import] ▶ démarrage — ${pageCount} page(s), ${(approxBytes/1024).toFixed(0)} KB`);
+
+    // 4. Extraction parallèle
     const anthropic = new Anthropic({ apiKey });
-    const content: MsgContent[] = [
-      { type: "document", source: { type: "base64", media_type: "application/pdf", data: fileBase64 } },
-      { type: "text", text: PROMPT },
-    ];
+    const pagePromises = Array.from({ length: pageCount }, (_, i) =>
+      extractPage(anthropic, fileBase64, i + 1, pageCount),
+    );
 
-    let text = "";
-    try {
-      const t0 = Date.now();
-      const msg = await (anthropic.messages.create as (
-        body: Omit<Anthropic.MessageCreateParamsNonStreaming, "messages"> & {
-          messages: { role: "user"; content: MsgContent[] }[];
+    const results = await Promise.all(pagePromises);
+
+    const totalMs = Date.now() - tStart;
+    const errors  = results.filter(r => r.error).length;
+    const empties = results.filter(r => r.empty).length;
+    const ligneCount = results.reduce((s, r) => s + r.lignes.length, 0);
+    console.log(
+      `[releve-import] ■ fini — ${totalMs}ms total | pages: ${pageCount} (${empties} vides, ${errors} erreurs) | ${ligneCount} lignes`,
+    );
+    console.log("[releve-import] ⏱ détail par page :", results.map(r => `p${r.page}=${r.ms}ms(${r.lignes.length}l${r.error ? `,err:${r.error.slice(0,60)}` : ""})`).join(" · "));
+
+    if (ligneCount === 0) {
+      return Response.json(
+        { error: errors > 0
+            ? `Extraction échouée sur toutes les pages (${errors} erreurs). Vérifiez que le PDF est un relevé bancaire lisible.`
+            : "Aucune ligne détectée dans le PDF. Vérifiez qu'il s'agit bien d'un relevé de compte.",
+          diagnostic: { pages: pageCount, empty: empties, errors, duration_ms: totalMs },
         },
-        opts?: Anthropic.RequestOptions,
-      ) => Promise<Anthropic.Message>)(
-        { model: MODEL_ID, max_tokens: 8192, messages: [{ role: "user", content }] },
-        { headers: { "anthropic-beta": "pdfs-2024-09-25" } },
-      );
-      text = msg.content[0]?.type === "text" ? msg.content[0].text : "";
-      console.log(`[releve-import] ← Claude ${Date.now() - t0}ms, ${text.length} chars`);
-    } catch (e) {
-      console.error("[releve-import] Anthropic error:", e);
-      const msg = e instanceof Error ? e.message : String(e);
-      const status = /401|403|unauthorized|invalid.*api.*key/i.test(msg) ? 401
-                   : /429|rate.?limit/i.test(msg)                         ? 429
-                   : /timeout|ETIMEDOUT/i.test(msg)                       ? 504
-                   :                                                         500;
-      return Response.json({ error: "Appel Claude échoué : " + msg }, { status });
-    }
-
-    if (!text) {
-      return Response.json({ error: "Claude a retourné une réponse vide." }, { status: 500 });
-    }
-
-    // 4. Parse JSON retourné
-    const parsed = parseReleve(text);
-    if (!parsed) {
-      console.warn("[releve-import] JSON non parsable, extrait :", text.slice(0, 300));
-      return Response.json(
-        { error: "Réponse Claude non parsable en JSON.", raw: text.slice(0, 500) },
-        { status: 502 },
-      );
-    }
-
-    if (parsed.lignes.length === 0) {
-      return Response.json(
-        { error: "Aucune ligne détectée dans le PDF. Vérifiez qu'il s'agit bien d'un relevé de compte lisible." },
         { status: 422 },
       );
     }
 
-    return Response.json({ ok: true, releve: parsed });
+    const releve = aggregate(results);
+    return Response.json({
+      ok: true,
+      releve,
+      diagnostic: {
+        pages: pageCount,
+        empty_pages: empties,
+        failed_pages: errors,
+        duration_ms: totalMs,
+        per_page_ms: results.map(r => ({ page: r.page, ms: r.ms, lines: r.lignes.length })),
+      },
+    });
   } catch (e) {
-    // Filet de sécurité ultime : ne jamais laisser passer une exception non gérée
     console.error("[releve-import] exception non gérée :", e);
     return Response.json(
       { error: "Erreur serveur : " + (e instanceof Error ? e.message : String(e)) },

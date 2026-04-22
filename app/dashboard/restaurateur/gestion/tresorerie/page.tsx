@@ -386,12 +386,14 @@ function ReleveTab({ ctx }: { ctx: Ctx }) {
         // PDF via Claude — encodage base64 via FileReader pour éviter le stack
         // overflow de btoa(String.fromCharCode(...large array)).
         const base64 = await fileToBase64(file);
+        const pageCount = detectPdfPageCount(base64);
+        console.log(`[tresorerie] import PDF : ${pageCount} page(s) détectées`);
         let res: Response;
         try {
           res = await fetch("/api/releve-import", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ fileBase64: base64 }),
+            body: JSON.stringify({ fileBase64: base64, pageCount }),
           });
         } catch (netErr) {
           throw new Error("Connexion au serveur impossible : " + (netErr instanceof Error ? netErr.message : String(netErr)));
@@ -654,6 +656,23 @@ function fileToBase64(file: File): Promise<string> {
     };
     reader.readAsDataURL(file);
   });
+}
+
+/** Compte le nombre de pages d'un PDF en base64 via la chaîne "/Count n". */
+function detectPdfPageCount(base64: string): number {
+  try {
+    const binary = atob(base64);
+    let max = 0;
+    const re = /\/Count\s+(\d+)/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(binary)) !== null) {
+      const n = parseInt(m[1], 10);
+      if (n > max && n < 9999) max = n;
+    }
+    return max > 0 ? max : 1;
+  } catch {
+    return 1;
+  }
 }
 
 // ── Charges récurrentes ─────────────────────────────────────────────
