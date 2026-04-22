@@ -800,12 +800,12 @@ export default function FicheTechniquePage() {
                     </tr>
                   )}
                   <tr className="border-t-2 border-gray-200 bg-gray-50">
-                    <td colSpan={4} className="px-2 py-2 text-right text-sm font-semibold">Coût total recette :</td>
+                    <td colSpan={4} className="px-2 py-2 text-right text-sm font-semibold">Coût total recette HT :</td>
                     <td className="px-2 py-2 text-right font-bold text-[#1A1A2E]">{fmt(Number(plat.cout_revient_total))}</td>
                     <td />
                   </tr>
                   <tr>
-                    <td colSpan={4} className="px-2 py-1 text-right text-xs text-gray-500">Coût par portion ({plat.portions_par_recette}) :</td>
+                    <td colSpan={4} className="px-2 py-1 text-right text-xs text-gray-500">Coût HT par portion ({plat.portions_par_recette}) :</td>
                     <td className="px-2 py-1 text-right font-semibold text-indigo-600">{fmt(coutUnit)}</td>
                     <td />
                   </tr>
@@ -856,8 +856,13 @@ export default function FicheTechniquePage() {
               : margePct >= 50 ? "border-amber-200 bg-amber-50 text-amber-800"
               : "border-rose-200 bg-rose-50 text-rose-800"
             }`}>
-              Marge actuelle : <span className="font-bold">{margePct.toFixed(1)}%</span>{" "}
-              (HT : {fmt(prixHT)} · coût : {fmt(coutUnit)} · marge € : {fmt(prixHT - coutUnit)})
+              <div className="font-semibold">Marge {margePct.toFixed(1)}%</div>
+              <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs sm:grid-cols-4">
+                <span>Prix TTC : <span className="font-semibold">{fmt(form.prix_vente_ttc)}</span></span>
+                <span>Prix HT : <span className="font-semibold">{fmt(prixHT)}</span></span>
+                <span>Coût HT : <span className="font-semibold">{fmt(coutUnit)}</span></span>
+                <span>Marge € : <span className="font-semibold">{fmt(prixHT - coutUnit)}</span></span>
+              </div>
             </div>
           )}
         </section>

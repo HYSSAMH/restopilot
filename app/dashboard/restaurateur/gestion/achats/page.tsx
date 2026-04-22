@@ -152,7 +152,7 @@ export default function AchatsPage() {
 
   function exportCsv() {
     const rows: (string | number)[][] = [
-      ["Date", "Produit", "Catégorie", "Fournisseur", "Quantité", "Unité", "Prix unit.", "Total"],
+      ["Date", "Produit", "Catégorie", "Fournisseur", "Quantité", "Unité", "PU HT", "Total HT", "TVA 20%", "Total TTC"],
       ...lignes.map(l => [
         new Date(l.date).toLocaleDateString("fr-FR"),
         l.produit,
@@ -162,6 +162,8 @@ export default function AchatsPage() {
         l.unite,
         l.prix_unitaire.toFixed(2),
         l.total.toFixed(2),
+        (l.total * 0.20).toFixed(2),
+        (l.total * 1.20).toFixed(2),
       ]),
     ];
     downloadCsv(`achats-${new Date().toISOString().slice(0, 10)}.csv`, rows);
@@ -269,30 +271,40 @@ export default function AchatsPage() {
 
           {/* Table */}
           <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
-            <table className="w-full min-w-[720px] text-sm">
+            <table className="w-full min-w-[880px] text-sm">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
                   <th className="px-4 py-3 text-left">Date</th>
                   <th className="px-4 py-3 text-left">Produit</th>
                   <th className="px-4 py-3 text-left">Fournisseur</th>
                   <th className="px-4 py-3 text-right">Qté</th>
-                  <th className="px-4 py-3 text-right">PU</th>
-                  <th className="px-4 py-3 text-right">Total</th>
+                  <th className="px-4 py-3 text-right">PU HT</th>
+                  <th className="px-4 py-3 text-right">Total HT</th>
+                  <th className="px-4 py-3 text-right">TVA 20%</th>
+                  <th className="px-4 py-3 text-right">Total TTC</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {lignes.length === 0 ? (
-                  <tr><td colSpan={6} className="py-10 text-center text-gray-500">Aucun achat dans cette période.</td></tr>
-                ) : lignes.slice(0, 300).map((l, i) => (
-                  <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                    <td className="px-4 py-2 text-gray-500">{new Date(l.date).toLocaleDateString("fr-FR")}</td>
-                    <td className="px-4 py-2 text-[#1A1A2E]">{l.produit}</td>
-                    <td className="px-4 py-2 text-gray-600">{l.fournNom}</td>
-                    <td className="px-4 py-2 text-right text-gray-600">{l.quantite} {l.unite}</td>
-                    <td className="px-4 py-2 text-right text-gray-600">{fmt(l.prix_unitaire)}</td>
-                    <td className="px-4 py-2 text-right font-semibold text-[#1A1A2E]">{fmt(l.total)}</td>
-                  </tr>
-                ))}
+                  <tr><td colSpan={8} className="py-10 text-center text-gray-500">Aucun achat dans cette période.</td></tr>
+                ) : lignes.slice(0, 300).map((l, i) => {
+                  // Achats B2B : TVA 20% par défaut. Les prix_snapshot sont stockés HT.
+                  const totalHT  = l.total;
+                  const tva      = totalHT * 0.20;
+                  const totalTTC = totalHT * 1.20;
+                  return (
+                    <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                      <td className="px-4 py-2 text-gray-500">{new Date(l.date).toLocaleDateString("fr-FR")}</td>
+                      <td className="px-4 py-2 text-[#1A1A2E]">{l.produit}</td>
+                      <td className="px-4 py-2 text-gray-600">{l.fournNom}</td>
+                      <td className="px-4 py-2 text-right text-gray-600">{l.quantite} {l.unite}</td>
+                      <td className="px-4 py-2 text-right text-gray-600">{fmt(l.prix_unitaire)}</td>
+                      <td className="px-4 py-2 text-right font-semibold text-[#1A1A2E]">{fmt(totalHT)}</td>
+                      <td className="px-4 py-2 text-right text-gray-500">{fmt(tva)}</td>
+                      <td className="px-4 py-2 text-right text-gray-700">{fmt(totalTTC)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
             {lignes.length > 300 && (
