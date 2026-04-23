@@ -53,15 +53,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // pdf-parse v2 : API classe PDFParse
-    const { PDFParse } = await import("pdf-parse");
+    // pdf2json (pur Node, pas de dépendance browser/DOMMatrix)
+    const mod = await import("pdf2json");
+    const PDFParser = (mod.default ?? mod) as unknown as new (ctx: null, needRawText?: boolean) => {
+      on(ev: string, cb: (data: unknown) => void): void;
+      parseBuffer(buf: Buffer): void;
+      getRawTextContent(): string;
+    };
+
     const t0 = Date.now();
-    const bytes = new Uint8Array(Buffer.from(fileBase64, "base64"));
-    const parser = new PDFParse({ data: bytes });
-    const result = await parser.getText();
-    const text = result.text ?? "";
-    const pages = result.total ?? result.pages?.length ?? 0;
-    await parser.destroy();
+    const buffer = Buffer.from(fileBase64, "base64");
+    const { text, pages } = await new Promise<{ text: string; pages: number }>((resolve, reject) => {
+      const parser = new PDFParser(null, true);
+      const timer = setTimeout(() => reject(new Error("pdf2json timeout (60s)")), 60_000);
+      parser.on("pdfParser_dataError", (errData) => {
+        clearTimeout(timer);
+        const e = errData as { parserError?: Error };
+        reject(e.parserError ?? new Error("pdf2json error"));
+      });
+      parser.on("pdfParser_dataReady", () => {
+        clearTimeout(timer);
+        const t = parser.getRawTextContent();
+        const pm = t.match(/Page \(\d+\) Break/g);
+        resolve({ text: t, pages: pm ? pm.length : 1 });
+      });
+      parser.parseBuffer(buffer);
+    });
     const ms = Date.now() - t0;
     console.log(`[extract-pdf] ${pages} page(s), ${text.length} chars, ${ms}ms`);
 

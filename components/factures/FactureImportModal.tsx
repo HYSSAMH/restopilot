@@ -10,6 +10,13 @@ interface ParsedLigne {
   unite:          string;
   prix_unitaire:  number;
   total:          number;
+  tva_taux?:      number | null;
+}
+interface TvaLigneRecap {
+  taux:         number;
+  base_ht:      number;
+  montant_tva:  number;
+  ttc:          number | null;
 }
 interface ParsedFacture {
   fournisseur: {
@@ -22,6 +29,7 @@ interface ParsedFacture {
   numero_facture: string | null;
   date:           string | null;
   lignes:         ParsedLigne[];
+  tva_recap?:     TvaLigneRecap[];
   montant_ht:     number | null;
   tva:            number | null;
   montant_ttc:    number | null;
@@ -191,12 +199,13 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
         restaurateur_id:         user.id,
         fournisseur_id:          fournisseurId,
         fournisseur_externe_id:  fournisseurExterneId,
-        restaurateur_nom:        "",  // sera rempli via le trigger / profil
+        restaurateur_nom:        "",
         montant_total:           Math.round(montant * 100) / 100,
-        statut:                  "livree",          // facture = déjà livrée
+        statut:                  "livree",
         source:                  "import",
         numero_facture_externe:  facture.numero_facture,
         created_at:              createdAt,
+        tva_recap:               facture.tva_recap ?? [],
       }).select("id").single();
       if (errCmd || !cmd) throw new Error("Création commande échouée : " + (errCmd?.message ?? ""));
 
@@ -222,15 +231,16 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
         }
       }
 
-      // 3. Lignes
+      // 3. Lignes — on persiste aussi le taux TVA capté ligne par ligne
       const { error: errLignes } = await supabase.from("lignes_commande").insert(
         facture.lignes.map(l => ({
           commande_id:   cmd.id,
-          produit_id:    null,    // pas lié à la mercuriale (produit externe)
+          produit_id:    null,
           nom_snapshot:  l.nom,
           prix_snapshot: l.prix_unitaire,
           unite:         l.unite,
           quantite:      l.quantite,
+          tva_taux:      l.tva_taux ?? null,
         })),
       );
       if (errLignes) throw new Error("Ajout lignes échoué : " + errLignes.message);
@@ -356,14 +366,15 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
               <section className="rounded-2xl border border-gray-200 bg-white p-4">
                 <h3 className="mb-3 text-sm font-semibold text-[#1A1A2E]">Lignes ({facture.lignes.length})</h3>
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[600px] text-sm">
+                  <table className="w-full min-w-[680px] text-sm">
                     <thead>
                       <tr className="border-b border-gray-200 text-xs font-medium uppercase tracking-wide text-gray-500">
                         <th className="py-2 text-left">Produit</th>
                         <th className="py-2 text-right">Qté</th>
                         <th className="py-2 text-left">Unité</th>
-                        <th className="py-2 text-right">PU (€)</th>
-                        <th className="py-2 text-right">Total (€)</th>
+                        <th className="py-2 text-right">PU HT (€)</th>
+                        <th className="py-2 text-right">TVA %</th>
+                        <th className="py-2 text-right">Total HT (€)</th>
                         <th className="py-2"></th>
                       </tr>
                     </thead>
@@ -382,6 +393,25 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
                           <td className="py-2 pr-2 text-right">
                             <input type="number" step="0.01" className={inputCls + " w-24 text-right"} value={l.prix_unitaire} onChange={e => updateLigne(i, "prix_unitaire", e.target.value)} />
                           </td>
+                          <td className="py-2 pr-2 text-right">
+                            <select
+                              className={inputCls + " w-20 text-right"}
+                              value={l.tva_taux != null ? String(l.tva_taux) : ""}
+                              onChange={e => {
+                                const v = e.target.value;
+                                setFacture(f => {
+                                  if (!f) return f;
+                                  const lignes = f.lignes.map((ll, idx) => idx === i ? { ...ll, tva_taux: v ? parseFloat(v) : null } : ll);
+                                  return { ...f, lignes };
+                                });
+                              }}
+                            >
+                              <option value="">—</option>
+                              <option value="5.5">5,5</option>
+                              <option value="10">10</option>
+                              <option value="20">20</option>
+                            </select>
+                          </td>
                           <td className="py-2 pr-2 text-right font-semibold text-[#1A1A2E]">{l.total.toFixed(2)}</td>
                           <td className="py-2 text-right">
                             <button onClick={() => deleteLigne(i)} className="rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-600 hover:bg-red-100">×</button>
@@ -391,6 +421,33 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Récapitulatif TVA extrait */}
+                {facture.tva_recap && facture.tva_recap.length > 0 && (
+                  <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/40 p-3">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-indigo-700">Récapitulatif TVA</p>
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-gray-500">
+                          <th className="py-1 text-left">Taux</th>
+                          <th className="py-1 text-right">Base HT</th>
+                          <th className="py-1 text-right">Montant TVA</th>
+                          <th className="py-1 text-right">TTC</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {facture.tva_recap.map((t, i) => (
+                          <tr key={i} className="border-t border-indigo-100">
+                            <td className="py-1 text-left text-[#1A1A2E]">{t.taux}%</td>
+                            <td className="py-1 text-right">{t.base_ht.toFixed(2)} €</td>
+                            <td className="py-1 text-right">{t.montant_tva.toFixed(2)} €</td>
+                            <td className="py-1 text-right font-semibold text-[#1A1A2E]">{(t.ttc ?? (t.base_ht + t.montant_tva)).toFixed(2)} €</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </section>
 
               {error && <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">{error}</p>}
