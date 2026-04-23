@@ -8,6 +8,7 @@ import type { StatutCommande } from "@/lib/supabase/types";
 import { regenerateFacturePDF } from "@/lib/facture-from-db";
 import FactureImportModal from "@/components/factures/FactureImportModal";
 import { Pagination, paginate, PAGE_SIZE_DEFAULT } from "@/components/ui/Pagination";
+import { Icon } from "@/components/ui/Icon";
 
 interface Commande {
   id: string;
@@ -234,16 +235,16 @@ export default function FacturesPage() {
 
         <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-[#1A1A2E]">Factures &amp; historique</h1>
-            <p className="mt-1 text-sm text-gray-500">
-              {commandes.length} facture{commandes.length > 1 ? "s" : ""} au total.
+            <h1 className="page-title">Factures &amp; historique</h1>
+            <p className="page-sub">
+              <span className="mono">{commandes.length}</span> facture{commandes.length > 1 ? "s" : ""} au total.
             </p>
           </div>
           <button
             onClick={() => setImportOpen(true)}
-            className="flex min-h-[44px] items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
+            className="flex items-center gap-2 rounded-[8px] bg-[var(--accent)] px-3.5 py-[7px] text-[13px] font-[550] text-white transition-colors hover:bg-[var(--accent-hover)]"
           >
-            <span>📄</span>
+            <span>+</span>
             <span>Importer une facture</span>
           </button>
         </div>
@@ -326,66 +327,68 @@ export default function FacturesPage() {
               Aucune facture ne correspond.
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
-              <table className="w-full min-w-[700px] text-sm">
+            <div className="overflow-x-auto rounded-[12px] border border-[var(--border)] bg-white">
+              <table className="w-full min-w-[700px] text-[13px]">
                 <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
-                    <th className="px-5 py-3 text-left">Date</th>
-                    <th className="px-5 py-3 text-left">Fournisseur</th>
-                    <th className="px-5 py-3 text-left">Statut</th>
-                    <th className="px-5 py-3 text-right">Montant HT</th>
-                    <th className="px-5 py-3 text-right">TTC (TVA 10%)</th>
-                    <th className="px-5 py-3 text-right">PDF</th>
+                  <tr className="border-b border-[var(--border)] bg-[var(--bg-subtle)]">
+                    <th className="px-4 py-[9px] text-left label-upper">Date</th>
+                    <th className="px-4 py-[9px] text-left label-upper">Fournisseur</th>
+                    <th className="px-4 py-[9px] text-left label-upper">Statut</th>
+                    <th className="px-4 py-[9px] text-right label-upper">Montant HT</th>
+                    <th className="px-4 py-[9px] text-right label-upper">TTC</th>
+                    <th className="px-4 py-[9px] text-right label-upper">PDF</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {paginate(filtered, page, PAGE_SIZE_DEFAULT).map((c, i) => {
+                <tbody>
+                  {paginate(filtered, page, PAGE_SIZE_DEFAULT).map((c) => {
                     const ttc = Number(c.montant_total) * 1.10;
                     const chip = STATUT_CHIP[c.statut];
                     return (
-                      <tr key={c.id} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                        <td className="px-5 py-3 text-gray-500">
-                          {new Date(c.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}
+                      <tr key={c.id} className="border-b border-[var(--border)] transition-colors hover:bg-[var(--bg-subtle)] last:border-b-0">
+                        <td className="mono px-4 py-[10px] text-[12.5px] text-[var(--text-muted)]">
+                          {new Date(c.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "2-digit" })}
                         </td>
-                        <td className="px-5 py-3 font-medium text-[#1A1A2E]">{fournNames[c.fournisseur_id ?? c.fournisseur_externe_id ?? ""] ?? "—"}</td>
-                        <td className="px-5 py-3">
-                          <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${chip.cls}`}>
+                        <td className="px-4 py-[10px] font-[550] text-[var(--text)]">{fournNames[c.fournisseur_id ?? c.fournisseur_externe_id ?? ""] ?? "—"}</td>
+                        <td className="px-4 py-[10px]">
+                          <span className={`rounded-full border px-2 py-0.5 text-[11px] font-[550] ${chip.cls}`}>
                             {chip.label}
                           </span>
                           {Number(c.avoir_montant) > 0 && (
-                            <span className="ml-1.5 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-medium text-rose-600">
-                              Avoir {fmt(Number(c.avoir_montant))}
+                            <span className="ml-1.5 rp-badge danger">
+                              Avoir <span className="mono">{fmt(Number(c.avoir_montant))}</span>
                             </span>
                           )}
                         </td>
-                        <td className="px-5 py-3 text-right font-semibold text-[#1A1A2E]">{fmt(c.montant_total)}</td>
-                        <td className="px-5 py-3 text-right text-gray-600">{fmt(ttc)}</td>
+                        <td className="mono px-4 py-[10px] text-right font-[600] text-[var(--text)]">{fmt(c.montant_total)}</td>
+                        <td className="mono px-4 py-[10px] text-right text-[var(--text-muted)]">{fmt(ttc)}</td>
                         <td className="px-5 py-3 text-right">
                           <div className="flex justify-end gap-1">
                             {c.source === "import" && c.pdf_path ? (
                               <>
                                 <button
                                   onClick={() => viewOriginal(c.pdf_path!)}
-                                  className="min-h-[36px] rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-[#1A1A2E] hover:border-indigo-300 hover:text-indigo-600"
+                                  className="inline-flex items-center gap-1.5 rounded-[7px] border border-[var(--border-strong)] bg-white px-2.5 py-1 text-[12px] font-[550] text-[var(--text)] transition-colors hover:bg-[var(--bg-subtle)]"
                                   title="Consulter le PDF original"
                                 >
-                                  👁️ Consulter
+                                  <Icon name="eye" size={13} />
+                                  <span>Consulter</span>
                                 </button>
                                 <button
                                   onClick={() => downloadOriginal(c.pdf_path!)}
-                                  className="min-h-[36px] rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-[#1A1A2E] hover:border-indigo-300 hover:text-indigo-600"
+                                  className="inline-flex items-center gap-1.5 rounded-[7px] border border-[var(--border-strong)] bg-white px-2.5 py-1 text-[12px] font-[550] text-[var(--text)] transition-colors hover:bg-[var(--bg-subtle)]"
                                   title="Télécharger le PDF original"
                                 >
-                                  ⬇️ Télécharger
+                                  <Icon name="download" size={13} />
+                                  <span>Télécharger</span>
                                 </button>
                               </>
                             ) : (
                               <button
                                 onClick={() => download(c.id)}
                                 disabled={downloading === c.id}
-                                className="min-h-[36px] rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-[#1A1A2E] hover:border-indigo-300 hover:text-indigo-600 disabled:opacity-50"
+                                className="inline-flex items-center gap-1.5 rounded-[7px] border border-[var(--border-strong)] bg-white px-2.5 py-1 text-[12px] font-[550] text-[var(--text)] transition-colors hover:bg-[var(--bg-subtle)] disabled:opacity-50"
                               >
-                                {downloading === c.id ? "…" : "↓ Générer PDF"}
+                                {downloading === c.id ? "…" : (<><Icon name="download" size={13} /><span>Générer PDF</span></>)}
                               </button>
                             )}
                           </div>

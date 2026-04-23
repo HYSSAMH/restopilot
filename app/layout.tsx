@@ -1,12 +1,21 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { ImportProvider } from "@/lib/import-context";
 import { ProfileProvider } from "@/lib/auth/profile-provider";
 import ImportToast from "@/components/ImportToast";
 import ImportPreviewModal from "@/components/ImportPreviewModal";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-geist-sans" });
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-geist-sans",
+  weight: ["400", "500", "600", "700"],
+});
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
+  weight: ["400", "500", "600", "700"],
+});
 
 export const metadata: Metadata = {
   title: "RestoPilot — Gérez votre restaurant intelligemment",
@@ -15,8 +24,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr" className={`${inter.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-[#F8F9FA] text-[#1A1A2E]">
+    <html lang="fr" className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}>
+      <body className="min-h-full flex flex-col bg-[#FAFAFA] text-[#0F172A]">
         <ProfileProvider>
           <ImportProvider>
             {children}

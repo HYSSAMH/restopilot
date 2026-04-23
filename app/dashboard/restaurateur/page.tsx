@@ -6,6 +6,7 @@ import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/auth/use-profile";
 import { fmt } from "@/lib/gestion-data";
+import { Icon } from "@/components/ui/Icon";
 
 interface CARow { date: string; ca_total: number }
 interface Commande { id: string; statut: string; montant_total: number; avoir_statut: string | null; avoir_montant: number | null; created_at: string; fournisseur_id: string | null; fournisseur_externe_id: string | null; source: string | null }
@@ -134,12 +135,12 @@ export default function RestaurateurHome() {
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-10">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[#1A1A2E]">Bonjour{firstName ? ` ${firstName}` : ""} 👋</h1>
-            <p className="mt-1 text-sm text-gray-500">Vue d&apos;ensemble de votre activité.</p>
+            <h1 className="page-title">Bonjour{firstName ? ` ${firstName}` : ""}</h1>
+            <p className="page-sub">Vue d&apos;ensemble de votre activité.</p>
           </div>
           <Link href="/profile"
-                className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-[#1A1A2E] hover:border-indigo-300 hover:text-indigo-600">
-            👤 Mon profil
+                className="flex items-center gap-2 rounded-[8px] border border-[var(--border)] bg-white px-3.5 py-[7px] text-[13px] font-[550] text-[var(--text)] transition-colors hover:bg-[var(--bg-subtle)]">
+            Mon profil
           </Link>
         </div>
 
@@ -148,24 +149,25 @@ export default function RestaurateurHome() {
         ) : (
           <>
             {/* KPIs + objectif jour */}
-            <section className="mb-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <section className="mb-5 rounded-[12px] border border-[var(--border)] bg-white p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-wider text-gray-500">CA du jour</p>
-                  <p className="mt-1 text-3xl font-bold text-[#1A1A2E]">{fmt(caToday)}</p>
+                  <p className="label-upper">CA du jour</p>
+                  <p className="mono mt-1 text-[32px] font-[650] leading-none tracking-[-0.025em] text-[var(--text)]">{fmt(caToday)}</p>
                   {objectifCaJour > 0 && (
-                    <p className="mt-1 text-xs text-gray-500">
-                      Objectif : <span className="font-semibold text-[#1A1A2E]">{fmt(objectifCaJour)}</span> · {progrJour.toFixed(0)}%
+                    <p className="mt-1 text-[12px] text-[var(--text-muted)]">
+                      Objectif : <span className="mono font-[600] text-[var(--text)]">{fmt(objectifCaJour)}</span> · <span className="mono">{progrJour.toFixed(0)}%</span>
                     </p>
                   )}
                 </div>
                 <div className="text-right">
-                  <p className="text-xs font-medium uppercase tracking-wider text-gray-500">CA 7 jours</p>
-                  <p className="mt-1 text-xl font-bold text-[#1A1A2E]">{fmt(caWeek)}</p>
+                  <p className="label-upper">CA 7 jours</p>
+                  <p className="mono mt-1 text-[22px] font-[650] tracking-[-0.02em] text-[var(--text)]">{fmt(caWeek)}</p>
                   {caPrevWeek > 0 && (
-                    <p className={`mt-0.5 text-xs font-semibold ${deltaWeek >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                      {deltaWeek >= 0 ? "↗ +" : "↘ "}{deltaWeek.toFixed(1)}% vs semaine précédente
-                    </p>
+                    <span className={`kpi-delta mt-1 inline-flex ${deltaWeek >= 0 ? "up" : "down"}`}>
+                      <span className="mono">{deltaWeek >= 0 ? "+" : ""}{deltaWeek.toFixed(1)}%</span>
+                      <span className="ml-1 text-[10.5px] text-[var(--text-muted)]">vs S-1</span>
+                    </span>
                   )}
                 </div>
               </div>
@@ -196,24 +198,27 @@ export default function RestaurateurHome() {
 
             {/* Alertes */}
             {hasAlertes && (
-              <section className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
-                <p className="mb-2 text-sm font-semibold text-amber-900">⚠ Alertes en cours</p>
-                <ul className="space-y-1 text-xs text-amber-800">
+              <section className="mb-5 rounded-[12px] border border-[var(--warning-soft)] bg-[var(--warning-soft)] p-4">
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="rp-status-dot pulse" style={{ color: "var(--warning)" }} />
+                  <p className="text-[13px] font-[600] text-[#B45309]">Alertes en cours</p>
+                </div>
+                <ul className="space-y-1 text-[12px] text-[#92400E]">
                   {avoirsEnAttente > 0 && (
-                    <li>• <Link href="/dashboard/restaurateur/historique" className="underline hover:no-underline">{avoirsEnAttente} avoir{avoirsEnAttente > 1 ? "s" : ""} en attente</Link></li>
+                    <li>· <Link href="/dashboard/restaurateur/historique" className="underline hover:no-underline"><span className="mono">{avoirsEnAttente}</span> avoir{avoirsEnAttente > 1 ? "s" : ""} en attente</Link></li>
                   )}
                   {haussesPrix.slice(0, 3).map(t => {
                     const delta = ((t.prix - (t.prix_precedent ?? 1)) / (t.prix_precedent ?? 1)) * 100;
                     return (
-                      <li key={t.id}>• {t.produit_nom} : <span className="font-semibold">+{delta.toFixed(1)}%</span> de hausse (prix fournisseur)</li>
+                      <li key={t.id}>· {t.produit_nom} : <span className="mono font-[600]">+{delta.toFixed(1)}%</span> de hausse (prix fournisseur)</li>
                     );
                   })}
                   {haussesPrix.length > 3 && (
-                    <li>• <Link href="/dashboard/restaurateur/menu/mercuriale" className="underline">voir les {haussesPrix.length - 3} autres hausses</Link></li>
+                    <li>· <Link href="/dashboard/restaurateur/menu/mercuriale" className="underline">voir les {haussesPrix.length - 3} autres hausses</Link></li>
                   )}
                   {prochainsPrelevements.slice(0, 3).map(p => (
                     <li key={p.charge.id}>
-                      • Prélèvement <span className="font-semibold">{p.charge.nom}</span> de {fmt(Number(p.charge.montant))} le {p.date.toLocaleDateString("fr-FR")}
+                      · Prélèvement <span className="font-[600]">{p.charge.nom}</span> de <span className="mono">{fmt(Number(p.charge.montant))}</span> le <span className="mono">{p.date.toLocaleDateString("fr-FR")}</span>
                     </li>
                   ))}
                 </ul>
@@ -222,34 +227,34 @@ export default function RestaurateurHome() {
 
             {/* Raccourcis */}
             <section className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <Shortcut href="/dashboard/restaurateur/commandes"          icon="🛒" title="Passer une commande" desc="Parcourez le catalogue fournisseurs" />
-              <Shortcut href="/dashboard/restaurateur/gestion/saisie-ca" icon="💰" title="Saisir mon CA"         desc="Recette du jour ou du mois" />
-              <Shortcut href="/dashboard/restaurateur/factures"           icon="📄" title="Importer une facture"  desc="Analyse automatique via Claude" />
-              <Shortcut href="/dashboard/restaurateur/menu"               icon="🍽️" title="Nouvelle fiche technique" desc="Composer un plat, suivre les coûts" />
+              <Shortcut href="/dashboard/restaurateur/commandes"          iconName="shopping-cart" title="Passer une commande" desc="Parcourez le catalogue fournisseurs" />
+              <Shortcut href="/dashboard/restaurateur/gestion/saisie-ca" iconName="euro"          title="Saisir mon CA"         desc="Recette du jour ou du mois" />
+              <Shortcut href="/dashboard/restaurateur/factures"           iconName="file-text"     title="Importer une facture"  desc="Analyse automatique" />
+              <Shortcut href="/dashboard/restaurateur/menu"               iconName="chef-hat"      title="Nouvelle fiche technique" desc="Composer un plat, suivre les coûts" />
             </section>
 
             {/* Dernières commandes */}
-            <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-[#1A1A2E]">Dernières commandes</h3>
-                <Link href="/dashboard/restaurateur/historique" className="text-xs font-medium text-indigo-600 hover:underline">Voir tout →</Link>
+            <section className="rounded-[12px] border border-[var(--border)] bg-white">
+              <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-[14px]">
+                <h3 className="text-[14px] font-[600] tracking-[-0.01em] text-[var(--text)]">Dernières commandes</h3>
+                <Link href="/dashboard/restaurateur/historique" className="text-[12px] font-[550] text-[var(--accent)] hover:underline">Voir tout →</Link>
               </div>
               {derniereCommandes.length === 0 ? (
-                <p className="text-sm text-gray-500">Aucune commande récente.</p>
+                <p className="px-4 py-5 text-[13px] text-[var(--text-muted)]">Aucune commande récente.</p>
               ) : (
-                <ul className="divide-y divide-gray-100">
-                  {derniereCommandes.map(c => (
-                    <li key={c.id} className="flex flex-wrap items-center gap-3 py-2.5">
+                <ul>
+                  {derniereCommandes.map((c, i) => (
+                    <li key={c.id} className={`flex flex-wrap items-center gap-3 px-4 py-2.5 ${i > 0 ? "border-t border-[var(--border)]" : ""}`}>
                       <div className="flex-1 min-w-[180px]">
-                        <p className="text-sm font-medium text-[#1A1A2E]">
-                          {c.source === "import" ? "📄 Facture importée" : `Commande ${c.id.slice(0, 8)}`}
+                        <p className="mono text-[12.5px] font-[600] text-[var(--text)]">
+                          {c.source === "import" ? "Facture importée" : `CMD-${c.id.slice(0, 6).toUpperCase()}`}
                         </p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(c.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+                        <p className="text-[11.5px] text-[var(--text-muted)]">
+                          {new Date(c.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}
                         </p>
                       </div>
-                      <span className="rounded-full border border-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600">{c.statut}</span>
-                      <span className="font-semibold text-[#1A1A2E]">{fmt(Number(c.montant_total))}</span>
+                      <span className="rp-badge neutral">{c.statut}</span>
+                      <span className="mono text-[13px] font-[600] text-[var(--text)]">{fmt(Number(c.montant_total))}</span>
                     </li>
                   ))}
                 </ul>
@@ -263,29 +268,38 @@ export default function RestaurateurHome() {
 }
 
 function Kpi({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: "rose" | "emerald" }) {
-  const cls = accent === "rose"    ? "border-rose-200 bg-rose-50 text-rose-700"
-            : accent === "emerald" ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-            : "border-gray-200 bg-white text-[#1A1A2E]";
-  const [b, bg, txt] = cls.split(" ");
+  const border = accent === "rose"    ? "border-[var(--danger-soft)]"
+               : accent === "emerald" ? "border-[var(--success-soft)]"
+               : "border-[var(--border)]";
+  const txt    = accent === "rose"    ? "text-[var(--danger)]"
+               : accent === "emerald" ? "text-[var(--success)]"
+               : "text-[var(--text)]";
   return (
-    <div className={`rounded-xl border ${b} ${bg} p-4 shadow-sm`}>
-      <p className="text-[10px] font-medium uppercase tracking-wider text-gray-500">{label}</p>
-      <p className={`mt-1 text-xl font-bold ${txt}`}>{value}</p>
-      {sub && <p className="mt-0.5 text-[10px] text-gray-500">{sub}</p>}
+    <div className={`rounded-[12px] border ${border} bg-white p-4 transition-colors hover:border-[var(--border-strong)]`}>
+      <p className="label-upper">{label}</p>
+      <p className={`mono mt-2 text-[22px] font-[650] tracking-[-0.02em] leading-[1.1] ${txt}`}>{value}</p>
+      {sub && <p className="mt-1 text-[11.5px] text-[var(--text-subtle)]">{sub}</p>}
     </div>
   );
 }
 
-function Shortcut({ href, icon, title, desc }: { href: string; icon: string; title: string; desc: string }) {
+function Shortcut({ href, iconName, title, desc }: {
+  href: string;
+  iconName: "shopping-cart" | "euro" | "file-text" | "chef-hat";
+  title: string; desc: string;
+}) {
   return (
     <Link href={href}
-          className="group flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md">
-      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-xl text-white shadow-md shadow-indigo-500/20">
-        {icon}
+          className="group flex flex-col gap-3 rounded-[12px] border border-[var(--border)] bg-white p-4 transition-colors hover:border-[var(--accent-border)] hover:bg-[var(--bg-subtle)]">
+      <div
+        className="flex h-10 w-10 items-center justify-center rounded-[8px] text-white"
+        style={{ background: "linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)" }}
+      >
+        <Icon name={iconName} size={18} />
       </div>
       <div>
-        <p className="font-semibold text-[#1A1A2E]">{title}</p>
-        <p className="mt-0.5 text-xs text-gray-500">{desc}</p>
+        <p className="text-[14px] font-[600] tracking-[-0.01em] text-[var(--text)]">{title}</p>
+        <p className="mt-0.5 text-[12px] text-[var(--text-muted)]">{desc}</p>
       </div>
     </Link>
   );

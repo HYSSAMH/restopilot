@@ -249,14 +249,12 @@ export default function HistoriquePage() {
 
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[#1A1A2E]">Mes commandes</h1>
-            <p className="mt-1 text-sm text-gray-500">
-              Suivez le statut de vos commandes en temps réel.
-            </p>
+            <h1 className="page-title">Mes commandes</h1>
+            <p className="page-sub">Suivez le statut de vos commandes en temps réel.</p>
           </div>
           <Link
             href="/dashboard/restaurateur/commandes"
-            className="flex min-h-[44px] items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-600"
+            className="flex items-center gap-2 rounded-[8px] bg-[var(--accent)] px-3.5 py-[7px] text-[13px] font-[550] text-white transition-colors hover:bg-[var(--accent-hover)]"
           >
             <span>+</span> Nouvelle commande
           </Link>
@@ -377,29 +375,28 @@ export default function HistoriquePage() {
             {pageRows.map((c) => {
               const open = openId === c.id;
               return (
-                <div key={c.id} className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
-                  <div className="flex items-start gap-4 p-5">
-                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${getFournAvatar(c)} text-sm font-bold text-white shadow-md`}>
+                <div key={c.id} className="overflow-hidden rounded-[12px] border border-[var(--border)] bg-white">
+                  <div className="flex items-start gap-4 p-4">
+                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-gradient-to-br ${getFournAvatar(c)} text-[12px] font-[600] text-white`}>
                       {getFournInitiale(c)}
                     </div>
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-semibold text-[#1A1A2E]">{getFournName(c)}</span>
+                        <span className="text-[14px] font-[600] text-[var(--text)]">{getFournName(c)}</span>
+                        <span className="mono text-[11.5px] text-[var(--text-subtle)]">CMD-{c.id.slice(0, 6).toUpperCase()}</span>
                         {c.source === "import" && (
-                          <span className="rounded-full border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
-                            Importée
-                          </span>
+                          <span className="rp-badge neutral">Importée</span>
                         )}
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                        <span>{formatDate(c.created_at)}</span>
+                      <div className="flex flex-wrap items-center gap-2 text-[11.5px] text-[var(--text-muted)]">
+                        <span className="mono">{formatDate(c.created_at)}</span>
                         <span>·</span>
-                        <span>{c.lignes_commande?.length ?? 0} article{(c.lignes_commande?.length ?? 0) > 1 ? "s" : ""}</span>
-                        {c.numero_facture_externe && (<><span>·</span><span>N° {c.numero_facture_externe}</span></>)}
+                        <span><span className="mono">{c.lignes_commande?.length ?? 0}</span> article{(c.lignes_commande?.length ?? 0) > 1 ? "s" : ""}</span>
+                        {c.numero_facture_externe && (<><span>·</span><span className="mono">N° {c.numero_facture_externe}</span></>)}
                       </div>
                     </div>
-                    <div className="flex shrink-0 flex-col items-end gap-2">
-                      <span className="text-lg font-bold text-[#1A1A2E]">{fmt(c.montant_total)}</span>
+                    <div className="flex shrink-0 flex-col items-end gap-1.5">
+                      <span className="mono text-[16px] font-[650] tracking-[-0.01em] text-[var(--text)]">{fmt(c.montant_total)}</span>
                       <StatutBadge statut={c.statut} />
                     </div>
                   </div>
@@ -417,22 +414,22 @@ export default function HistoriquePage() {
                   </button>
 
                   {open && (
-                    <div className="overflow-x-auto border-t border-gray-200 px-5 py-3">
-                      <table className="w-full min-w-[520px] text-sm">
+                    <div className="overflow-x-auto border-t border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-3">
+                      <table className="w-full min-w-[520px] text-[13px]">
                         <thead>
-                          <tr className="border-b border-gray-200 text-xs text-gray-400">
-                            <th className="pb-2 text-left font-medium">Produit</th>
-                            <th className="pb-2 text-right font-medium">Qté</th>
-                            <th className="pb-2 text-right font-medium">P.U.</th>
-                            <th className="pb-2 text-right font-medium">Total</th>
+                          <tr className="border-b border-[var(--border)]">
+                            <th className="pb-2 text-left label-upper">Produit</th>
+                            <th className="pb-2 text-right label-upper">Qté</th>
+                            <th className="pb-2 text-right label-upper">P.U.</th>
+                            <th className="pb-2 text-right label-upper">Total</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100">
+                        <tbody>
                           {(c.lignes_commande ?? []).map((l) => (
-                            <tr key={l.id}>
-                              <td className="py-2 text-gray-700">{l.nom_snapshot}</td>
-                              <td className="py-2 text-right text-gray-500">{l.quantite} {l.unite}</td>
-                              <td className="py-2 text-right text-gray-500">{fmt(l.prix_snapshot)}</td>
+                            <tr key={l.id} className="border-b border-[var(--border)] last:border-b-0">
+                              <td className="py-2 text-[var(--text)]">{l.nom_snapshot}</td>
+                              <td className="mono py-2 text-right text-[var(--text-muted)]">{l.quantite} {l.unite}</td>
+                              <td className="mono py-2 text-right text-[var(--text-muted)]">{fmt(l.prix_snapshot)}</td>
                               <td className="py-2 text-right font-medium text-[#1A1A2E]">{fmt(Number(l.prix_snapshot ?? 0) * Number(l.quantite ?? 0))}</td>
                             </tr>
                           ))}
@@ -454,11 +451,11 @@ export default function HistoriquePage() {
 }
 
 function Kpi({ label, value, accent, wide }: { label: string; value: string; accent?: "amber"; wide?: boolean }) {
-  const ring = accent === "amber" ? "border-amber-200 bg-amber-50" : "border-gray-200 bg-white";
+  const ring = accent === "amber" ? "border-[var(--warning-soft)] bg-[var(--warning-soft)]" : "border-[var(--border)] bg-white";
   return (
-    <div className={`rounded-2xl border ${ring} px-5 py-4 ${wide ? "col-span-2 sm:col-span-1" : ""}`}>
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-[#1A1A2E]">{value}</p>
+    <div className={`rounded-[12px] border ${ring} px-4 py-3.5 ${wide ? "col-span-2 sm:col-span-1" : ""}`}>
+      <p className="label-upper">{label}</p>
+      <p className="mono mt-1.5 text-[22px] font-[650] tracking-[-0.02em] leading-[1.1] text-[var(--text)]">{value}</p>
     </div>
   );
 }

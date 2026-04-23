@@ -77,49 +77,62 @@ export default function Sidebar({ role: roleOverride, isOpen = false, onClose }:
 
       <aside
         className={[
-          "fixed inset-y-0 left-0 z-50 flex h-screen w-64 shrink-0 flex-col",
-          "border-r border-[#E5E7EB] bg-white",
+          "fixed inset-y-0 left-0 z-50 flex h-screen w-[240px] shrink-0 flex-col",
+          "border-r border-[var(--border)] bg-[var(--surface)]",
           "transform transition-transform duration-200 ease-out",
           isOpen ? "translate-x-0" : "-translate-x-full",
           "md:sticky md:top-0 md:translate-x-0",
         ].join(" ")}
       >
-      {/* Logo */}
+      {/* Brand : RP mark + nom + badge version */}
       <Link
         href={homeHref}
         onClick={closeOnMobile}
-        className="flex items-center gap-2.5 px-5 pt-5 pb-4"
+        className="flex items-center gap-2.5 border-b border-[var(--border)] px-5 py-[18px]"
       >
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-sm">
-          <span className="text-base">🍽️</span>
+        <div
+          className="flex h-7 w-7 items-center justify-center rounded-[7px] text-white"
+          style={{
+            background: "linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)",
+            boxShadow: "0 1px 2px rgba(99,102,241,0.25), inset 0 1px 0 rgba(255,255,255,0.15)",
+            fontSize: 13,
+            fontWeight: 700,
+            letterSpacing: "-0.02em",
+          }}
+        >
+          RP
         </div>
-        <span className="text-[15px] font-semibold text-[#1A1A2E]">
-          Resto<span className="text-indigo-500">Pilot</span>
+        <span className="text-[15px] font-[650] tracking-[-0.015em] text-[var(--text)]">
+          RestoPilot
         </span>
       </Link>
 
-      {/* User chip */}
-      <Link
-        href="/profile"
-        onClick={closeOnMobile}
-        className="mx-3 mb-4 flex min-h-[44px] items-center gap-3 rounded-xl border border-[#E5E7EB] bg-[#F8F9FA] px-3 py-2.5 transition-colors hover:bg-[#F1F3F5]"
-      >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 text-xs font-bold text-white">
-          {avatarLetter}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-semibold text-[#1A1A2E]">{entityName}</p>
-          <p className="truncate text-[10px] uppercase tracking-wider text-[#6B7280]">
-            {role === "fournisseur" ? "Distributeur" : "Restaurateur"}
-          </p>
-        </div>
-      </Link>
+      {/* Workspace pill (profil courant du restaurateur / fournisseur) */}
+      <div className="border-b border-[var(--border)] p-3">
+        <Link
+          href="/profile"
+          onClick={closeOnMobile}
+          className="flex items-center gap-2.5 rounded-[8px] px-2.5 py-2 transition-colors hover:bg-[var(--bg-subtle)]"
+        >
+          <div
+            className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[6px] bg-[#1E293B] text-[11px] font-semibold text-white"
+          >
+            {avatarLetter}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[13px] font-[550] text-[var(--text)]">{entityName}</p>
+            <p className="text-[11px] text-[var(--text-muted)]">
+              {role === "fournisseur" ? "Distributeur" : "Restaurateur"}
+            </p>
+          </div>
+        </Link>
+      </div>
 
-      {/* Section "Menu" */}
-      <p className="px-5 pb-2 text-[10px] font-semibold uppercase tracking-wider text-[#9CA3AF]">
-        Menu
-      </p>
-      <nav className="flex flex-1 flex-col gap-1 px-3">
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto px-2 py-2">
+        <div className="px-2.5 pb-1 pt-2.5 text-[10.5px] font-[650] uppercase tracking-[0.04em] text-[var(--text-subtle)]">
+          Menu
+        </div>
         {links.map((l) => {
           const active = pathname === l.href || pathname.startsWith(l.href + "/");
           return (
@@ -127,27 +140,27 @@ export default function Sidebar({ role: roleOverride, isOpen = false, onClose }:
               key={l.href}
               href={l.href}
               onClick={closeOnMobile}
-              className={`group flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+              className={`relative mx-0.5 my-[1px] flex items-center gap-2.5 rounded-[6px] px-2.5 py-[7px] text-[13px] transition-colors ${
                 active
-                  ? "bg-indigo-50 text-indigo-600"
-                  : "text-[#6B7280] hover:bg-[#F1F3F5] hover:text-[#1A1A2E]"
+                  ? "bg-[var(--accent-soft)] font-[550] text-[var(--accent)]"
+                  : "font-medium text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text)]"
               }`}
             >
-              <span className={active ? "text-indigo-500" : "text-[#9CA3AF] group-hover:text-[#6B7280]"}>
+              <span className={`${active ? "text-[var(--accent)]" : "text-[var(--text-subtle)]"} [&>svg]:h-4 [&>svg]:w-4`}>
                 {l.icon}
               </span>
-              <span>{l.label}</span>
+              <span className="flex-1 truncate">{l.label}</span>
             </Link>
           );
         })}
       </nav>
 
-      {/* Logout */}
-      <div className="border-t border-[#E5E7EB] px-3 py-3">
+      {/* Footer : logout */}
+      <div className="border-t border-[var(--border)] p-2.5">
         <button
           onClick={handleLogout}
           disabled={loggingOut}
-          className="flex w-full min-h-[44px] items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[#6B7280] transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+          className="flex w-full items-center gap-2.5 rounded-[6px] px-2.5 py-2 text-[13px] font-medium text-[var(--text-muted)] transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50 [&>svg]:h-4 [&>svg]:w-4"
         >
           <IconLogout />
           <span>{loggingOut ? "Déconnexion…" : "Se déconnecter"}</span>

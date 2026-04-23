@@ -256,64 +256,60 @@ export default function MercurialePage() {
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[1000px] text-sm">
                   <thead>
-                    <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500">
-                      <th className="px-3 py-2 text-left">Produit</th>
-                      <th className="px-3 py-2 text-left">Source</th>
-                      <th className="px-3 py-2 text-left">Fournisseur</th>
-                      <th className="px-3 py-2 text-left">Unité</th>
-                      <th className="px-3 py-2 text-right">Prix HT</th>
-                      <th className="px-3 py-2 text-right">TVA</th>
-                      <th className="px-3 py-2 text-right">Prix TTC</th>
-                      <th className="px-3 py-2 text-right">Variation</th>
-                      <th className="px-3 py-2 text-left">Maj</th>
-                      <th className="px-3 py-2 text-center">Fiches</th>
-                      <th className="px-3 py-2"></th>
+                    <tr className="border-b border-[var(--border)] bg-[var(--bg-subtle)]">
+                      <th className="px-3 py-[9px] text-left label-upper">Produit</th>
+                      <th className="px-3 py-[9px] text-left label-upper">Source</th>
+                      <th className="px-3 py-[9px] text-left label-upper">Fournisseur</th>
+                      <th className="px-3 py-[9px] text-left label-upper">Unité</th>
+                      <th className="px-3 py-[9px] text-right label-upper">Prix HT</th>
+                      <th className="px-3 py-[9px] text-right label-upper">TVA</th>
+                      <th className="px-3 py-[9px] text-right label-upper">Prix TTC</th>
+                      <th className="px-3 py-[9px] text-right label-upper">Variation</th>
+                      <th className="px-3 py-[9px] text-left label-upper">Maj</th>
+                      <th className="px-3 py-[9px] text-center label-upper">Fiches</th>
+                      <th className="px-3 py-[9px]"></th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody>
                     {pagedRows.map(r => {
                       const v = variationInfo(r);
                       const ttc = r.prix_ht * (1 + r.tva_taux / 100);
                       return (
-                        <tr key={r.id}>
-                          <td className="px-3 py-2 font-medium text-[#1A1A2E]">{r.produit_nom}</td>
-                          <td className="px-3 py-2">
-                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${SOURCE_BADGE[r.source]}`}>
+                        <tr key={r.id} className="border-b border-[var(--border)] transition-colors hover:bg-[var(--bg-subtle)] last:border-b-0">
+                          <td className="px-3 py-[10px] text-[13px] font-[550] text-[var(--text)]">{r.produit_nom}</td>
+                          <td className="px-3 py-[10px]">
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-[600] ${SOURCE_BADGE[r.source]}`}>
                               {SOURCE_LABEL[r.source]}
                             </span>
                           </td>
-                          <td className="px-3 py-2 text-gray-600">{r.fournisseur_nom ?? "—"}</td>
-                          <td className="px-3 py-2 text-gray-500">{r.unite}</td>
-                          <td className="px-3 py-2 text-right">
-                            <div className="font-semibold text-[#1A1A2E]">{fmt(r.prix_ht)}</div>
+                          <td className="px-3 py-[10px] text-[12.5px] text-[var(--text-muted)]">{r.fournisseur_nom ?? "—"}</td>
+                          <td className="px-3 py-[10px] text-[12.5px] text-[var(--text-subtle)]">{r.unite}</td>
+                          <td className="px-3 py-[10px] text-right">
+                            <div className="mono text-[12.5px] font-[600] text-[var(--text)]">{fmt(r.prix_ht)}</div>
                             {r.prix_unite_travail != null && r.unite_travail && (
-                              <div className="text-[10px] font-medium text-emerald-700">
+                              <div className="mono text-[10px] font-[550] text-[var(--success)]">
                                 → {fmt(r.prix_unite_travail)} / {r.unite_travail}
                               </div>
                             )}
                           </td>
-                          <td className="px-3 py-2 text-right text-gray-500">{r.tva_taux}%</td>
-                          <td className="px-3 py-2 text-right text-gray-600">{fmt(ttc)}</td>
-                          <td className="px-3 py-2 text-right">
+                          <td className="mono px-3 py-[10px] text-right text-[12.5px] text-[var(--text-muted)]">{r.tva_taux}%</td>
+                          <td className="mono px-3 py-[10px] text-right text-[12.5px] text-[var(--text-muted)]">{fmt(ttc)}</td>
+                          <td className="px-3 py-[10px] text-right">
                             {v.sign === null ? (
-                              <span className="text-xs text-gray-400">—</span>
+                              <span className="text-[11px] text-[var(--text-subtle)]">—</span>
                             ) : (
-                              <span className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-semibold ${
-                                v.sign === "+" ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"
-                              }`}>
-                                {v.sign === "+" ? "↗" : "↘"} {Math.abs(v.pct).toFixed(1)}%
+                              <span className={`rp-badge ${v.sign === "+" ? "danger" : "success"}`}>
+                                <span className="mono">{v.sign === "+" ? "↗" : "↘"} {Math.abs(v.pct).toFixed(1)}%</span>
                               </span>
                             )}
                           </td>
-                          <td className="px-3 py-2 text-xs text-gray-500">
-                            {new Date(r.updated_at).toLocaleDateString("fr-FR")}
+                          <td className="mono px-3 py-[10px] text-[11.5px] text-[var(--text-muted)]">
+                            {new Date(r.updated_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" })}
                           </td>
-                          <td className="px-3 py-2 text-center">
+                          <td className="px-3 py-[10px] text-center">
                             {r.used_in_fiches > 0 ? (
-                              <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">
-                                {r.used_in_fiches}
-                              </span>
-                            ) : "—"}
+                              <span className="rp-badge accent mono">{r.used_in_fiches}</span>
+                            ) : <span className="text-[var(--text-subtle)]">—</span>}
                           </td>
                           <td className="px-3 py-2 text-right">
                             <div className="flex justify-end gap-1">

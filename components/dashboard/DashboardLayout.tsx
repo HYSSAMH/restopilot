@@ -29,24 +29,32 @@ export default function DashboardLayout({ children, role }: Props) {
   }, [open]);
 
   return (
-    <div className="flex min-h-screen bg-[#F8F9FA]">
+    <div className="flex min-h-screen bg-[var(--bg)]">
       <Sidebar role={role} isOpen={open} onClose={() => setOpen(false)} />
 
       <main className="flex min-w-0 flex-1 flex-col">
         {/* Header mobile avec hamburger */}
-        <div className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-gray-200 bg-white/90 px-4 backdrop-blur md:hidden">
+        <div className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-[var(--border)] bg-white/85 px-4 backdrop-blur md:hidden">
           <button
             onClick={() => setOpen(true)}
             aria-label="Ouvrir le menu"
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-[#1A1A2E] transition-colors hover:bg-gray-100"
+            className="flex h-11 w-11 items-center justify-center rounded-[7px] text-[var(--text)] transition-colors hover:bg-[var(--bg-subtle)]"
           >
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M4 12h16M4 17h16" />
             </svg>
           </button>
-          <span className="text-base font-semibold text-[#1A1A2E]">
-            Resto<span className="text-indigo-500">Pilot</span>
-          </span>
+          <div className="flex items-center gap-2">
+            <div
+              className="flex h-6 w-6 items-center justify-center rounded-[6px] text-[11px] font-bold text-white"
+              style={{ background: "linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)" }}
+            >
+              RP
+            </div>
+            <span className="text-[15px] font-[650] tracking-[-0.015em] text-[var(--text)]">
+              RestoPilot
+            </span>
+          </div>
         </div>
 
         {/* Contenu */}

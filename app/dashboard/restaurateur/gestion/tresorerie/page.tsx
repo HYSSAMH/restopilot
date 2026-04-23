@@ -156,7 +156,7 @@ export default function TresoreriePage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <h2 className="text-lg font-semibold text-[#1A1A2E]">Trésorerie</h2>
+      <h2 className="text-[18px] font-[650] tracking-[-0.01em] text-[var(--text)]">Trésorerie</h2>
 
       {/* Sous-onglets */}
       <div className="flex gap-1 overflow-x-auto rounded-xl border border-gray-200 bg-white p-1">
@@ -1664,15 +1664,17 @@ function PointageTab({ ctx }: { ctx: Ctx }) {
 // ── Kpi shared ──────────────────────────────────────────────────────
 
 function Kpi({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: "rose" | "emerald" }) {
-  const cls = accent === "rose" ? "border-rose-200 bg-rose-50 text-rose-700"
-            : accent === "emerald" ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-            : "border-gray-200 bg-white text-[#1A1A2E]";
-  const [b, bg, txt] = cls.split(" ");
+  const border = accent === "rose"    ? "border-[var(--danger-soft)]"
+               : accent === "emerald" ? "border-[var(--success-soft)]"
+               : "border-[var(--border)]";
+  const txt    = accent === "rose"    ? "text-[var(--danger)]"
+               : accent === "emerald" ? "text-[var(--success)]"
+               : "text-[var(--text)]";
   return (
-    <div className={`rounded-xl border ${b} ${bg} p-3 shadow-sm`}>
-      <p className="text-[10px] font-medium uppercase tracking-wider text-gray-500">{label}</p>
-      <p className={`mt-1 text-lg font-bold ${txt}`}>{value}</p>
-      {sub && <p className="mt-0.5 text-[10px] text-gray-500">{sub}</p>}
+    <div className={`rounded-[12px] border ${border} bg-white p-3`}>
+      <p className="label-upper">{label}</p>
+      <p className={`mono mt-1.5 text-[20px] font-[650] tracking-[-0.02em] leading-[1.1] ${txt}`}>{value}</p>
+      {sub && <p className="mt-1 text-[11px] text-[var(--text-subtle)]">{sub}</p>}
     </div>
   );
 }

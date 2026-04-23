@@ -1,29 +1,46 @@
 @import "tailwindcss";
 
 :root {
-  /* Palette claire */
-  --background:    #F8F9FA;  /* fond app */
-  --surface:       #FFFFFF;  /* cards / sidebar */
-  --surface-alt:   #F1F3F5;  /* lignes alternées, inputs */
-  --border:        #E5E7EB;  /* bordures douces */
-  --border-strong: #D1D5DB;
-  --text:          #1A1A2E;  /* texte principal */
-  --text-muted:    #6B7280;  /* texte secondaire */
-  --text-subtle:   #9CA3AF;  /* texte tertiaire */
-  --accent:        #6366F1;  /* indigo/violet */
+  /* Palette claire — tokens RestoPilot (design handoff v3.2) */
+  --background:    #FAFAFA;  /* fond app */
+  --bg:            #FAFAFA;
+  --bg-subtle:     #F5F5F7;  /* fond input, zones secondaires */
+  --surface:       #FFFFFF;  /* cards, sidebar */
+  --surface-alt:   #F5F5F7;  /* lignes alternées */
+  --surface-hover: #F8F9FB;
+  --border:        #E8E8EC;
+  --border-strong: #D4D4D8;
+  --text:          #0F172A;  /* texte principal */
+  --text-muted:    #64748B;  /* texte secondaire */
+  --text-subtle:   #94A3B8;  /* texte tertiaire */
+  --accent:        #6366F1;
   --accent-hover:  #4F46E5;
   --accent-soft:   #EEF2FF;
   --accent-strong: #4338CA;
+  --accent-border: #C7D2FE;
 
   /* Sémantiques */
   --success:       #10B981;
-  --success-soft:  #D1FAE5;
+  --success-soft:  #ECFDF5;
   --warning:       #F59E0B;
-  --warning-soft:  #FEF3C7;
+  --warning-soft:  #FFFBEB;
   --danger:        #EF4444;
-  --danger-soft:   #FEE2E2;
-  --info:          #3B82F6;
-  --info-soft:     #DBEAFE;
+  --danger-soft:   #FEF2F2;
+  --info:          #0EA5E9;
+  --info-soft:     #F0F9FF;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius:    8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* Ombres (discrètes — conformes design) */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --shadow:    0 2px 4px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.04);
 }
 
 @theme inline {
@@ -105,3 +122,117 @@ html, body {
 
 /* Lignes alternées tableau */
 .rp-row-alt:nth-child(even) { background: var(--surface-alt); }
+
+/* ── Utilitaires design handoff — typographie & chiffres ──────────── */
+
+/** Police monospace (JetBrains Mono) pour TOUS les chiffres structurés :
+ *  prix, IDs (CMD-XXXX, FA-XXXX), pourcentages, dates courtes, quantités.
+ *  Usage : <span className="mono">{amount}</span>
+ */
+.mono {
+  font-family: var(--font-geist-mono), 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+  font-feature-settings: 'tnum' 1;
+}
+.tabular  { font-variant-numeric: tabular-nums; }
+
+/* Titre de page : 22px, weight 650, tracking -0.02em */
+.page-title {
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--text);
+}
+.page-sub {
+  color: var(--text-muted);
+  font-size: 13.5px;
+  margin-top: 3px;
+}
+
+/* Labels de colonnes uppercase : 10.5px, weight 650, tracking 0.04em */
+.label-upper {
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ── Badges & pills de statut ─────────────────────────────────────── */
+
+.rp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 550;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+.rp-badge.neutral { background: var(--bg-subtle);     color: var(--text-muted); }
+.rp-badge.accent  { background: var(--accent-soft);   color: var(--accent); }
+.rp-badge.success { background: var(--success-soft);  color: var(--success); }
+.rp-badge.warning { background: var(--warning-soft);  color: #B45309; }
+.rp-badge.danger  { background: var(--danger-soft);   color: var(--danger); }
+.rp-badge.info    { background: var(--info-soft);     color: #0369A1; }
+
+/* Dot de statut (pulse sur statuts en cours) */
+.rp-status-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.rp-status-dot.pulse { animation: rp-pulse 1.5s ease-in-out infinite; }
+@keyframes rp-pulse {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%      { opacity: 0.5; transform: scale(1.2); }
+}
+
+/* ── KPI cards (dashboard) ─────────────────────────────────────────── */
+
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  transition: border-color 160ms ease;
+}
+.kpi-card:hover { border-color: var(--border-strong); }
+
+.kpi-label {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+.kpi-value {
+  font-family: var(--font-geist-mono), monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 26px;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  color: var(--text);
+}
+.kpi-value .unit {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+.kpi-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11.5px;
+  font-weight: 550;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.kpi-delta.up   { color: var(--success);    background: var(--success-soft); }
+.kpi-delta.down { color: var(--danger);     background: var(--danger-soft); }
+.kpi-delta.flat { color: var(--text-muted); background: var(--bg-subtle); }
