@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { StatutCommande } from "@/lib/supabase/types";
 import { regenerateFacturePDF } from "@/lib/facture-from-db";
 import FactureImportModal from "@/components/factures/FactureImportModal";
+import { Pagination, paginate, PAGE_SIZE_DEFAULT } from "@/components/ui/Pagination";
 
 interface Commande {
   id: string;
@@ -17,6 +18,7 @@ interface Commande {
   avoir_montant: number | null;
   source: string | null;
   numero_facture_externe: string | null;
+  pdf_path: string | null;
   created_at: string;
   lignes_commande: {
     id: string;
@@ -61,7 +63,11 @@ export default function FacturesPage() {
   // Filtres factures
   const [search, setSearch] = useState("");
   const [fournFilter, setFournFilter] = useState<"tous" | string>("tous");
-  const [dateFilter, setDateFilter]   = useState<"tous" | "jour" | "semaine" | "mois">("tous");
+  const [dateFrom, setDateFrom]       = useState<string>("");
+  const [dateTo, setDateTo]           = useState<string>("");
+  const [montantMin, setMontantMin]   = useState<string>("");
+  const [montantMax, setMontantMax]   = useState<string>("");
+  const [page, setPage]               = useState(1);
 
   useEffect(() => {
     (async () => {
@@ -72,7 +78,7 @@ export default function FacturesPage() {
         .from("commandes")
         .select(`
           id, fournisseur_id, fournisseur_externe_id, statut, montant_total, avoir_montant,
-          source, numero_facture_externe, created_at,
+          source, numero_facture_externe, pdf_path, created_at,
           lignes_commande ( id, nom_snapshot, prix_snapshot, unite, quantite )
         `)
         .eq("restaurateur_id", user.id)
@@ -143,19 +149,24 @@ export default function FacturesPage() {
   const filtered = useMemo(() => {
     let arr = commandes;
     if (fournFilter !== "tous") arr = arr.filter(c => (c.fournisseur_id ?? c.fournisseur_externe_id) === fournFilter);
-    if (dateFilter !== "tous") {
-      const ref = new Date();
-      if (dateFilter === "jour")    ref.setHours(0, 0, 0, 0);
-      if (dateFilter === "semaine") ref.setDate(ref.getDate() - 7);
-      if (dateFilter === "mois")    ref.setDate(ref.getDate() - 30);
-      arr = arr.filter(c => new Date(c.created_at) >= ref);
-    }
+    if (dateFrom) arr = arr.filter(c => c.created_at.slice(0, 10) >= dateFrom);
+    if (dateTo)   arr = arr.filter(c => c.created_at.slice(0, 10) <= dateTo);
+    const min = parseFloat(montantMin);
+    if (!isNaN(min) && min > 0) arr = arr.filter(c => Number(c.montant_total) >= min);
+    const max = parseFloat(montantMax);
+    if (!isNaN(max) && max > 0) arr = arr.filter(c => Number(c.montant_total) <= max);
     if (search) {
       const s = search.toLowerCase();
-      arr = arr.filter(c => (fournNames[c.fournisseur_id ?? c.fournisseur_externe_id ?? ""] ?? "").toLowerCase().includes(s));
+      arr = arr.filter(c => {
+        const nom = (fournNames[c.fournisseur_id ?? c.fournisseur_externe_id ?? ""] ?? "").toLowerCase();
+        const num = (c.numero_facture_externe ?? "").toLowerCase();
+        return nom.includes(s) || num.includes(s) || c.id.toLowerCase().startsWith(s);
+      });
     }
     return arr;
-  }, [commandes, fournFilter, dateFilter, search, fournNames]);
+  }, [commandes, fournFilter, dateFrom, dateTo, montantMin, montantMax, search, fournNames]);
+
+  useEffect(() => { setPage(1); }, [fournFilter, dateFrom, dateTo, montantMin, montantMax, search]);
 
   const fournUniques = Array.from(new Set(commandes.map(c => c.fournisseur_id ?? c.fournisseur_externe_id).filter((x): x is string => !!x)));
   const totalFiltre = filtered.filter(c => c.statut !== "annulee").reduce((s, c) => s + Number(c.montant_total), 0);
@@ -190,6 +201,26 @@ export default function FacturesPage() {
     try { await regenerateFacturePDF(id); }
     catch (e) { console.error(e); alert("Erreur lors de la génération du PDF."); }
     setDL(null);
+  }
+
+  /** Ouvre le PDF original d'une facture importée dans un nouvel onglet. */
+  async function viewOriginal(pdfPath: string) {
+    const supa = createClient();
+    const { data, error } = await supa.storage.from("factures-externes")
+      .createSignedUrl(pdfPath, 300);
+    if (error || !data) { alert("Impossible d'ouvrir le PDF : " + (error?.message ?? "inconnu")); return; }
+    window.open(data.signedUrl, "_blank");
+  }
+
+  /** Télécharge le PDF original d'une facture importée. */
+  async function downloadOriginal(pdfPath: string) {
+    const supa = createClient();
+    const { data, error } = await supa.storage.from("factures-externes")
+      .createSignedUrl(pdfPath, 300, { download: true });
+    if (error || !data) { alert("Impossible de télécharger : " + (error?.message ?? "inconnu")); return; }
+    const a = document.createElement("a");
+    a.href = data.signedUrl;
+    a.click();
   }
 
   return (
@@ -236,33 +267,46 @@ export default function FacturesPage() {
         </div>
 
         {/* Filtres (communs aux 2 onglets) */}
-        <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="mb-4 flex flex-wrap items-end gap-2">
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Rechercher un fournisseur"
+            placeholder="🔍 N° facture, fournisseur, id…"
             className="flex-1 min-w-48 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
           />
-          <select
-            value={fournFilter}
-            onChange={e => setFournFilter(e.target.value)}
-            className="min-h-[44px] rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm outline-none focus:border-indigo-500"
-          >
+          <select value={fournFilter} onChange={e => setFournFilter(e.target.value)}
+                  className="min-h-[44px] rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm outline-none focus:border-indigo-500">
             <option value="tous">Tous fournisseurs</option>
             {fournUniques.map(id => (
               <option key={id} value={id}>{fournNames[id] ?? id.slice(0, 6)}</option>
             ))}
           </select>
-          <select
-            value={dateFilter}
-            onChange={e => setDateFilter(e.target.value as typeof dateFilter)}
-            className="min-h-[44px] rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm outline-none focus:border-indigo-500"
-          >
-            <option value="tous">Toutes dates</option>
-            <option value="jour">Aujourd&apos;hui</option>
-            <option value="semaine">7 derniers jours</option>
-            <option value="mois">30 derniers jours</option>
-          </select>
+          <label className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-medium text-gray-500">Du</span>
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} max={dateTo || undefined}
+                   className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-2 py-1.5 text-sm" />
+          </label>
+          <label className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-medium text-gray-500">Au</span>
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} min={dateFrom || undefined}
+                   className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-2 py-1.5 text-sm" />
+          </label>
+          <label className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-medium text-gray-500">Min €</span>
+            <input type="number" min="0" step="0.01" value={montantMin} onChange={e => setMontantMin(e.target.value)} placeholder="0"
+                   className="min-h-[40px] w-24 rounded-xl border border-gray-200 bg-white px-2 py-1.5 text-sm" />
+          </label>
+          <label className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-medium text-gray-500">Max €</span>
+            <input type="number" min="0" step="0.01" value={montantMax} onChange={e => setMontantMax(e.target.value)} placeholder="∞"
+                   className="min-h-[40px] w-24 rounded-xl border border-gray-200 bg-white px-2 py-1.5 text-sm" />
+          </label>
+          {(search || fournFilter !== "tous" || dateFrom || dateTo || montantMin || montantMax) && (
+            <button onClick={() => { setSearch(""); setFournFilter("tous"); setDateFrom(""); setDateTo(""); setMontantMin(""); setMontantMax(""); }}
+                    className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-3 text-xs text-gray-600 hover:border-indigo-300">
+              Réinitialiser
+            </button>
+          )}
         </div>
 
         <div className="mb-4 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-600">
@@ -295,7 +339,7 @@ export default function FacturesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {filtered.map((c, i) => {
+                  {paginate(filtered, page, PAGE_SIZE_DEFAULT).map((c, i) => {
                     const ttc = Number(c.montant_total) * 1.10;
                     const chip = STATUT_CHIP[c.statut];
                     return (
@@ -317,19 +361,41 @@ export default function FacturesPage() {
                         <td className="px-5 py-3 text-right font-semibold text-[#1A1A2E]">{fmt(c.montant_total)}</td>
                         <td className="px-5 py-3 text-right text-gray-600">{fmt(ttc)}</td>
                         <td className="px-5 py-3 text-right">
-                          <button
-                            onClick={() => download(c.id)}
-                            disabled={downloading === c.id}
-                            className="min-h-[40px] rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-[#1A1A2E] hover:border-indigo-300 hover:text-indigo-600 disabled:opacity-50"
-                          >
-                            {downloading === c.id ? "…" : "↓ PDF"}
-                          </button>
+                          <div className="flex justify-end gap-1">
+                            {c.source === "import" && c.pdf_path ? (
+                              <>
+                                <button
+                                  onClick={() => viewOriginal(c.pdf_path!)}
+                                  className="min-h-[36px] rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-[#1A1A2E] hover:border-indigo-300 hover:text-indigo-600"
+                                  title="Consulter le PDF original"
+                                >
+                                  👁️ Consulter
+                                </button>
+                                <button
+                                  onClick={() => downloadOriginal(c.pdf_path!)}
+                                  className="min-h-[36px] rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-[#1A1A2E] hover:border-indigo-300 hover:text-indigo-600"
+                                  title="Télécharger le PDF original"
+                                >
+                                  ⬇️ Télécharger
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                onClick={() => download(c.id)}
+                                disabled={downloading === c.id}
+                                className="min-h-[36px] rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-[#1A1A2E] hover:border-indigo-300 hover:text-indigo-600 disabled:opacity-50"
+                              >
+                                {downloading === c.id ? "…" : "↓ Générer PDF"}
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
+              <Pagination page={page} total={filtered.length} onChange={setPage} />
             </div>
           )
         ) : (

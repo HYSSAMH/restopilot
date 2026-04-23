@@ -1,92 +1,291 @@
 "use client";
 
 import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/auth/use-profile";
+import { fmt } from "@/lib/gestion-data";
+
+interface CARow { date: string; ca_total: number }
+interface Commande { id: string; statut: string; montant_total: number; avoir_statut: string | null; avoir_montant: number | null; created_at: string; fournisseur_id: string | null; fournisseur_externe_id: string | null; source: string | null }
+interface Charge { id: string; nom: string; montant: number; jour_prelevement: number | null; actif: boolean }
+interface Tarif { id: string; prix: number; prix_precedent: number | null; produit_nom: string }
+
+const OBJECTIF_KEY = "restopilot_budget_config";
 
 export default function RestaurateurHome() {
-  const { profile } = useProfile();
-  const firstName = profile?.prenom || profile?.nom_commercial || profile?.nom_etablissement || "";
+  const { profile, displayName } = useProfile();
+  const supa = useMemo(() => createClient(), []);
+
+  const [caRows, setCaRows]           = useState<CARow[]>([]);
+  const [commandes, setCommandes]     = useState<Commande[]>([]);
+  const [charges, setCharges]         = useState<Charge[]>([]);
+  const [tarifsVar, setTarifsVar]     = useState<Tarif[]>([]);
+  const [loading, setLoading]         = useState(true);
+  const [objectifPct, setObjectifPct] = useState(28);
+  const [objectifCaJour, setObjectifCaJour] = useState(0);
+
+  // Chargement objectif depuis localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(OBJECTIF_KEY);
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (typeof p.objectifPct   === "number") setObjectifPct(p.objectifPct);
+        if (typeof p.objectifCaJour === "number") setObjectifCaJour(p.objectifCaJour);
+      }
+    } catch {}
+  }, []);
+
+  const load = useCallback(async () => {
+    if (!profile?.id) return;
+    setLoading(true);
+    const today = new Date();
+    const weekAgo     = new Date(today); weekAgo.setDate(today.getDate() - 7);
+    const twoWeeksAgo = new Date(today); twoWeeksAgo.setDate(today.getDate() - 14);
+    const monthStart  = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    const [caRes, cmdRes, chgRes, tarifRes] = await Promise.all([
+      supa.from("ca_journalier")
+          .select("date, ca_total")
+          .eq("restaurateur_id", profile.id)
+          .gte("date", twoWeeksAgo.toISOString().slice(0, 10))
+          .order("date", { ascending: false }),
+      supa.from("commandes")
+          .select("id, statut, montant_total, avoir_statut, avoir_montant, created_at, fournisseur_id, fournisseur_externe_id, source")
+          .eq("restaurateur_id", profile.id)
+          .gte("created_at", monthStart.toISOString())
+          .order("created_at", { ascending: false })
+          .limit(100),
+      supa.from("charges_recurrentes")
+          .select("id, nom, montant, jour_prelevement, actif")
+          .eq("restaurateur_id", profile.id)
+          .eq("actif", true),
+      supa.from("tarifs")
+          .select("id, prix, prix_precedent, produits(nom)")
+          .eq("actif", true)
+          .not("prix_precedent", "is", null),
+    ]);
+
+    setCaRows((caRes.data ?? []) as CARow[]);
+    setCommandes((cmdRes.data ?? []) as Commande[]);
+    setCharges((chgRes.data ?? []) as Charge[]);
+    type TR = { id: string; prix: number; prix_precedent: number | null; produits: { nom: string } | null };
+    const tarifsWithName: Tarif[] = ((tarifRes.data ?? []) as unknown as TR[]).map(t => ({
+      id: t.id, prix: Number(t.prix), prix_precedent: t.prix_precedent != null ? Number(t.prix_precedent) : null,
+      produit_nom: t.produits?.nom ?? "—",
+    }));
+    setTarifsVar(tarifsWithName);
+    setLoading(false);
+  }, [supa, profile?.id]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const today    = new Date();
+  const todayKey = today.toISOString().slice(0, 10);
+  const moisKey  = todayKey.slice(0, 7);
+
+  // ── CA ──
+  const caToday = caRows.filter(r => r.date === todayKey).reduce((s, r) => s + Number(r.ca_total), 0);
+  const caWeek  = useMemo(() => {
+    const d = new Date(today); d.setDate(today.getDate() - 7);
+    return caRows.filter(r => new Date(r.date) >= d).reduce((s, r) => s + Number(r.ca_total), 0);
+  }, [caRows, today]);
+  const caPrevWeek = useMemo(() => {
+    const a = new Date(today); a.setDate(today.getDate() - 14);
+    const b = new Date(today); b.setDate(today.getDate() - 7);
+    return caRows.filter(r => { const d = new Date(r.date); return d >= a && d < b; })
+                 .reduce((s, r) => s + Number(r.ca_total), 0);
+  }, [caRows, today]);
+  const deltaWeek = caPrevWeek > 0 ? ((caWeek - caPrevWeek) / caPrevWeek) * 100 : 0;
+
+  const caMois = caRows.filter(r => r.date.startsWith(moisKey)).reduce((s, r) => s + Number(r.ca_total), 0);
+  const depMois = commandes.filter(c => c.statut !== "annulee").reduce((s, c) => s + Number(c.montant_total), 0);
+  const coutMatiereMoisPct = caMois > 0 ? (depMois / caMois) * 100 : 0;
+
+  // Progression objectif CA jour
+  const progrJour = objectifCaJour > 0 ? Math.min(100, (caToday / objectifCaJour) * 100) : 0;
+
+  // ── Alertes ──
+  const derniereCommandes = commandes.slice(0, 3);
+  const avoirsEnAttente   = commandes.filter(c => c.avoir_statut === "en_attente" || c.avoir_statut === "conteste").length;
+  const haussesPrix = tarifsVar.filter(t =>
+    t.prix_precedent != null && t.prix_precedent > 0
+    && ((t.prix - t.prix_precedent) / t.prix_precedent) > 0.10,
+  );
+  const now = new Date();
+  const in7 = new Date(); in7.setDate(now.getDate() + 7);
+  const prochainsPrelevements = charges
+    .filter(c => c.jour_prelevement)
+    .map(c => {
+      const d = new Date(now.getFullYear(), now.getMonth(), c.jour_prelevement!);
+      if (d < now) d.setMonth(d.getMonth() + 1);
+      return { charge: c, date: d };
+    })
+    .filter(x => x.date <= in7)
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  const firstName = profile?.prenom || profile?.nom_commercial || displayName;
+  const hasAlertes = avoirsEnAttente > 0 || haussesPrix.length > 0 || prochainsPrelevements.length > 0;
 
   return (
     <DashboardLayout role="restaurateur">
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
-        {/* Header */}
-        <div className="mb-10 flex flex-wrap items-start justify-between gap-4">
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-10">
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[#1A1A2E]">
-              Bonjour{firstName ? ` ${firstName}` : ""} 👋
-            </h1>
-            <p className="mt-1.5 text-sm text-gray-500">
-              Que souhaitez-vous faire aujourd&apos;hui ?
-            </p>
+            <h1 className="text-2xl font-bold text-[#1A1A2E]">Bonjour{firstName ? ` ${firstName}` : ""} 👋</h1>
+            <p className="mt-1 text-sm text-gray-500">Vue d&apos;ensemble de votre activité.</p>
           </div>
-          <Link
-            href="/profile"
-            className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-[#1A1A2E] shadow-sm transition-colors hover:border-indigo-300 hover:text-indigo-600"
-          >
-            <span>👤</span>
-            <span>Mon profil</span>
+          <Link href="/profile"
+                className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-[#1A1A2E] hover:border-indigo-300 hover:text-indigo-600">
+            👤 Mon profil
           </Link>
         </div>
 
-        {/* Cards d'action */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <ActionCard
-            href="/dashboard/restaurateur/commandes"
-            icon="🛒"
-            title="Passer une commande"
-            description="Parcourez le catalogue des fournisseurs et commandez au meilleur prix."
-          />
-          <ActionCard
-            href="/dashboard/restaurateur/historique"
-            icon="📋"
-            title="Mes commandes"
-            description="Suivez le statut de vos commandes en cours et passées."
-          />
-        </div>
+        {loading ? (
+          <div className="h-40 animate-pulse rounded-2xl bg-gray-100" />
+        ) : (
+          <>
+            {/* KPIs + objectif jour */}
+            <section className="mb-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wider text-gray-500">CA du jour</p>
+                  <p className="mt-1 text-3xl font-bold text-[#1A1A2E]">{fmt(caToday)}</p>
+                  {objectifCaJour > 0 && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Objectif : <span className="font-semibold text-[#1A1A2E]">{fmt(objectifCaJour)}</span> · {progrJour.toFixed(0)}%
+                    </p>
+                  )}
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-medium uppercase tracking-wider text-gray-500">CA 7 jours</p>
+                  <p className="mt-1 text-xl font-bold text-[#1A1A2E]">{fmt(caWeek)}</p>
+                  {caPrevWeek > 0 && (
+                    <p className={`mt-0.5 text-xs font-semibold ${deltaWeek >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                      {deltaWeek >= 0 ? "↗ +" : "↘ "}{deltaWeek.toFixed(1)}% vs semaine précédente
+                    </p>
+                  )}
+                </div>
+              </div>
+              {objectifCaJour > 0 && (
+                <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${progrJour >= 100 ? "bg-emerald-500" : progrJour >= 70 ? "bg-indigo-500" : "bg-amber-400"}`}
+                    style={{ width: `${progrJour}%` }}
+                  />
+                </div>
+              )}
+              {objectifCaJour === 0 && (
+                <div className="mt-3 rounded-lg bg-indigo-50/60 px-3 py-2 text-xs text-indigo-700">
+                  💡 Définissez un objectif de CA journalier dans{" "}
+                  <Link href="/dashboard/restaurateur/gestion/budget" className="underline">Budget</Link>{" "}
+                  pour voir votre progression en direct.
+                </div>
+              )}
+            </section>
 
-        {/* Bandeau profil */}
-        <Link
-          href="/profile"
-          className="mt-5 flex items-center gap-4 rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 to-violet-50 p-5 transition-all hover:border-indigo-200"
-        >
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-xl text-white shadow-md shadow-indigo-500/20">
-            👤
-          </div>
-          <div className="flex-1">
-            <p className="font-semibold text-[#1A1A2E]">Complétez votre profil</p>
-            <p className="mt-0.5 text-xs text-gray-500">
-              SIRET, adresse, logo, livraison — pré-remplit automatiquement vos factures.
-            </p>
-          </div>
-          <span className="shrink-0 text-indigo-500">→</span>
-        </Link>
+            <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-3">
+              <Kpi label={`CA mois ${moisKey}`}   value={fmt(caMois)} />
+              <Kpi label="Dépenses mois"          value={fmt(depMois)} />
+              <Kpi label="Coût matière %"          value={`${coutMatiereMoisPct.toFixed(1)}%`}
+                   sub={`objectif ${objectifPct}%`}
+                   accent={coutMatiereMoisPct > objectifPct ? "rose" : "emerald"} />
+            </div>
+
+            {/* Alertes */}
+            {hasAlertes && (
+              <section className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+                <p className="mb-2 text-sm font-semibold text-amber-900">⚠ Alertes en cours</p>
+                <ul className="space-y-1 text-xs text-amber-800">
+                  {avoirsEnAttente > 0 && (
+                    <li>• <Link href="/dashboard/restaurateur/historique" className="underline hover:no-underline">{avoirsEnAttente} avoir{avoirsEnAttente > 1 ? "s" : ""} en attente</Link></li>
+                  )}
+                  {haussesPrix.slice(0, 3).map(t => {
+                    const delta = ((t.prix - (t.prix_precedent ?? 1)) / (t.prix_precedent ?? 1)) * 100;
+                    return (
+                      <li key={t.id}>• {t.produit_nom} : <span className="font-semibold">+{delta.toFixed(1)}%</span> de hausse (prix fournisseur)</li>
+                    );
+                  })}
+                  {haussesPrix.length > 3 && (
+                    <li>• <Link href="/dashboard/restaurateur/menu/mercuriale" className="underline">voir les {haussesPrix.length - 3} autres hausses</Link></li>
+                  )}
+                  {prochainsPrelevements.slice(0, 3).map(p => (
+                    <li key={p.charge.id}>
+                      • Prélèvement <span className="font-semibold">{p.charge.nom}</span> de {fmt(Number(p.charge.montant))} le {p.date.toLocaleDateString("fr-FR")}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {/* Raccourcis */}
+            <section className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Shortcut href="/dashboard/restaurateur/commandes"          icon="🛒" title="Passer une commande" desc="Parcourez le catalogue fournisseurs" />
+              <Shortcut href="/dashboard/restaurateur/gestion/saisie-ca" icon="💰" title="Saisir mon CA"         desc="Recette du jour ou du mois" />
+              <Shortcut href="/dashboard/restaurateur/factures"           icon="📄" title="Importer une facture"  desc="Analyse automatique via Claude" />
+              <Shortcut href="/dashboard/restaurateur/menu"               icon="🍽️" title="Nouvelle fiche technique" desc="Composer un plat, suivre les coûts" />
+            </section>
+
+            {/* Dernières commandes */}
+            <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-[#1A1A2E]">Dernières commandes</h3>
+                <Link href="/dashboard/restaurateur/historique" className="text-xs font-medium text-indigo-600 hover:underline">Voir tout →</Link>
+              </div>
+              {derniereCommandes.length === 0 ? (
+                <p className="text-sm text-gray-500">Aucune commande récente.</p>
+              ) : (
+                <ul className="divide-y divide-gray-100">
+                  {derniereCommandes.map(c => (
+                    <li key={c.id} className="flex flex-wrap items-center gap-3 py-2.5">
+                      <div className="flex-1 min-w-[180px]">
+                        <p className="text-sm font-medium text-[#1A1A2E]">
+                          {c.source === "import" ? "📄 Facture importée" : `Commande ${c.id.slice(0, 8)}`}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(c.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+                        </p>
+                      </div>
+                      <span className="rounded-full border border-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600">{c.statut}</span>
+                      <span className="font-semibold text-[#1A1A2E]">{fmt(Number(c.montant_total))}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </>
+        )}
       </div>
     </DashboardLayout>
   );
 }
 
-function ActionCard({
-  href, icon, title, description,
-}: {
-  href: string; icon: string; title: string; description: string;
-}) {
+function Kpi({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: "rose" | "emerald" }) {
+  const cls = accent === "rose"    ? "border-rose-200 bg-rose-50 text-rose-700"
+            : accent === "emerald" ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+            : "border-gray-200 bg-white text-[#1A1A2E]";
+  const [b, bg, txt] = cls.split(" ");
   return (
-    <Link
-      href={href}
-      className="group relative flex flex-col gap-4 overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md"
-    >
-      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-xl text-white shadow-md shadow-indigo-500/20">
+    <div className={`rounded-xl border ${b} ${bg} p-4 shadow-sm`}>
+      <p className="text-[10px] font-medium uppercase tracking-wider text-gray-500">{label}</p>
+      <p className={`mt-1 text-xl font-bold ${txt}`}>{value}</p>
+      {sub && <p className="mt-0.5 text-[10px] text-gray-500">{sub}</p>}
+    </div>
+  );
+}
+
+function Shortcut({ href, icon, title, desc }: { href: string; icon: string; title: string; desc: string }) {
+  return (
+    <Link href={href}
+          className="group flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md">
+      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-xl text-white shadow-md shadow-indigo-500/20">
         {icon}
       </div>
       <div>
-        <h2 className="text-lg font-semibold text-[#1A1A2E]">{title}</h2>
-        <p className="mt-1 text-sm leading-relaxed text-gray-500">{description}</p>
-      </div>
-      <div className="mt-auto flex items-center gap-2 text-sm font-medium text-indigo-500 transition-all group-hover:gap-3">
-        <span>Y accéder</span>
-        <span className="transition-transform group-hover:translate-x-0.5">→</span>
+        <p className="font-semibold text-[#1A1A2E]">{title}</p>
+        <p className="mt-0.5 text-xs text-gray-500">{desc}</p>
       </div>
     </Link>
   );

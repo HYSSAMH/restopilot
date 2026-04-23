@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/auth/use-profile";
 import { fmt, CAT_LABELS } from "@/lib/gestion-data";
 import { loadProduitSources, type ProduitSource, type ProduitSourceKind } from "@/lib/mercuriale-sources";
+import { Pagination, paginate, PAGE_SIZE_DEFAULT } from "@/components/ui/Pagination";
 
 type Source = ProduitSourceKind;
 
@@ -40,6 +41,7 @@ export default function MercurialePage() {
   const [fournFilter, setFournFilter] = useState<string>("");
   const [srcFilter, setSrcFilter] = useState<Source | "">("");
   const [sort, setSort]           = useState<SortKey>("nom");
+  const [page, setPage]           = useState(1);
 
   // Modale conditionnement
   const [condModal, setCondModal] = useState<ProduitRow | null>(null);
@@ -123,6 +125,11 @@ export default function MercurialePage() {
     if (sort === "updated")   copy.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
     return copy;
   }, [rows, search, catFilter, fournFilter, srcFilter, sort]);
+
+  // Reset page quand filtre change
+  useEffect(() => { setPage(1); }, [search, catFilter, fournFilter, srcFilter, sort]);
+
+  const pagedRows = paginate(filtered, page, PAGE_SIZE_DEFAULT);
 
   // Alertes : tarifs utilisés dans fiche + variation > 5 %
   const alertes = useMemo(() => rows.filter(r =>
@@ -264,7 +271,7 @@ export default function MercurialePage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {filtered.map(r => {
+                    {pagedRows.map(r => {
                       const v = variationInfo(r);
                       const ttc = r.prix_ht * (1 + r.tva_taux / 100);
                       return (
@@ -338,6 +345,7 @@ export default function MercurialePage() {
                     })}
                   </tbody>
                 </table>
+                <Pagination page={page} total={filtered.length} onChange={setPage} />
               </div>
             )}
           </section>

@@ -142,23 +142,6 @@ export default function Sidebar({ role: roleOverride, isOpen = false, onClose }:
         })}
       </nav>
 
-      {/* Besoin d'aide */}
-      <div className="mx-3 mb-3 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 p-4 text-white">
-        <div className="mb-1.5 flex h-7 w-7 items-center justify-center rounded-lg bg-white/20">
-          <span className="text-sm">💬</span>
-        </div>
-        <p className="text-sm font-semibold leading-tight">Besoin d&apos;aide ?</p>
-        <p className="mt-1 text-[11px] text-white/80">
-          Contactez notre équipe pour toute question.
-        </p>
-        <a
-          href="mailto:support@restopilot.fr"
-          className="mt-2.5 inline-block rounded-md bg-white/15 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/25"
-        >
-          Écrire au support
-        </a>
-      </div>
-
       {/* Logout */}
       <div className="border-t border-[#E5E7EB] px-3 py-3">
         <button

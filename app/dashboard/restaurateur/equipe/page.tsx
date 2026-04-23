@@ -12,6 +12,7 @@ type Employe = {
   email: string | null;
   actif: boolean | null;
   created_at: string | null;
+  last_sign_in_at: string | null;
 };
 
 export default function EquipePage() {
@@ -34,16 +35,18 @@ export default function EquipePage() {
     if (!profile?.id) return;
     setLoading(true);
     setErr(null);
-    const { data, error } = await supa
-      .from("profiles")
-      .select("id, prenom, nom, email, actif, created_at")
-      .eq("restaurant_id", profile.id)
-      .eq("role", "employe")
-      .order("created_at", { ascending: false });
-    if (error) setErr(error.message);
-    else setEmployes((data ?? []) as Employe[]);
+    // Passe par l'API service_role : la RLS profiles ne laisse plus le
+    // patron voir les lignes de ses employés depuis le client anon.
+    try {
+      const res = await fetch("/api/employees");
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error ?? `HTTP ${res.status}`);
+      setEmployes((json.employes ?? []) as Employe[]);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Erreur de chargement");
+    }
     setLoading(false);
-  }, [supa, profile?.id]);
+  }, [profile?.id]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -83,8 +86,13 @@ export default function EquipePage() {
 
   async function handleToggleActif(emp: Employe) {
     const next = !emp.actif;
-    const { error } = await supa.from("profiles").update({ actif: next }).eq("id", emp.id);
-    if (error) { setErr(error.message); return; }
+    const res = await fetch(`/api/employees/${emp.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actif: next }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) { setErr(json?.error ?? "Mise à jour échouée."); return; }
     setEmployes((prev) => prev.map((e) => (e.id === emp.id ? { ...e, actif: next } : e)));
   }
 
@@ -189,11 +197,18 @@ export default function EquipePage() {
             <ul className="divide-y divide-gray-100">
               {employes.map((emp) => (
                 <li key={emp.id} className="flex flex-wrap items-center gap-3 px-6 py-4">
-                  <div className="flex-1 min-w-[180px]">
+                  <div className="flex-1 min-w-[220px]">
                     <p className="text-sm font-medium text-[#1A1A2E]">
                       {emp.prenom} {emp.nom}
                     </p>
                     <p className="text-xs text-gray-500">{emp.email}</p>
+                    <p className="mt-0.5 text-[11px] text-gray-400">
+                      Créé le {emp.created_at ? new Date(emp.created_at).toLocaleDateString("fr-FR") : "—"}
+                      {" · "}
+                      {emp.last_sign_in_at
+                        ? `Dernière connexion : ${new Date(emp.last_sign_in_at).toLocaleDateString("fr-FR")}`
+                        : "Jamais connecté"}
+                    </p>
                   </div>
                   <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
                     emp.actif
@@ -207,6 +222,25 @@ export default function EquipePage() {
                     className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-indigo-300 hover:text-indigo-600"
                   >
                     {emp.actif ? "Désactiver" : "Réactiver"}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const newPrenom = prompt("Prénom :", emp.prenom ?? "");
+                      if (newPrenom == null) return;
+                      const newNom = prompt("Nom :", emp.nom ?? "");
+                      if (newNom == null) return;
+                      const res = await fetch(`/api/employees/${emp.id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ prenom: newPrenom, nom: newNom }),
+                      });
+                      const json = await res.json().catch(() => ({}));
+                      if (!res.ok) { setErr(json?.error ?? "Mise à jour échouée."); return; }
+                      await load();
+                    }}
+                    className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-indigo-300 hover:text-indigo-600"
+                  >
+                    Modifier
                   </button>
                   <button
                     onClick={() => handleDelete(emp)}

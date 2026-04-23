@@ -33,6 +33,48 @@ async function getPatron() {
   return profile as { id: string; role: string } | null;
 }
 
+// ── PATCH : mettre à jour un employé (prénom/nom/actif) ──────────────────
+export async function PATCH(
+  req: NextRequest,
+  { params }: RouteContext<"/api/employees/[id]">,
+) {
+  const patron = await getPatron();
+  if (!patron) return Response.json({ error: "Non authentifié." }, { status: 401 });
+  if (patron.role !== "restaurateur") {
+    return Response.json({ error: "Accès réservé." }, { status: 403 });
+  }
+
+  const { id } = await params;
+  if (!id) return Response.json({ error: "Identifiant manquant." }, { status: 400 });
+
+  let body: { prenom?: string; nom?: string; actif?: boolean };
+  try { body = await req.json(); } catch { return Response.json({ error: "Corps invalide." }, { status: 400 }); }
+
+  let admin;
+  try { admin = adminClient(); }
+  catch (e) { return Response.json({ error: e instanceof Error ? e.message : ENV_MISSING }, { status: 500 }); }
+
+  // Vérif ownership
+  const { data: target } = await admin.from("profiles")
+    .select("id, role, restaurant_id").eq("id", id).maybeSingle();
+  if (!target) return Response.json({ error: "Employé introuvable." }, { status: 404 });
+  if (target.role !== "employe" || target.restaurant_id !== patron.id) {
+    return Response.json({ error: "Cet employé ne vous appartient pas." }, { status: 403 });
+  }
+
+  const patch: Record<string, unknown> = {};
+  if (typeof body.prenom === "string") patch.prenom = body.prenom.trim();
+  if (typeof body.nom    === "string") patch.nom    = body.nom.trim();
+  if (typeof body.actif  === "boolean") patch.actif = body.actif;
+  if (Object.keys(patch).length === 0) {
+    return Response.json({ error: "Rien à modifier." }, { status: 400 });
+  }
+
+  const { error } = await admin.from("profiles").update(patch).eq("id", id);
+  if (error) return Response.json({ error: error.message }, { status: 500 });
+  return Response.json({ ok: true });
+}
+
 // ── DELETE : supprimer un employé ────────────────────────────────────────
 export async function DELETE(
   _req: NextRequest,

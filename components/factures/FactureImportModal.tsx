@@ -51,6 +51,10 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [filename, setFilename] = useState("");
   const [facture, setFacture]   = useState<ParsedFacture | null>(null);
+  // Base64 du PDF original — réutilisé pour l'upload vers storage
+  // factures-externes après la création de la commande.
+  const [fileBase64, setFileBase64]   = useState<string | null>(null);
+  const [fileMediaType, setFileMediaType] = useState<string | null>(null);
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -66,6 +70,8 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
     try {
       const b64 = await readBase64(file);
       const mt = file.type === "image/jpg" ? "image/jpeg" : file.type;
+      setFileBase64(b64);
+      setFileMediaType(mt);
       const res = await fetch("/api/facture-import", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
@@ -193,6 +199,28 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
         created_at:              createdAt,
       }).select("id").single();
       if (errCmd || !cmd) throw new Error("Création commande échouée : " + (errCmd?.message ?? ""));
+
+      // 2.b Upload du PDF/image original dans le bucket factures-externes
+      // pour consultation / téléchargement ultérieur.
+      if (fileBase64 && fileMediaType) {
+        try {
+          const binary = Uint8Array.from(atob(fileBase64), ch => ch.charCodeAt(0));
+          const ext = fileMediaType === "application/pdf" ? "pdf"
+                    : fileMediaType === "image/png"       ? "png"
+                    : fileMediaType === "image/webp"      ? "webp"
+                    : "jpg";
+          const path = `${user.id}/${cmd.id}.${ext}`;
+          const { error: errUp } = await supabase.storage.from("factures-externes")
+            .upload(path, binary, { contentType: fileMediaType, upsert: true });
+          if (errUp) {
+            console.warn("[facture-import] upload storage failed:", errUp);
+          } else {
+            await supabase.from("commandes").update({ pdf_path: path }).eq("id", cmd.id);
+          }
+        } catch (upErr) {
+          console.warn("[facture-import] upload exception:", upErr);
+        }
+      }
 
       // 3. Lignes
       const { error: errLignes } = await supabase.from("lignes_commande").insert(

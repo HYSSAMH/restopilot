@@ -180,6 +180,25 @@ export async function POST(req: NextRequest) {
   const isImage   = mediaType.startsWith("image/");
 
   try {
+    // PDF → extraction texte préalable via pdf-parse (gains de précision
+    // vs envoi direct du base64 à Claude). Les images passent toujours par
+    // le canal vision d'Anthropic.
+    let extractedText = "";
+    if (!isImage) {
+      try {
+        // @ts-expect-error — pas de types publiés pour le sous-module
+        const mod = await import("pdf-parse/lib/pdf-parse.js");
+        const pdfParse = mod.default as
+          (data: Buffer) => Promise<{ text: string; numpages: number }>;
+        const t0 = Date.now();
+        const parsedPdf = await pdfParse(Buffer.from(fileBase64, "base64"));
+        extractedText = parsedPdf.text;
+        console.log(`[facture-import] pdf-parse ${parsedPdf.numpages}p, ${extractedText.length} chars, ${Date.now() - t0}ms`);
+      } catch (pdfErr) {
+        console.warn("[facture-import] pdf-parse failed, fallback vers envoi PDF direct :", pdfErr);
+      }
+    }
+
     const content: MsgContent[] = isImage
       ? [
           { type: "image",
@@ -191,11 +210,18 @@ export async function POST(req: NextRequest) {
           },
           { type: "text", text: PROMPT },
         ]
-      : [
-          { type: "document", source: { type: "base64", media_type: "application/pdf", data: fileBase64 } },
-          { type: "text", text: PROMPT },
-        ];
+      : extractedText && extractedText.trim().length > 50
+        ? [
+            // Mode texte : Claude reçoit le texte propre, pas le base64
+            { type: "text", text: PROMPT + "\n\n--- DÉBUT DU TEXTE EXTRAIT DU PDF ---\n" + extractedText + "\n--- FIN ---" },
+          ]
+        : [
+            // Fallback : le PDF n'a pas pu être lu en texte (scanné ?), on envoie le PDF brut
+            { type: "document", source: { type: "base64", media_type: "application/pdf", data: fileBase64 } },
+            { type: "text", text: PROMPT },
+          ];
 
+    const usePdfBeta = !isImage && (!extractedText || extractedText.trim().length <= 50);
     const t0 = Date.now();
     const msg = await (anthropic.messages.create as (
       body: Omit<Anthropic.MessageCreateParamsNonStreaming, "messages"> & {
@@ -204,11 +230,11 @@ export async function POST(req: NextRequest) {
       opts?: Anthropic.RequestOptions,
     ) => Promise<Anthropic.Message>)(
       { model: MODEL_ID, max_tokens: 4096, messages: [{ role: "user", content }] },
-      isImage ? {} : { headers: { "anthropic-beta": "pdfs-2024-09-25" } },
+      usePdfBeta ? { headers: { "anthropic-beta": "pdfs-2024-09-25" } } : {},
     );
 
     const text = msg.content[0].type === "text" ? msg.content[0].text : "";
-    console.log(`[facture-import] ← ${Date.now() - t0}ms, ${text.length} chars`);
+    console.log(`[facture-import] ← ${Date.now() - t0}ms, ${text.length} chars (mode: ${isImage ? "image" : usePdfBeta ? "pdf-direct" : "texte"})`);
 
     const parsed = parseFacture(text);
     if (!parsed) {

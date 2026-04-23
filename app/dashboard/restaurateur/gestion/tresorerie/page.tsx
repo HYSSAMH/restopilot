@@ -355,6 +355,7 @@ function ReleveTab({ ctx }: { ctx: Ctx }) {
   const [selectedReleveId, setSelectedReleveId] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [linkFor, setLinkFor] = useState<ReleveLigne | null>(null);
 
   const currentReleveId = selectedReleveId ?? ctx.releves[0]?.id ?? null;
   const currentReleve = ctx.releves.find(r => r.id === currentReleveId);
@@ -482,11 +483,52 @@ function ReleveTab({ ctx }: { ctx: Ctx }) {
 
   async function togglePointage(ligne: ReleveLigne) {
     const nextPointe = !ligne.pointe_type;
+    // Si on dépointe ET qu'un lien existe vers une autre table, on nettoie
+    // aussi le releve_ligne_id côté cible pour la bi-directionnalité.
+    if (!nextPointe && ligne.pointe_type && ligne.pointe_id) {
+      const tableMap: Record<string, string> = {
+        facture:                 "commandes",
+        charge_paiement:         "charges_paiements",
+        salaire:                 "salaires_mensuels",
+        solde_tout_compte:       "soldes_tout_compte",
+        depense_exceptionnelle:  "depenses_exceptionnelles",
+      };
+      const target = tableMap[ligne.pointe_type];
+      if (target) {
+        const field = target === "commandes" ? "releve_ligne_id" : "releve_ligne_id";
+        await ctx.supa.from(target).update({ [field]: null }).eq("id", ligne.pointe_id);
+      }
+    }
     const { error } = await ctx.supa.from("releve_lignes")
       .update({ pointe_type: nextPointe ? "manuel" : null, pointe_id: null, pointe_note: nextPointe ? "Pointé manuellement" : null })
       .eq("id", ligne.id);
     if (error) { ctx.notify("error", error.message); return; }
     await ctx.reload();
+  }
+
+  /** Lier une ligne de relevé à une dépense existante (facture, charge, salaire, STC, exceptionnelle). */
+  async function linkPointage(
+    ligne: ReleveLigne,
+    target: { type: PointeType; id: string; table: string },
+  ) {
+    try {
+      // 1. MAJ ligne relevé
+      const { error: e1 } = await ctx.supa.from("releve_lignes")
+        .update({ pointe_type: target.type, pointe_id: target.id, pointe_note: `Lié à ${target.type}` })
+        .eq("id", ligne.id);
+      if (e1) throw new Error(e1.message);
+
+      // 2. MAJ ligne cible (lien inverse — toutes les tables utilisent releve_ligne_id)
+      const { error: e2 } = await ctx.supa.from(target.table)
+        .update({ releve_ligne_id: ligne.id })
+        .eq("id", target.id);
+      if (e2) throw new Error(e2.message);
+
+      ctx.notify("success", "Pointage effectué ✓");
+      await ctx.reload();
+    } catch (e) {
+      ctx.notify("error", e instanceof Error ? e.message : "Erreur pointage");
+    }
   }
 
   async function handleDeleteReleve() {
@@ -594,10 +636,20 @@ function ReleveTab({ ctx }: { ctx: Ctx }) {
                         <td className="px-3 py-2 text-right text-emerald-600">{l.credit > 0 ? fmt(Number(l.credit)) : "—"}</td>
                         <td className="px-3 py-2 text-right text-gray-500">{l.solde != null ? fmt(Number(l.solde)) : "—"}</td>
                         <td className="px-3 py-2 text-center">
-                          <button onClick={() => togglePointage(l)}
-                                  className={`rounded-md border px-2 py-0.5 text-xs font-medium ${badge}`}>
-                            {statut === "pointe" ? "✓ Pointé" : statut === "anomalie" ? "⚠ Anomalie" : "En attente"}
-                          </button>
+                          <div className="flex justify-center gap-1">
+                            <button onClick={() => togglePointage(l)}
+                                    className={`rounded-md border px-2 py-0.5 text-xs font-medium ${badge}`}
+                                    title={l.pointe_type ? "Cliquer pour dépointer" : "Marquer comme pointé manuel"}>
+                              {statut === "pointe" ? "✓ Pointé" : statut === "anomalie" ? "⚠ Anomalie" : "En attente"}
+                            </button>
+                            {!l.pointe_type && (
+                              <button onClick={() => setLinkFor(l)}
+                                      className="rounded-md border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700 hover:bg-indigo-100"
+                                      title="Lier à une facture / dépense">
+                                🔗
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -608,6 +660,155 @@ function ReleveTab({ ctx }: { ctx: Ctx }) {
           )}
         </section>
       )}
+
+      {linkFor && (
+        <LinkPointageModal
+          ligne={linkFor}
+          ctx={ctx}
+          onClose={() => setLinkFor(null)}
+          onLink={async (target) => { await linkPointage(linkFor, target); setLinkFor(null); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Modale "Lier cette ligne à une dépense" ─────────────────────────
+type LinkTarget = { type: PointeType; id: string; table: string; label: string; date: string; montant: number };
+
+function LinkPointageModal({
+  ligne, ctx, onClose, onLink,
+}: {
+  ligne: ReleveLigne;
+  ctx: Ctx;
+  onClose: () => void;
+  onLink: (target: { type: PointeType; id: string; table: string }) => Promise<void>;
+}) {
+  const targetMontant = Number(ligne.debit) > 0 ? Number(ligne.debit) : Number(ligne.credit);
+
+  const candidates: LinkTarget[] = [];
+  // Factures (commandes)
+  ctx.commandes.forEach(c => {
+    if (c.statut === "annulee") return;
+    candidates.push({
+      type: "facture", id: c.id, table: "commandes",
+      label: `Facture ${c.id.slice(0, 8)}`,
+      date: c.created_at.slice(0, 10),
+      montant: Number(c.montant_total),
+    });
+  });
+  ctx.chargePaiements.forEach(p => {
+    const charge = ctx.charges.find(x => x.id === p.charge_id);
+    candidates.push({
+      type: "charge_paiement", id: p.id, table: "charges_paiements",
+      label: `Charge : ${charge?.nom ?? "—"}`,
+      date: p.date_prelevement,
+      montant: Number(p.montant),
+    });
+  });
+  ctx.salaires.forEach(s => {
+    const f = ctx.fiches.find(fi => fi.id === s.employe_fiche_id);
+    candidates.push({
+      type: "salaire", id: s.id, table: "salaires_mensuels",
+      label: `Salaire : ${f ? `${f.prenom} ${f.nom}` : "—"}`,
+      date: s.mois.slice(0, 10),
+      montant: Number(s.salaire_net),
+    });
+  });
+  ctx.stcs.forEach(s => {
+    const f = ctx.fiches.find(fi => fi.id === s.employe_fiche_id);
+    candidates.push({
+      type: "solde_tout_compte", id: s.id, table: "soldes_tout_compte",
+      label: `STC : ${f ? `${f.prenom} ${f.nom}` : "—"}`,
+      date: s.date_sortie,
+      montant: Number(s.montant),
+    });
+  });
+  ctx.exceps.forEach(d => {
+    candidates.push({
+      type: "depense_exceptionnelle", id: d.id, table: "depenses_exceptionnelles",
+      label: `Exceptionnel : ${d.description}`,
+      date: d.date_dep,
+      montant: Number(d.montant),
+    });
+  });
+
+  // Tri : candidats avec montant proche en premier (tolérance 5%)
+  const sorted = [...candidates].sort((a, b) => {
+    const da = Math.abs(a.montant - targetMontant);
+    const db = Math.abs(b.montant - targetMontant);
+    return da - db;
+  });
+
+  const [query, setQuery] = useState("");
+  const filtered = sorted.filter(c =>
+    !query.trim()
+    || c.label.toLowerCase().includes(query.toLowerCase())
+    || c.date.includes(query),
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={onClose}>
+      <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="mb-4 flex items-start justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-[#1A1A2E]">Lier cette ligne à une dépense</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              {new Date(ligne.date_op).toLocaleDateString("fr-FR")} · {ligne.libelle} ·{" "}
+              <span className="font-semibold">{fmt(targetMontant)}</span>
+            </p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700">✕</button>
+        </div>
+
+        <input type="text" value={query} onChange={e => setQuery(e.target.value)}
+               placeholder="🔍 Filtrer par libellé ou date (AAAA-MM-JJ)…"
+               className="mb-3 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500" />
+
+        <div className="max-h-[50vh] overflow-auto rounded-xl border border-gray-200 bg-white">
+          {filtered.length === 0 ? (
+            <p className="p-4 text-center text-sm text-gray-500">Aucune dépense trouvée.</p>
+          ) : (
+            filtered.slice(0, 80).map(c => {
+              const diff = Math.abs(c.montant - targetMontant);
+              const diffPct = targetMontant > 0 ? (diff / targetMontant) * 100 : 100;
+              const match = diff < 0.01 ? "exact" : diffPct < 5 ? "close" : diffPct < 20 ? "maybe" : "far";
+              const matchLabel = match === "exact" ? "✓ Montant identique"
+                               : match === "close" ? `≈ Écart ${fmt(diff)}`
+                               : match === "maybe" ? `Écart ${fmt(diff)}`
+                               : null;
+              return (
+                <button
+                  key={c.type + ":" + c.id}
+                  onClick={() => onLink({ type: c.type, id: c.id, table: c.table })}
+                  className="flex w-full items-center justify-between gap-3 border-b border-gray-100 px-3 py-2 text-left text-sm hover:bg-indigo-50 last:border-b-0"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-[#1A1A2E]">{c.label}</p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(c.date).toLocaleDateString("fr-FR")} · {c.type}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="font-semibold text-[#1A1A2E]">{fmt(c.montant)}</p>
+                    {matchLabel && (
+                      <p className={`text-[10px] font-semibold ${
+                        match === "exact" ? "text-emerald-600" : match === "close" ? "text-indigo-600" : "text-amber-600"
+                      }`}>{matchLabel}</p>
+                    )}
+                  </div>
+                </button>
+              );
+            })
+          )}
+        </div>
+
+        <div className="mt-4 flex justify-end">
+          <button onClick={onClose} className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm">
+            Annuler
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

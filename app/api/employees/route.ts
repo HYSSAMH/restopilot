@@ -40,6 +40,44 @@ async function getPatron() {
   return profile as { id: string; role: string } | null;
 }
 
+// ── GET : lister les employés du patron connecté ────────────────────────
+// Indispensable depuis le fix RLS récursion : les policies profiles ne
+// laissent plus le patron voir les lignes employés via le client anon.
+// On utilise le service_role ici pour retourner la liste.
+export async function GET() {
+  const patron = await getPatron();
+  if (!patron) return Response.json({ error: "Non authentifié." }, { status: 401 });
+  if (patron.role !== "restaurateur") {
+    return Response.json({ error: "Accès réservé aux restaurateurs." }, { status: 403 });
+  }
+
+  let admin;
+  try { admin = adminClient(); }
+  catch (e) { return Response.json({ error: e instanceof Error ? e.message : ENV_MISSING }, { status: 500 }); }
+
+  const { data: profiles, error } = await admin
+    .from("profiles")
+    .select("id, prenom, nom, email, actif, created_at")
+    .eq("restaurant_id", patron.id)
+    .eq("role", "employe")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[employees GET] select failed:", error);
+    return Response.json({ error: error.message }, { status: 500 });
+  }
+
+  // Enrichit avec last_sign_in_at depuis auth.users (via service_role)
+  type EmpRow = { id: string; prenom: string | null; nom: string | null; email: string | null; actif: boolean | null; created_at: string };
+  const rows = (profiles ?? []) as EmpRow[];
+  const withAuth = await Promise.all(rows.map(async (r) => {
+    const { data: au } = await admin.auth.admin.getUserById(r.id);
+    return { ...r, last_sign_in_at: au?.user?.last_sign_in_at ?? null };
+  }));
+
+  return Response.json({ ok: true, employes: withAuth });
+}
+
 // ── POST : créer un employé ───────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   const patron = await getPatron();
