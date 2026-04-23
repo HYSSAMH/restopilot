@@ -11,6 +11,7 @@ const LINKS = [
   { label: "Utilisateurs",   href: "/admin/users",     icon: <IconUsers />  },
   { label: "Commandes",      href: "/admin/commandes", icon: <IconInbox />  },
   { label: "Avoirs & litiges", href: "/admin/avoirs",  icon: <IconAvoir />  },
+  { label: "Test import",    href: "/admin/test-import", icon: <IconGrid />   },
 ];
 
 interface Props {

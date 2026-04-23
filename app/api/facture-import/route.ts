@@ -55,34 +55,68 @@ type ImgBlock = {
 };
 type MsgContent = Anthropic.TextBlockParam | DocBlock | ImgBlock;
 
-// ── Prompt ─────────────────────────────────────────────────────────────────
+// ── Prompts ───────────────────────────────────────────────────────────────
 
-const PROMPT = `Tu analyses une FACTURE fournisseur d'un restaurateur et tu extrais ses informations en JSON strict.
+/** Prompt optimisé pour du TEXTE extrait d'une facture française (pdf-parse). */
+const PROMPT_TEXT = `Tu es un expert en comptabilité française.
+Voici le texte brut d'une facture fournisseur d'un restaurateur. Extrais TOUTES les informations en JSON strict.
 
-RÈGLES :
-- Si un champ est illisible ou absent, mets null (ne jamais inventer).
-- Prix en euros, pas de symbole dans la réponse.
-- Quantités peuvent être décimales (ex : 2.5 kg).
-- Unités courantes : kg, pièce, L, boîte, sac, lot, barq., 100g.
-- Catégories (valeurs exactes) : legumes, fruits, boucherie, poissonnerie, epicerie, herbes, pommes_de_terre, salades, cremerie.
-- Date au format YYYY-MM-DD (convertis si besoin).
+CONSIGNES :
+- Date au format YYYY-MM-DD (convertis depuis JJ/MM/AAAA ou JJ/MM/AA).
+- Montants en nombres décimaux (pas de symbole €, pas de séparateur de milliers).
+- Si une valeur est absente / illisible → null (ne jamais inventer).
+- SIRET : uniquement les chiffres, pas d'espaces.
+- Lignes produits : capture précisément la description complète, la quantité, l'unité (kg, pièce, carton, boîte, L, barq., lot, sac, 100g), le prix unitaire HT, le total HT. Si un conditionnement est indiqué (« carton de 8 × 800g »), inclus-le dans la description.
+- Catégorie : choisis parmi legumes, fruits, boucherie, poissonnerie, epicerie, herbes, pommes_de_terre, salades, cremerie — epicerie par défaut si incertain.
 
-Retourne UNIQUEMENT le JSON (pas de markdown, pas de texte avant/après) :
+Retourne UNIQUEMENT le JSON brut (pas de markdown, pas de commentaire) :
 {
   "fournisseur": {
-    "nom": "...",
-    "siret": "...",
-    "adresse": "...",
+    "nom":       "...",
+    "siret":     "...",
+    "adresse":   "...",
     "telephone": "...",
-    "email": "..."
+    "email":     "..."
   },
   "numero_facture": "...",
-  "date": "YYYY-MM-DD",
+  "date":           "YYYY-MM-DD",
   "lignes": [
-    { "nom": "...", "categorie": "legumes", "quantite": 2, "unite": "kg", "prix_unitaire": 4.50, "total": 9.00 }
+    {
+      "nom":           "Tomates grappes carton 6kg",
+      "categorie":     "legumes",
+      "quantite":      2,
+      "unite":         "carton",
+      "prix_unitaire": 12.50,
+      "total":         25.00
+    }
   ],
   "montant_ht":  123.45,
   "tva":         12.34,
+  "montant_ttc": 135.79
+}`;
+
+/** Prompt optimisé pour les IMAGES de factures (JPG/PNG, mode vision). */
+const PROMPT_IMAGE = `Cette image est une facture fournisseur française (restauration).
+Extrais TOUS les produits visibles avec leurs prix en JSON strict.
+
+ATTENTION PARTICULIÈRE À :
+- Prix barrés (promotions) → conserve le PRIX ACTUEL (nouveau prix), pas le prix barré
+- Conditionnements : « carton de 8 », « lot de 6 », « pack de 12 » — inclus dans la description
+- Unités exactes : kg, pièce, carton, boîte, L, barq., lot, sac, 100g
+- Quantités décimales (ex : 2.5 kg)
+- SIRET : chiffres sans espaces ; date YYYY-MM-DD
+
+Si une valeur est illisible → null.
+Catégories valides : legumes, fruits, boucherie, poissonnerie, epicerie, herbes, pommes_de_terre, salades, cremerie.
+
+Retourne UNIQUEMENT le JSON brut :
+{
+  "fournisseur": { "nom": "...", "siret": "...", "adresse": "...", "telephone": "...", "email": "..." },
+  "numero_facture": "...",
+  "date": "YYYY-MM-DD",
+  "lignes": [{ "nom": "...", "categorie": "legumes", "quantite": 2, "unite": "kg", "prix_unitaire": 4.50, "total": 9.00 }],
+  "montant_ht": 123.45,
+  "tva": 12.34,
   "montant_ttc": 135.79
 }`;
 
@@ -199,7 +233,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const content: MsgContent[] = isImage
+    const hasText = extractedText && extractedText.trim().length > 50;
+    const mode: "text" | "image" | "pdf-direct" = isImage ? "image" : hasText ? "text" : "pdf-direct";
+    console.log(`[facture-import] mode: ${mode}`);
+
+    const content: MsgContent[] = mode === "image"
       ? [
           { type: "image",
             source: {
@@ -208,20 +246,20 @@ export async function POST(req: NextRequest) {
               data: fileBase64,
             },
           },
-          { type: "text", text: PROMPT },
+          { type: "text", text: PROMPT_IMAGE },
         ]
-      : extractedText && extractedText.trim().length > 50
+      : mode === "text"
         ? [
-            // Mode texte : Claude reçoit le texte propre, pas le base64
-            { type: "text", text: PROMPT + "\n\n--- DÉBUT DU TEXTE EXTRAIT DU PDF ---\n" + extractedText + "\n--- FIN ---" },
+            // Claude reçoit le texte nettoyé — accuracy drastiquement meilleure
+            { type: "text", text: PROMPT_TEXT + "\n\n--- DÉBUT DU TEXTE EXTRAIT ---\n" + extractedText + "\n--- FIN ---" },
           ]
         : [
-            // Fallback : le PDF n'a pas pu être lu en texte (scanné ?), on envoie le PDF brut
+            // Fallback : PDF scanné (image-only) — on envoie le PDF brut à Claude
             { type: "document", source: { type: "base64", media_type: "application/pdf", data: fileBase64 } },
-            { type: "text", text: PROMPT },
+            { type: "text", text: PROMPT_IMAGE },
           ];
 
-    const usePdfBeta = !isImage && (!extractedText || extractedText.trim().length <= 50);
+    const usePdfBeta = mode === "pdf-direct";
     const t0 = Date.now();
     const msg = await (anthropic.messages.create as (
       body: Omit<Anthropic.MessageCreateParamsNonStreaming, "messages"> & {
@@ -234,7 +272,7 @@ export async function POST(req: NextRequest) {
     );
 
     const text = msg.content[0].type === "text" ? msg.content[0].text : "";
-    console.log(`[facture-import] ← ${Date.now() - t0}ms, ${text.length} chars (mode: ${isImage ? "image" : usePdfBeta ? "pdf-direct" : "texte"})`);
+    console.log(`[facture-import] ← ${Date.now() - t0}ms, ${text.length} chars (mode: ${mode})`);
 
     const parsed = parseFacture(text);
     if (!parsed) {
