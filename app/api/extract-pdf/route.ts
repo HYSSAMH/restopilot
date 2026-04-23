@@ -53,26 +53,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const buffer = Buffer.from(fileBase64, "base64");
-
-    // Import dynamique : pdf-parse charge un fichier de test au require, ce
-    // qui casse sur certains bundlers. On importe le module interne qui
-    // expose la fonction sans side-effects.
-    // @ts-expect-error — pas de types publiés pour le sous-module
-    const mod = await import("pdf-parse/lib/pdf-parse.js");
-    const pdfParse = mod.default as
-      (data: Buffer, opts?: { max?: number }) => Promise<{ text: string; numpages: number; info: Record<string, unknown>; metadata: unknown }>;
-
+    // pdf-parse v2 : API classe PDFParse
+    const { PDFParse } = await import("pdf-parse");
     const t0 = Date.now();
-    const parsed = await pdfParse(buffer);
+    const bytes = new Uint8Array(Buffer.from(fileBase64, "base64"));
+    const parser = new PDFParse({ data: bytes });
+    const result = await parser.getText();
+    const text = result.text ?? "";
+    const pages = result.total ?? result.pages?.length ?? 0;
+    await parser.destroy();
     const ms = Date.now() - t0;
-    console.log(`[extract-pdf] ${parsed.numpages} page(s), ${parsed.text.length} chars, ${ms}ms`);
+    console.log(`[extract-pdf] ${pages} page(s), ${text.length} chars, ${ms}ms`);
 
     return Response.json({
       ok: true,
-      text: parsed.text,
-      pages: parsed.numpages,
-      char_count: parsed.text.length,
+      text,
+      pages,
+      char_count: text.length,
       duration_ms: ms,
     });
   } catch (e) {
