@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import Link from "next/link";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { createClient } from "@/lib/supabase/client";
 import type { StatutCommande } from "@/lib/supabase/types";
 import { regenerateAvoirPDF } from "@/lib/avoir-from-db";
+import { Pagination, paginate, PAGE_SIZE_DEFAULT } from "@/components/ui/Pagination";
 
 // ── Types locaux tolérants (tous les champs fournisseur/avoir sont optionnels) ──
 interface Ligne {
@@ -75,6 +76,15 @@ export default function HistoriquePage() {
   const [error, setError]           = useState<string | null>(null);
   const [filtre, setFiltre]         = useState<StatutCommande | "tous">("tous");
   const [openId, setOpenId]         = useState<string | null>(null);
+
+  // Nouveaux filtres
+  const [search, setSearch]         = useState("");
+  const [fournFilter, setFournFilter] = useState<string>("");
+  const [dateFrom, setDateFrom]     = useState<string>("");
+  const [dateTo, setDateTo]         = useState<string>("");
+  const [montantMin, setMontantMin] = useState<string>("");
+  const [montantMax, setMontantMax] = useState<string>("");
+  const [page, setPage]             = useState(1);
 
   const fetchCommandes = useCallback(async () => {
     setError(null);
@@ -184,7 +194,43 @@ export default function HistoriquePage() {
     };
   }, []);
 
-  const filtrees = filtre === "tous" ? commandes : commandes.filter((c) => c.statut === filtre);
+  const filtrees = useMemo(() => {
+    let arr = commandes;
+    if (filtre !== "tous")   arr = arr.filter(c => c.statut === filtre);
+    if (fournFilter)         arr = arr.filter(c => (c.fournisseur_id ?? c.fournisseur_externe_id) === fournFilter);
+    if (dateFrom)            arr = arr.filter(c => c.created_at.slice(0, 10) >= dateFrom);
+    if (dateTo)              arr = arr.filter(c => c.created_at.slice(0, 10) <= dateTo);
+    const mMin = parseFloat(montantMin);
+    if (!isNaN(mMin) && mMin > 0) arr = arr.filter(c => Number(c.montant_total) >= mMin);
+    const mMax = parseFloat(montantMax);
+    if (!isNaN(mMax) && mMax > 0) arr = arr.filter(c => Number(c.montant_total) <= mMax);
+    if (search.trim()) {
+      const s = search.toLowerCase();
+      arr = arr.filter(c => {
+        const nom = getFournName(c).toLowerCase();
+        const num = (c.numero_facture_externe ?? "").toLowerCase();
+        const idShort = c.id.toLowerCase();
+        return nom.includes(s) || num.includes(s) || idShort.includes(s)
+               || c.lignes_commande?.some(l => (l.nom_snapshot ?? "").toLowerCase().includes(s));
+      });
+    }
+    return arr;
+  }, [commandes, filtre, fournFilter, dateFrom, dateTo, montantMin, montantMax, search, getFournName]);
+
+  useEffect(() => { setPage(1); }, [filtre, fournFilter, dateFrom, dateTo, montantMin, montantMax, search]);
+
+  const fournUniques = useMemo(() => {
+    const set = new Map<string, string>();
+    commandes.forEach(c => {
+      const id = c.fournisseur_id ?? c.fournisseur_externe_id;
+      if (id && !set.has(id)) set.set(id, getFournName(c));
+    });
+    return Array.from(set.entries()).map(([id, nom]) => ({ id, nom }))
+      .sort((a, b) => a.nom.localeCompare(b.nom));
+  }, [commandes, getFournName]);
+
+  const pageRows = paginate(filtrees, page, PAGE_SIZE_DEFAULT);
+
   const totalDepense = commandes
     .filter((c) => c.statut !== "annulee")
     .reduce((s, c) => s + Number(c.montant_total ?? 0), 0);
@@ -223,29 +269,75 @@ export default function HistoriquePage() {
           <Kpi label="Total dépensé"   value={fmt(totalDepense)} wide />
         </div>
 
-        {/* Filtre */}
-        <div className="mb-4 flex flex-wrap gap-2">
-          {([
-            { id: "tous",           label: "Toutes"         },
-            { id: "recue",          label: "Reçues"         },
-            { id: "en_preparation", label: "En préparation" },
-            { id: "en_livraison",   label: "En livraison"   },
-            { id: "livree",         label: "Livrées"        },
-            { id: "receptionnee",   label: "Réceptionnées"  },
-            { id: "annulee",        label: "Annulées"       },
-          ] as const).map((f) => (
-            <button
-              key={f.id}
-              onClick={() => setFiltre(f.id as StatutCommande | "tous")}
-              className={`min-h-[40px] rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
-                filtre === f.id
-                  ? "bg-indigo-500 text-white shadow"
-                  : "border border-gray-200 bg-white text-gray-500 hover:text-[#1A1A2E]"
-              }`}
+        {/* Recherche globale + filtres avancés */}
+        <div className="mb-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="🔍 Rechercher : fournisseur, n° facture, id de commande, produit…"
+            className="mb-3 w-full min-h-[40px] rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+          />
+          <div className="flex flex-wrap items-end gap-2">
+            <select
+              value={fournFilter}
+              onChange={(e) => setFournFilter(e.target.value)}
+              className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm"
             >
-              {f.label}
-            </button>
-          ))}
+              <option value="">Tous fournisseurs</option>
+              {fournUniques.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
+            </select>
+            <label className="flex flex-col gap-0.5">
+              <span className="text-[10px] font-medium text-gray-500">Du</span>
+              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} max={dateTo || undefined}
+                     className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-2 py-1.5 text-sm" />
+            </label>
+            <label className="flex flex-col gap-0.5">
+              <span className="text-[10px] font-medium text-gray-500">Au</span>
+              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} min={dateFrom || undefined}
+                     className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-2 py-1.5 text-sm" />
+            </label>
+            <label className="flex flex-col gap-0.5">
+              <span className="text-[10px] font-medium text-gray-500">Min €</span>
+              <input type="number" min="0" step="0.01" value={montantMin} onChange={(e) => setMontantMin(e.target.value)} placeholder="0"
+                     className="min-h-[40px] w-24 rounded-xl border border-gray-200 bg-white px-2 py-1.5 text-sm" />
+            </label>
+            <label className="flex flex-col gap-0.5">
+              <span className="text-[10px] font-medium text-gray-500">Max €</span>
+              <input type="number" min="0" step="0.01" value={montantMax} onChange={(e) => setMontantMax(e.target.value)} placeholder="∞"
+                     className="min-h-[40px] w-24 rounded-xl border border-gray-200 bg-white px-2 py-1.5 text-sm" />
+            </label>
+            {(search || fournFilter || dateFrom || dateTo || montantMin || montantMax || filtre !== "tous") && (
+              <button
+                onClick={() => { setSearch(""); setFournFilter(""); setDateFrom(""); setDateTo(""); setMontantMin(""); setMontantMax(""); setFiltre("tous"); }}
+                className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-3 text-xs text-gray-600 hover:border-indigo-300"
+              >
+                Réinitialiser
+              </button>
+            )}
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
+            {([
+              { id: "tous",           label: "Toutes"         },
+              { id: "recue",          label: "Reçues"         },
+              { id: "en_preparation", label: "En préparation" },
+              { id: "en_livraison",   label: "En livraison"   },
+              { id: "livree",         label: "Livrées"        },
+              { id: "receptionnee",   label: "Réceptionnées"  },
+              { id: "annulee",        label: "Annulées"       },
+            ] as const).map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setFiltre(f.id as StatutCommande | "tous")}
+                className={`min-h-[34px] rounded-full px-3 py-1 text-xs font-medium transition-all ${
+                  filtre === f.id
+                    ? "bg-indigo-500 text-white shadow"
+                    : "border border-gray-200 bg-white text-gray-500 hover:text-[#1A1A2E]"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {error && (
@@ -282,7 +374,7 @@ export default function HistoriquePage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {filtrees.map((c) => {
+            {pageRows.map((c) => {
               const open = openId === c.id;
               return (
                 <div key={c.id} className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
@@ -351,6 +443,9 @@ export default function HistoriquePage() {
                 </div>
               );
             })}
+            <div className="rounded-2xl border border-gray-200 bg-white">
+              <Pagination page={page} total={filtrees.length} onChange={setPage} />
+            </div>
           </div>
         )}
       </div>
