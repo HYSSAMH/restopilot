@@ -80,7 +80,7 @@ const CATEG_EXCEPT = [
   { id: "autre",      label: "Autre" },
 ];
 
-const inputCls = "min-h-[40px] w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20";
+const inputCls = "min-h-[40px] w-full rounded-[8px] border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--accent)] focus:ring-2 focus:shadow-[0_0_0_3px_var(--accent-soft)]";
 
 // ── Page principale ─────────────────────────────────────────────────
 
@@ -160,12 +160,12 @@ export default function TresoreriePage() {
       <h2 className="text-[18px] font-[650] tracking-[-0.01em] text-[var(--text)]">Trésorerie</h2>
 
       {/* Sous-onglets */}
-      <div className="flex gap-1 overflow-x-auto rounded-xl border border-gray-200 bg-white p-1">
+      <div className="flex gap-1 overflow-x-auto rounded-[8px] border border-[var(--border)] bg-white p-1">
         {tabs.map(t => (
           <button
             key={t.id} onClick={() => setTab(t.id)}
             className={`flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-              tab === t.id ? "bg-indigo-500 text-white" : "text-gray-500 hover:text-[#1A1A2E]"
+              tab === t.id ? "bg-[var(--accent)] text-white" : "text-gray-500 hover:text-[var(--text)]"
             }`}
           >
             <span>{t.icon}</span>
@@ -175,7 +175,7 @@ export default function TresoreriePage() {
       </div>
 
       {loading ? (
-        <div className="h-40 animate-pulse rounded-2xl bg-gray-100" />
+        <div className="h-40 animate-pulse rounded-[10px] bg-[var(--bg-subtle)]" />
       ) : (
         <>
           {tab === "dashboard"       && <DashboardTab ctx={ctx} />}
@@ -188,7 +188,7 @@ export default function TresoreriePage() {
       )}
 
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-50 max-w-md rounded-2xl border px-4 py-3 shadow-2xl ${
+        <div className={`fixed bottom-6 right-6 z-50 max-w-md rounded-[10px] border px-4 py-3 shadow-2xl ${
           toast.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-700"
         }`}>
           <p className="text-sm font-medium">{toast.msg}</p>
@@ -300,6 +300,7 @@ function DashboardTab({ ctx }: { ctx: Ctx }) {
 
   return (
     <div className="flex flex-col gap-5">
+      <h2 className="text-[18px] font-[650] tracking-[-0.01em] text-[var(--text)]">Trésorerie</h2>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="Solde bancaire" value={fmt(soldeActuel)} sub={dernierReleve ? `au ${new Date(dernierReleve.periode_fin).toLocaleDateString("fr-FR")}` : "aucun relevé"} />
         <Kpi label="Prévu 30 j"      value={fmt(-previ30j)} sub="charges récurrentes" accent="rose" />
@@ -307,7 +308,7 @@ function DashboardTab({ ctx }: { ctx: Ctx }) {
         <Kpi label="Dépenses except." value={fmt(repartition.find(r => r.name === "Exceptionnel")?.value ?? 0)} sub={moisKey} />
       </div>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
         <p className="mb-2 text-xs font-medium text-gray-600">Entrées / Sorties (8 semaines)</p>
         <div style={{ width: "100%", height: 240 }}>
           {releveLignes.length === 0 ? (
@@ -328,7 +329,7 @@ function DashboardTab({ ctx }: { ctx: Ctx }) {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
         <p className="mb-2 text-xs font-medium text-gray-600">Répartition dépenses — mois {moisKey}</p>
         <div style={{ width: "100%", height: 240 }}>
           {repartition.length === 0 ? (
@@ -549,10 +550,10 @@ function ReleveTab({ ctx }: { ctx: Ctx }) {
   return (
     <div className="flex flex-col gap-5">
       {/* Import */}
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h3 className="text-sm font-semibold text-[#1A1A2E]">Importer un relevé</h3>
+      <section className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
+        <h3 className="text-sm font-semibold text-[var(--text)]">Importer un relevé</h3>
         <p className="mt-1 text-xs text-gray-500">PDF (analyse via Claude) ou CSV (libellé, débit, crédit, date).</p>
-        <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-indigo-500/20 hover:opacity-95">
+        <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-[8px] bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white shadow-md shadow-indigo-500/20 hover:opacity-95">
           <input type="file" accept=".pdf,.csv" hidden
                  onChange={e => { const f = e.target.files?.[0]; if (f) handleImport(f); e.currentTarget.value = ""; }} />
           <span>{importing ? "Analyse en cours…" : "📎 Choisir un fichier"}</span>
@@ -561,9 +562,9 @@ function ReleveTab({ ctx }: { ctx: Ctx }) {
 
       {/* Sélection relevé */}
       {ctx.releves.length > 0 && (
-        <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <section className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-center gap-3">
-            <h3 className="text-sm font-semibold text-[#1A1A2E]">Relevés importés</h3>
+            <h3 className="text-sm font-semibold text-[var(--text)]">Relevés importés</h3>
             <select value={currentReleveId ?? ""} onChange={e => setSelectedReleveId(e.target.value)}
                     className={inputCls + " max-w-md"}>
               {ctx.releves.map(r => (
@@ -592,10 +593,10 @@ function ReleveTab({ ctx }: { ctx: Ctx }) {
 
       {deleteId && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-4" onClick={() => setDeleteId(null)}>
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <p className="text-sm font-semibold text-[#1A1A2E]">Supprimer ce relevé et toutes ses lignes ?</p>
+          <div className="w-full max-w-sm rounded-[10px] bg-white p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <p className="text-sm font-semibold text-[var(--text)]">Supprimer ce relevé et toutes ses lignes ?</p>
             <div className="mt-4 flex justify-end gap-2">
-              <button onClick={() => setDeleteId(null)} className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs">Annuler</button>
+              <button onClick={() => setDeleteId(null)} className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs">Annuler</button>
               <button onClick={handleDeleteReleve} className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white">Supprimer</button>
             </div>
           </div>
@@ -604,15 +605,15 @@ function ReleveTab({ ctx }: { ctx: Ctx }) {
 
       {/* Lignes */}
       {currentReleve && (
-        <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h3 className="mb-3 text-sm font-semibold text-[#1A1A2E]">Lignes du relevé</h3>
+        <section className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
+          <h3 className="mb-3 text-sm font-semibold text-[var(--text)]">Lignes du relevé</h3>
           {lignes.length === 0 ? (
             <p className="text-sm text-gray-500">Aucune ligne.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[720px] text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 text-xs font-medium uppercase tracking-wide text-gray-500">
+                  <tr className="border-b border-[var(--border)] text-xs font-medium uppercase tracking-wide text-gray-500">
                     <th className="px-3 py-2 text-left">Date</th>
                     <th className="px-3 py-2 text-left">Libellé</th>
                     <th className="px-3 py-2 text-right">Débit</th>
@@ -630,8 +631,8 @@ function ReleveTab({ ctx }: { ctx: Ctx }) {
                         ? "bg-red-50 text-red-600 border-red-200"
                         : "bg-amber-50 text-amber-700 border-amber-200";
                     return (
-                      <tr key={l.id} className="hover:bg-gray-50">
-                        <td className="px-3 py-2 text-[#1A1A2E]">{new Date(l.date_op).toLocaleDateString("fr-FR")}</td>
+                      <tr key={l.id} className="hover:bg-[var(--bg-subtle)]">
+                        <td className="px-3 py-2 text-[var(--text)]">{new Date(l.date_op).toLocaleDateString("fr-FR")}</td>
                         <td className="px-3 py-2 text-gray-600">{l.libelle}</td>
                         <td className="px-3 py-2 text-right text-red-600">{l.debit > 0  ? fmt(Number(l.debit))  : "—"}</td>
                         <td className="px-3 py-2 text-right text-emerald-600">{l.credit > 0 ? fmt(Number(l.credit)) : "—"}</td>
@@ -645,7 +646,7 @@ function ReleveTab({ ctx }: { ctx: Ctx }) {
                             </button>
                             {!l.pointe_type && (
                               <button onClick={() => setLinkFor(l)}
-                                      className="rounded-md border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700 hover:bg-indigo-100"
+                                      className="rounded-md border border-[var(--accent-border)] bg-[var(--accent-soft)] px-2 py-0.5 text-xs text-[var(--accent)] hover:bg-indigo-100"
                                       title="Lier à une facture / dépense">
                                 🔗
                               </button>
@@ -750,10 +751,10 @@ function LinkPointageModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={onClose}>
-      <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div className="w-full max-w-2xl rounded-[10px] bg-white p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="mb-4 flex items-start justify-between">
           <div>
-            <h2 className="text-lg font-bold text-[#1A1A2E]">Lier cette ligne à une dépense</h2>
+            <h2 className="text-lg font-bold text-[var(--text)]">Lier cette ligne à une dépense</h2>
             <p className="mt-1 text-sm text-gray-500">
               {new Date(ligne.date_op).toLocaleDateString("fr-FR")} · {ligne.libelle} ·{" "}
               <span className="font-semibold">{fmt(targetMontant)}</span>
@@ -764,9 +765,9 @@ function LinkPointageModal({
 
         <input type="text" value={query} onChange={e => setQuery(e.target.value)}
                placeholder="🔍 Filtrer par libellé ou date (AAAA-MM-JJ)…"
-               className="mb-3 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500" />
+               className="mb-3 w-full rounded-[8px] border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--accent)]" />
 
-        <div className="max-h-[50vh] overflow-auto rounded-xl border border-gray-200 bg-white">
+        <div className="max-h-[50vh] overflow-auto rounded-[8px] border border-[var(--border)] bg-white">
           {filtered.length === 0 ? (
             <p className="p-4 text-center text-sm text-gray-500">Aucune dépense trouvée.</p>
           ) : (
@@ -782,19 +783,19 @@ function LinkPointageModal({
                 <button
                   key={c.type + ":" + c.id}
                   onClick={() => onLink({ type: c.type, id: c.id, table: c.table })}
-                  className="flex w-full items-center justify-between gap-3 border-b border-gray-100 px-3 py-2 text-left text-sm hover:bg-indigo-50 last:border-b-0"
+                  className="flex w-full items-center justify-between gap-3 border-b border-[var(--border)] px-3 py-2 text-left text-sm hover:bg-[var(--accent-soft)] last:border-b-0"
                 >
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-[#1A1A2E]">{c.label}</p>
+                    <p className="truncate font-medium text-[var(--text)]">{c.label}</p>
                     <p className="text-xs text-gray-500">
                       {new Date(c.date).toLocaleDateString("fr-FR")} · {c.type}
                     </p>
                   </div>
                   <div className="shrink-0 text-right">
-                    <p className="font-semibold text-[#1A1A2E]">{fmt(c.montant)}</p>
+                    <p className="font-semibold text-[var(--text)]">{fmt(c.montant)}</p>
                     {matchLabel && (
                       <p className={`text-[10px] font-semibold ${
-                        match === "exact" ? "text-emerald-600" : match === "close" ? "text-indigo-600" : "text-amber-600"
+                        match === "exact" ? "text-emerald-600" : match === "close" ? "text-[var(--accent)]" : "text-amber-600"
                       }`}>{matchLabel}</p>
                     )}
                   </div>
@@ -805,7 +806,7 @@ function LinkPointageModal({
         </div>
 
         <div className="mt-4 flex justify-end">
-          <button onClick={onClose} className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm">
+          <button onClick={onClose} className="rounded-lg border border-[var(--border)] bg-white px-4 py-2 text-sm">
             Annuler
           </button>
         </div>
@@ -990,7 +991,7 @@ function ChargesTab({ ctx }: { ctx: Ctx }) {
   return (
     <div className="flex flex-col gap-5">
       {prochains.length > 0 && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <div className="rounded-[10px] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
           <p className="font-semibold">⏰ Prélèvements à venir dans 7 jours :</p>
           <ul className="mt-1 list-disc pl-5">
             {prochains.map(p => (
@@ -1001,15 +1002,15 @@ function ChargesTab({ ctx }: { ctx: Ctx }) {
       )}
 
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-[#1A1A2E]">Charges fixes</h3>
+        <h3 className="text-sm font-semibold text-[var(--text)]">Charges fixes</h3>
         <button onClick={() => { setShowForm(v => !v); setEdit(null); setForm({ nom: "", categorie: "loyer", montant: "", frequence: "mensuel", jour: "", notes: "" }); }}
-                className="rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-2 text-sm font-semibold text-white shadow-md">
+                className="rounded-[8px] bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white shadow-md">
           {showForm ? "Annuler" : "+ Ajouter"}
         </button>
       </div>
 
       {showForm && (
-        <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <section className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="flex flex-col gap-1">
               <span className="text-xs font-medium text-gray-600">Nom</span>
@@ -1043,7 +1044,7 @@ function ChargesTab({ ctx }: { ctx: Ctx }) {
             </label>
           </div>
           <div className="mt-4 flex justify-end">
-            <button onClick={save} className="rounded-xl bg-indigo-500 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-600">
+            <button onClick={save} className="rounded-[8px] bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white hover:bg-[var(--accent-hover)]">
               {edit ? "Mettre à jour" : "Enregistrer"}
             </button>
           </div>
@@ -1051,14 +1052,14 @@ function ChargesTab({ ctx }: { ctx: Ctx }) {
       )}
 
       {/* Liste */}
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
         {ctx.charges.length === 0 ? (
           <p className="text-sm text-gray-500">Aucune charge enregistrée.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-xs font-medium uppercase tracking-wide text-gray-500">
+                <tr className="border-b border-[var(--border)] text-xs font-medium uppercase tracking-wide text-gray-500">
                   <th className="px-3 py-2 text-left">Nom</th>
                   <th className="px-3 py-2 text-left">Catégorie</th>
                   <th className="px-3 py-2 text-right">Montant</th>
@@ -1071,20 +1072,20 @@ function ChargesTab({ ctx }: { ctx: Ctx }) {
               <tbody className="divide-y divide-gray-100">
                 {ctx.charges.map(c => (
                   <tr key={c.id} className={c.actif ? "" : "opacity-50"}>
-                    <td className="px-3 py-2 font-medium text-[#1A1A2E]">{c.nom}</td>
+                    <td className="px-3 py-2 font-medium text-[var(--text)]">{c.nom}</td>
                     <td className="px-3 py-2 text-gray-500">{CATEG_CHARGES.find(x => x.id === c.categorie)?.label ?? c.categorie}</td>
-                    <td className="px-3 py-2 text-right text-[#1A1A2E]">{fmt(Number(c.montant))}</td>
+                    <td className="px-3 py-2 text-right text-[var(--text)]">{fmt(Number(c.montant))}</td>
                     <td className="px-3 py-2 text-gray-500">{c.frequence}</td>
                     <td className="px-3 py-2 text-right text-gray-500">{c.jour_prelevement ?? "—"}</td>
                     <td className="px-3 py-2 text-center">
-                      <button onClick={() => toggleActif(c)} className={`rounded-full px-2 py-0.5 text-xs font-medium ${c.actif ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>
+                      <button onClick={() => toggleActif(c)} className={`rounded-full px-2 py-0.5 text-xs font-medium ${c.actif ? "bg-emerald-50 text-emerald-700" : "bg-[var(--bg-subtle)] text-gray-500"}`}>
                         {c.actif ? "Actif" : "Inactif"}
                       </button>
                     </td>
                     <td className="px-3 py-2 text-right">
                       <div className="flex justify-end gap-1">
-                        <button onClick={() => logPaiement(c)} className="rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs text-indigo-700 hover:bg-indigo-100">+ Paiement</button>
-                        <button onClick={() => startEdit(c)} className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs hover:border-indigo-300">Éditer</button>
+                        <button onClick={() => logPaiement(c)} className="rounded-lg border border-[var(--accent-border)] bg-[var(--accent-soft)] px-2 py-1 text-xs text-[var(--accent)] hover:bg-indigo-100">+ Paiement</button>
+                        <button onClick={() => startEdit(c)} className="rounded-lg border border-[var(--border)] bg-white px-2 py-1 text-xs hover:border-indigo-300">Éditer</button>
                         <button onClick={() => supprimer(c)} className="rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-600 hover:bg-red-100">Suppr.</button>
                       </div>
                     </td>
@@ -1097,14 +1098,14 @@ function ChargesTab({ ctx }: { ctx: Ctx }) {
       </section>
 
       {/* Historique paiements */}
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h3 className="mb-3 text-sm font-semibold text-[#1A1A2E]">Historique des paiements</h3>
+      <section className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
+        <h3 className="mb-3 text-sm font-semibold text-[var(--text)]">Historique des paiements</h3>
         {ctx.chargePaiements.length === 0 ? (
           <p className="text-sm text-gray-500">Aucun paiement enregistré.</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-xs font-medium uppercase tracking-wide text-gray-500">
+              <tr className="border-b border-[var(--border)] text-xs font-medium uppercase tracking-wide text-gray-500">
                 <th className="px-3 py-2 text-left">Date</th>
                 <th className="px-3 py-2 text-left">Charge</th>
                 <th className="px-3 py-2 text-right">Montant</th>
@@ -1232,15 +1233,15 @@ function SalairesTab({ ctx }: { ctx: Ctx }) {
       </div>
 
       {/* Fiches */}
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-[#1A1A2E]">Fiches employés</h3>
-          <button onClick={() => setShowFiche(v => !v)} className="rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-3 py-1.5 text-xs font-semibold text-white">
+          <h3 className="text-sm font-semibold text-[var(--text)]">Fiches employés</h3>
+          <button onClick={() => setShowFiche(v => !v)} className="rounded-[8px] bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-white">
             + Nouvelle fiche
           </button>
         </div>
         {showFiche && (
-          <div className="mt-4 grid gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 sm:grid-cols-2">
+          <div className="mt-4 grid gap-3 rounded-[8px] border border-[var(--border)] bg-[var(--bg-subtle)] p-4 sm:grid-cols-2">
             <input value={ficheForm.prenom} onChange={e => setFicheForm({ ...ficheForm, prenom: e.target.value })} placeholder="Prénom" className={inputCls} />
             <input value={ficheForm.nom}    onChange={e => setFicheForm({ ...ficheForm, nom: e.target.value })}    placeholder="Nom"    className={inputCls} />
             <input value={ficheForm.poste}  onChange={e => setFicheForm({ ...ficheForm, poste: e.target.value })}  placeholder="Poste (ex : Serveur)" className={inputCls} />
@@ -1250,7 +1251,7 @@ function SalairesTab({ ctx }: { ctx: Ctx }) {
             </select>
             <input type="date" value={ficheForm.date_embauche} onChange={e => setFicheForm({ ...ficheForm, date_embauche: e.target.value })} className={inputCls} />
             <div className="flex justify-end sm:col-span-2">
-              <button onClick={saveFiche} className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-semibold text-white">Enregistrer</button>
+              <button onClick={saveFiche} className="rounded-[8px] bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white">Enregistrer</button>
             </div>
           </div>
         )}
@@ -1259,7 +1260,7 @@ function SalairesTab({ ctx }: { ctx: Ctx }) {
         ) : (
           <table className="mt-4 w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500">
+              <tr className="border-b border-[var(--border)] text-xs uppercase tracking-wide text-gray-500">
                 <th className="px-3 py-2 text-left">Nom</th>
                 <th className="px-3 py-2 text-left">Poste</th>
                 <th className="px-3 py-2 text-left">Contrat</th>
@@ -1270,12 +1271,12 @@ function SalairesTab({ ctx }: { ctx: Ctx }) {
             <tbody className="divide-y divide-gray-100">
               {ctx.fiches.map(f => (
                 <tr key={f.id} className={f.actif ? "" : "opacity-60"}>
-                  <td className="px-3 py-2 font-medium text-[#1A1A2E]">{f.prenom} {f.nom}</td>
+                  <td className="px-3 py-2 font-medium text-[var(--text)]">{f.prenom} {f.nom}</td>
                   <td className="px-3 py-2 text-gray-500">{f.poste ?? "—"}</td>
                   <td className="px-3 py-2 text-gray-500">{f.type_contrat ?? "—"}</td>
                   <td className="px-3 py-2 text-gray-500">{f.date_embauche ? new Date(f.date_embauche).toLocaleDateString("fr-FR") : "—"}</td>
                   <td className="px-3 py-2 text-center">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${f.actif ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${f.actif ? "bg-emerald-50 text-emerald-700" : "bg-[var(--bg-subtle)] text-gray-500"}`}>
                       {f.actif ? "Actif" : `Sorti ${f.date_sortie ? new Date(f.date_sortie).toLocaleDateString("fr-FR") : ""}`}
                     </span>
                   </td>
@@ -1287,15 +1288,15 @@ function SalairesTab({ ctx }: { ctx: Ctx }) {
       </section>
 
       {/* Saisie salaire */}
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-[#1A1A2E]">Saisir un salaire mensuel</h3>
-          <button onClick={() => setShowSalaire(v => !v)} className="rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-3 py-1.5 text-xs font-semibold text-white">
+          <h3 className="text-sm font-semibold text-[var(--text)]">Saisir un salaire mensuel</h3>
+          <button onClick={() => setShowSalaire(v => !v)} className="rounded-[8px] bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-white">
             {showSalaire ? "Fermer" : "+ Nouvelle paie"}
           </button>
         </div>
         {showSalaire && (
-          <div className="mt-4 grid gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 sm:grid-cols-2">
+          <div className="mt-4 grid gap-3 rounded-[8px] border border-[var(--border)] bg-[var(--bg-subtle)] p-4 sm:grid-cols-2">
             <select value={salaireForm.employe_fiche_id} onChange={e => setSalaireForm({ ...salaireForm, employe_fiche_id: e.target.value })} className={inputCls}>
               <option value="">Employé…</option>
               {ctx.fiches.filter(f => f.actif).map(f => <option key={f.id} value={f.id}>{f.prenom} {f.nom}</option>)}
@@ -1313,7 +1314,7 @@ function SalairesTab({ ctx }: { ctx: Ctx }) {
             <input type="number" step="0.01" placeholder="Prévoyance — montant" value={salaireForm.prev_montant} onChange={e => setSalaireForm({ ...salaireForm, prev_montant: e.target.value })} className={inputCls} />
             <input placeholder="Prévoyance — réf." value={salaireForm.prev_ref} onChange={e => setSalaireForm({ ...salaireForm, prev_ref: e.target.value })} className={inputCls + " sm:col-span-2"} />
             <div className="flex justify-end sm:col-span-2">
-              <button onClick={saveSalaire} className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-semibold text-white">Enregistrer</button>
+              <button onClick={saveSalaire} className="rounded-[8px] bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white">Enregistrer</button>
             </div>
           </div>
         )}
@@ -1321,7 +1322,7 @@ function SalairesTab({ ctx }: { ctx: Ctx }) {
         {ctx.salaires.length > 0 && (
           <table className="mt-4 w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500">
+              <tr className="border-b border-[var(--border)] text-xs uppercase tracking-wide text-gray-500">
                 <th className="px-3 py-2 text-left">Mois</th>
                 <th className="px-3 py-2 text-left">Employé</th>
                 <th className="px-3 py-2 text-right">Brut</th>
@@ -1350,15 +1351,15 @@ function SalairesTab({ ctx }: { ctx: Ctx }) {
       </section>
 
       {/* STC */}
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-[#1A1A2E]">Solde de tout compte</h3>
-          <button onClick={() => setShowStc(v => !v)} className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:border-indigo-300">
+          <h3 className="text-sm font-semibold text-[var(--text)]">Solde de tout compte</h3>
+          <button onClick={() => setShowStc(v => !v)} className="rounded-[8px] border border-[var(--border)] bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:border-indigo-300">
             {showStc ? "Fermer" : "+ Nouveau STC"}
           </button>
         </div>
         {showStc && (
-          <div className="mt-4 grid gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 sm:grid-cols-2">
+          <div className="mt-4 grid gap-3 rounded-[8px] border border-[var(--border)] bg-[var(--bg-subtle)] p-4 sm:grid-cols-2">
             <select value={stcForm.employe_fiche_id} onChange={e => setStcForm({ ...stcForm, employe_fiche_id: e.target.value })} className={inputCls}>
               <option value="">Employé…</option>
               {ctx.fiches.map(f => <option key={f.id} value={f.id}>{f.prenom} {f.nom}</option>)}
@@ -1377,7 +1378,7 @@ function SalairesTab({ ctx }: { ctx: Ctx }) {
             </select>
             <input placeholder="Référence" value={stcForm.reference} onChange={e => setStcForm({ ...stcForm, reference: e.target.value })} className={inputCls} />
             <div className="flex justify-end sm:col-span-2">
-              <button onClick={saveStc} className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white">Enregistrer STC</button>
+              <button onClick={saveStc} className="rounded-[8px] bg-red-600 px-4 py-2 text-sm font-semibold text-white">Enregistrer STC</button>
             </div>
           </div>
         )}
@@ -1386,7 +1387,7 @@ function SalairesTab({ ctx }: { ctx: Ctx }) {
         ) : (
           <table className="mt-4 w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500">
+              <tr className="border-b border-[var(--border)] text-xs uppercase tracking-wide text-gray-500">
                 <th className="px-3 py-2 text-left">Date</th>
                 <th className="px-3 py-2 text-left">Employé</th>
                 <th className="px-3 py-2 text-left">Motif</th>
@@ -1474,13 +1475,13 @@ function ExceptionnellesTab({ ctx }: { ctx: Ctx }) {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-[#1A1A2E]">Dépenses exceptionnelles</h3>
-        <button onClick={() => setShowForm(v => !v)} className="rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-2 text-sm font-semibold text-white shadow-md">
+        <h3 className="text-sm font-semibold text-[var(--text)]">Dépenses exceptionnelles</h3>
+        <button onClick={() => setShowForm(v => !v)} className="rounded-[8px] bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white shadow-md">
           {showForm ? "Annuler" : "+ Ajouter"}
         </button>
       </div>
       {showForm && (
-        <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <section className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
           <div className="grid gap-3 sm:grid-cols-2">
             <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className={inputCls} />
             <input type="number" step="0.01" placeholder="Montant" value={form.montant} onChange={e => setForm({ ...form, montant: e.target.value })} className={inputCls} />
@@ -1488,7 +1489,7 @@ function ExceptionnellesTab({ ctx }: { ctx: Ctx }) {
             <select value={form.categorie} onChange={e => setForm({ ...form, categorie: e.target.value })} className={inputCls}>
               {CATEG_EXCEPT.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
             </select>
-            <label className="flex min-h-[40px] cursor-pointer items-center gap-2 rounded-xl border border-dashed border-gray-300 px-3 py-2 text-sm text-gray-500 hover:border-indigo-300">
+            <label className="flex min-h-[40px] cursor-pointer items-center gap-2 rounded-[8px] border border-dashed border-[var(--border-strong)] px-3 py-2 text-sm text-gray-500 hover:border-indigo-300">
               <input type="file" accept="image/*,application/pdf" hidden
                      onChange={e => setFile(e.target.files?.[0] ?? null)} />
               <span>📎 {file ? file.name : "Justificatif (photo/PDF)"}</span>
@@ -1496,20 +1497,20 @@ function ExceptionnellesTab({ ctx }: { ctx: Ctx }) {
             <input placeholder="Notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} className={inputCls + " sm:col-span-2"} />
           </div>
           <div className="mt-4 flex justify-end">
-            <button onClick={save} disabled={saving} className="rounded-xl bg-indigo-500 px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">
+            <button onClick={save} disabled={saving} className="rounded-[8px] bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">
               {saving ? "Enregistrement…" : "Enregistrer"}
             </button>
           </div>
         </section>
       )}
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
         {ctx.exceps.length === 0 ? (
           <p className="text-sm text-gray-500">Aucune dépense enregistrée.</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500">
+              <tr className="border-b border-[var(--border)] text-xs uppercase tracking-wide text-gray-500">
                 <th className="px-3 py-2 text-left">Date</th>
                 <th className="px-3 py-2 text-left">Description</th>
                 <th className="px-3 py-2 text-left">Catégorie</th>
@@ -1528,7 +1529,7 @@ function ExceptionnellesTab({ ctx }: { ctx: Ctx }) {
                   <td className="px-3 py-2 text-right font-semibold">{fmt(Number(d.montant))}</td>
                   <td className="px-3 py-2 text-center">
                     {d.justificatif_url ? (
-                      <button onClick={() => viewJustif(d.justificatif_url!)} className="text-indigo-600 hover:underline">Voir</button>
+                      <button onClick={() => viewJustif(d.justificatif_url!)} className="text-[var(--accent)] hover:underline">Voir</button>
                     ) : "—"}
                   </td>
                   <td className="px-3 py-2 text-center">
@@ -1602,14 +1603,14 @@ function PointageTab({ ctx }: { ctx: Ctx }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-gray-600">Mois</span>
             <input type="month" value={mois} onChange={e => setMois(e.target.value)} className={inputCls + " w-48"} />
           </label>
           <div className="flex-1" />
-          <button onClick={exportCsv} className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold hover:border-indigo-300">
+          <button onClick={exportCsv} className="rounded-[8px] border border-[var(--border)] bg-white px-4 py-2 text-sm font-semibold hover:border-indigo-300">
             ↓ Export CSV
           </button>
         </div>
@@ -1621,15 +1622,15 @@ function PointageTab({ ctx }: { ctx: Ctx }) {
         <Kpi label="Reste à pointer"  value={String(lignes.length - pointes)} accent={lignes.length - pointes > 0 ? "rose" : "emerald"} />
       </div>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h3 className="mb-3 text-sm font-semibold text-[#1A1A2E]">Détail des dépenses — {mois}</h3>
+      <section className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
+        <h3 className="mb-3 text-sm font-semibold text-[var(--text)]">Détail des dépenses — {mois}</h3>
         {lignes.length === 0 ? (
           <p className="text-sm text-gray-500">Aucune dépense ce mois-ci.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500">
+                <tr className="border-b border-[var(--border)] text-xs uppercase tracking-wide text-gray-500">
                   <th className="px-3 py-2 text-left">Source</th>
                   <th className="px-3 py-2 text-left">Date</th>
                   <th className="px-3 py-2 text-left">Libellé</th>
@@ -1641,7 +1642,7 @@ function PointageTab({ ctx }: { ctx: Ctx }) {
                 {lignes.map((l, i) => (
                   <tr key={i}>
                     <td className="px-3 py-2">
-                      <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">{l.source}</span>
+                      <span className="rounded-md bg-[var(--bg-subtle)] px-2 py-0.5 text-xs font-medium text-gray-600">{l.source}</span>
                     </td>
                     <td className="px-3 py-2">{new Date(l.date).toLocaleDateString("fr-FR")}</td>
                     <td className="px-3 py-2 text-gray-700">{l.libelle}</td>

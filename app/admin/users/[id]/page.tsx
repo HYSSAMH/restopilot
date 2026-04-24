@@ -33,7 +33,7 @@ interface FullProfile {
 }
 
 const inputCls =
-  "w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-[#1A1A2E] outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-60";
+  "w-full rounded-[8px] border border-[var(--border)] bg-white px-3.5 py-2.5 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:shadow-[0_0_0_3px_var(--accent-soft)] disabled:opacity-60";
 
 function Field({ label, children, span2 }: { label: string; children: React.ReactNode; span2?: boolean }) {
   return (
@@ -46,8 +46,8 @@ function Field({ label, children, span2 }: { label: string; children: React.Reac
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-      <h2 className="mb-4 text-base font-semibold text-[#1A1A2E]">{title}</h2>
+    <section className="rounded-[10px] border border-[var(--border)] bg-white p-6 shadow-sm">
+      <h2 className="mb-4 text-base font-semibold text-[var(--text)]">{title}</h2>
       <div className="flex flex-col gap-4">{children}</div>
     </section>
   );
@@ -161,7 +161,7 @@ export default function AdminUserDetail({ params }: { params: Promise<{ id: stri
     return (
       <AdminLayout>
         <div className="mx-auto max-w-4xl px-4 py-10 sm:px-8">
-          <div className="h-64 animate-pulse rounded-2xl border border-gray-200 bg-white" />
+          <div className="h-64 animate-pulse rounded-[10px] border border-[var(--border)] bg-white" />
         </div>
       </AdminLayout>
     );
@@ -172,7 +172,7 @@ export default function AdminUserDetail({ params }: { params: Promise<{ id: stri
       <AdminLayout>
         <div className="mx-auto max-w-4xl px-4 py-10 text-center sm:px-8">
           <p className="text-gray-500">Utilisateur introuvable.</p>
-          <Link href="/admin/users" className="mt-3 inline-block text-indigo-500 hover:text-indigo-600">
+          <Link href="/admin/users" className="mt-3 inline-block text-[var(--accent)] hover:text-[var(--accent)]">
             ← Retour à la liste
           </Link>
         </div>
@@ -199,11 +199,11 @@ export default function AdminUserDetail({ params }: { params: Promise<{ id: stri
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-lg font-bold text-white">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[8px] bg-[var(--accent)] text-lg font-bold text-white">
                 {displayName.charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0">
-                <h1 className="truncate text-xl font-bold text-[#1A1A2E]">{displayName}</h1>
+                <h1 className="truncate text-xl font-bold text-[var(--text)]">{displayName}</h1>
                 <p className="truncate text-sm text-gray-500">{p.email}</p>
               </div>
             </div>
@@ -212,14 +212,14 @@ export default function AdminUserDetail({ params }: { params: Promise<{ id: stri
             {isFour && (
               <Link
                 href={`/dashboard/fournisseur/mercuriale?as=${p.id}`}
-                className="min-h-[44px] rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-medium text-indigo-600 hover:bg-indigo-100"
+                className="min-h-[44px] rounded-[8px] border border-[var(--accent-border)] bg-[var(--accent-soft)] px-4 py-2.5 text-sm font-medium text-[var(--accent)] hover:bg-indigo-100"
               >
                 Ouvrir sa mercuriale →
               </Link>
             )}
             <button
               onClick={toggleActif}
-              className={`min-h-[44px] rounded-xl border px-4 py-2.5 text-sm font-medium ${
+              className={`min-h-[44px] rounded-[8px] border px-4 py-2.5 text-sm font-medium ${
                 isActive
                   ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
                   : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
@@ -342,14 +342,14 @@ export default function AdminUserDetail({ params }: { params: Promise<{ id: stri
                 {isFour && (
                   <Link
                     href={`/dashboard/fournisseur/mercuriale?as=${p.id}`}
-                    className="min-h-[44px] rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-[#1A1A2E] hover:border-indigo-300 hover:text-indigo-600"
+                    className="min-h-[44px] rounded-[8px] border border-[var(--border)] bg-white px-4 py-2.5 text-sm font-medium text-[var(--text)] hover:border-indigo-300 hover:text-[var(--accent)]"
                   >
                     Gérer sa mercuriale
                   </Link>
                 )}
                 <Link
                   href={`/admin/commandes?user=${p.id}`}
-                  className="min-h-[44px] rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-[#1A1A2E] hover:border-indigo-300 hover:text-indigo-600"
+                  className="min-h-[44px] rounded-[8px] border border-[var(--border)] bg-white px-4 py-2.5 text-sm font-medium text-[var(--text)] hover:border-indigo-300 hover:text-[var(--accent)]"
                 >
                   Voir ses commandes
                 </Link>
@@ -358,21 +358,21 @@ export default function AdminUserDetail({ params }: { params: Promise<{ id: stri
           )}
 
           {/* Save bar */}
-          <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-5 py-3 shadow-lg">
+          <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-[var(--border)] bg-white px-5 py-3 shadow-lg">
             <p className="text-xs text-gray-500">
               Vos modifications s&apos;appliqueront au profil de cet utilisateur.
             </p>
             <div className="flex gap-2">
               <button
                 onClick={handleDelete}
-                className="min-h-[44px] rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-100"
+                className="min-h-[44px] rounded-[8px] border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-100"
               >
                 Supprimer le profil
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="min-h-[44px] rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-500/20 hover:bg-indigo-600 disabled:opacity-50"
+                className="min-h-[44px] rounded-[8px] bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-500/20 hover:bg-[var(--accent-hover)] disabled:opacity-50"
               >
                 {saving ? "Sauvegarde…" : "Sauvegarder"}
               </button>
@@ -382,7 +382,7 @@ export default function AdminUserDetail({ params }: { params: Promise<{ id: stri
       </div>
 
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-50 max-w-xs rounded-2xl border px-4 py-3 shadow-2xl ${
+        <div className={`fixed bottom-6 right-6 z-50 max-w-xs rounded-[10px] border px-4 py-3 shadow-2xl ${
           toast.type === "success"
             ? "border-emerald-200 bg-emerald-50 text-emerald-700"
             : "border-red-200 bg-red-50 text-red-700"
@@ -396,9 +396,9 @@ export default function AdminUserDetail({ params }: { params: Promise<{ id: stri
 
 function InfoCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+    <div className="rounded-[10px] border border-[var(--border)] bg-white p-4 shadow-sm">
       <p className="text-[11px] font-medium uppercase tracking-wider text-gray-500">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-[#1A1A2E]">{value}</p>
+      <p className="mt-1 text-sm font-semibold text-[var(--text)]">{value}</p>
     </div>
   );
 }

@@ -74,39 +74,32 @@ export default function FournisseursExternes() {
 
   return (
     <DashboardLayout role="restaurateur">
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
-        <div className="mb-6 flex items-center gap-2 text-sm text-gray-400">
-          <Link href="/dashboard/restaurateur" className="hover:text-gray-600">Dashboard</Link>
-          <span>/</span>
-          <span className="text-gray-600">Fournisseurs externes</span>
-        </div>
-
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-[#1A1A2E]">Fournisseurs externes</h1>
-          <p className="mt-1 text-sm text-gray-500">
+        <header className="mb-6">
+          <h1 className="page-title">Fournisseurs externes</h1>
+          <p className="page-sub">
             Fournisseurs détectés sur vos factures importées, non-inscrits sur RestoPilot.
           </p>
-        </div>
+        </header>
 
         {loading ? (
-          <div className="h-32 animate-pulse rounded-2xl border border-gray-200 bg-white" />
+          <div className="h-32 animate-pulse rounded-[10px] border border-[var(--border)] bg-white" />
         ) : rows.length === 0 ? (
-          <div className="rounded-2xl border border-gray-200 bg-white py-20 text-center">
+          <div className="rounded-[10px] border border-[var(--border)] bg-white py-20 text-center">
             <span className="text-5xl">🏷️</span>
             <p className="mt-3 text-sm text-gray-500">
               Aucun fournisseur externe pour l&apos;instant.<br />
               Importez une facture sur{" "}
-              <Link href="/dashboard/restaurateur/factures" className="text-indigo-500 hover:underline">Factures</Link>
+              <Link href="/dashboard/restaurateur/factures" className="text-[var(--accent)] hover:underline">Factures</Link>
               {" "}pour en créer automatiquement.
             </p>
           </div>
         ) : (
           <div className="space-y-3">
             {rows.map(r => (
-              <div key={r.id} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <div key={r.id} className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="text-lg font-semibold text-[#1A1A2E]">{r.nom}</p>
+                    <p className="text-lg font-semibold text-[var(--text)]">{r.nom}</p>
                     <p className="mt-1 text-xs text-gray-500">
                       {[r.siret ? `SIRET ${r.siret}` : null, r.email, r.telephone].filter(Boolean).join(" · ") || "—"}
                     </p>
@@ -120,7 +113,7 @@ export default function FournisseursExternes() {
                     ) : r.email ? (
                       <button
                         onClick={() => markInvited(r.id)}
-                        className="min-h-[40px] rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+                        className="min-h-[40px] rounded-lg border border-[var(--accent-border)] bg-[var(--accent-soft)] px-3 py-1.5 text-xs font-medium text-[var(--accent)] hover:bg-indigo-100"
                         title="Marque l'invitation comme envoyée (l'envoi d'email nécessitera un SMTP côté serveur — pas encore branché)"
                       >
                         ✉ Inviter à rejoindre
@@ -132,17 +125,17 @@ export default function FournisseursExternes() {
                 </div>
 
                 <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                  <div className="rounded-lg bg-gray-50 px-3 py-2">
+                  <div className="rounded-lg bg-[var(--bg-subtle)] px-3 py-2">
                     <p className="text-[10px] uppercase tracking-wider text-gray-500">Commandes</p>
-                    <p className="text-sm font-bold text-[#1A1A2E]">{r.nbCommandes}</p>
+                    <p className="text-sm font-bold text-[var(--text)]">{r.nbCommandes}</p>
                   </div>
-                  <div className="rounded-lg bg-gray-50 px-3 py-2">
+                  <div className="rounded-lg bg-[var(--bg-subtle)] px-3 py-2">
                     <p className="text-[10px] uppercase tracking-wider text-gray-500">Total</p>
-                    <p className="text-sm font-bold text-[#1A1A2E]">{fmt(r.caTotal)}</p>
+                    <p className="text-sm font-bold text-[var(--text)]">{fmt(r.caTotal)}</p>
                   </div>
-                  <div className="rounded-lg bg-gray-50 px-3 py-2">
+                  <div className="rounded-lg bg-[var(--bg-subtle)] px-3 py-2">
                     <p className="text-[10px] uppercase tracking-wider text-gray-500">Dernier</p>
-                    <p className="text-sm font-bold text-[#1A1A2E]">
+                    <p className="text-sm font-bold text-[var(--text)]">
                       {r.derniere ? new Date(r.derniere).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) : "—"}
                     </p>
                   </div>
@@ -151,7 +144,6 @@ export default function FournisseursExternes() {
             ))}
           </div>
         )}
-      </div>
     </DashboardLayout>
   );
 }

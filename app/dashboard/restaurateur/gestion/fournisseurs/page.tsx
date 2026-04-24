@@ -109,16 +109,16 @@ export default function FournisseursPage() {
       </div>
 
       {loading ? (
-        <div className="h-64 animate-pulse rounded-2xl border border-gray-200 bg-white" />
+        <div className="h-64 animate-pulse rounded-[10px] border border-[var(--border)] bg-white" />
       ) : rows.length === 0 ? (
-        <div className="rounded-2xl border border-gray-200 bg-white py-20 text-center text-gray-500">
+        <div className="rounded-[10px] border border-[var(--border)] bg-white py-20 text-center text-gray-500">
           Aucun fournisseur à afficher (vous n&apos;avez pas encore de commandes).
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <div className="overflow-x-auto rounded-[10px] border border-[var(--border)] bg-white shadow-sm">
           <table className="w-full min-w-[860px] text-sm">
             <thead>
-              <tr className="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
+              <tr className="border-b border-[var(--border)] bg-[var(--bg-subtle)] text-xs font-medium uppercase tracking-wide text-gray-500">
                 <th className="px-4 py-3 text-left">Fournisseur</th>
                 <th className="px-4 py-3 text-left">Top produit</th>
                 <th className="px-4 py-3 text-right">Cmdes</th>
@@ -130,12 +130,12 @@ export default function FournisseursPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {rows.map((r, i) => (
-                <tr key={r.id} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                <tr key={r.id} className={i % 2 === 0 ? "bg-white" : "bg-[var(--bg-subtle)]"}>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium text-[#1A1A2E]">{r.nom}</span>
+                      <span className="font-medium text-[var(--text)]">{r.nom}</span>
                       {!r.isInterne && (
-                        <span className="rounded-full border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600">externe</span>
+                        <span className="rounded-full border border-[var(--border)] bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600">externe</span>
                       )}
                     </div>
                   </td>
@@ -145,7 +145,7 @@ export default function FournisseursPage() {
                   <td className="px-4 py-3 text-gray-500">
                     {new Date(r.derniereCmd).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}
                   </td>
-                  <td className="px-4 py-3 text-right font-semibold text-[#1A1A2E]">{fmt(r.caTotal)}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-[var(--text)]">{fmt(r.caTotal)}</td>
                   <td className={`px-4 py-3 text-right font-semibold ${r.solde > 0 ? "text-rose-600" : "text-emerald-600"}`}>
                     {fmt(r.solde)}
                   </td>
@@ -162,9 +162,9 @@ export default function FournisseursPage() {
 function Kpi({ label, value, accent }: { label: string; value: string; accent?: "rose" | "emerald" }) {
   const cls = accent === "rose" ? "border-rose-200 bg-rose-50 text-rose-700"
             : accent === "emerald" ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-            : "border-gray-200 bg-white text-[#1A1A2E]";
+            : "border-[var(--border)] bg-white text-[var(--text)]";
   return (
-    <div className={`rounded-2xl border ${cls.split(" ").slice(0, 2).join(" ")} p-4 shadow-sm`}>
+    <div className={`rounded-[10px] border ${cls.split(" ").slice(0, 2).join(" ")} p-4 shadow-sm`}>
       <p className="text-[11px] font-medium uppercase tracking-wider text-gray-500">{label}</p>
       <p className={`mt-1 text-xl font-bold ${cls.split(" ")[2]}`}>{value}</p>
     </div>

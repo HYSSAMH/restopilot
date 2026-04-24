@@ -323,7 +323,7 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
     return (
       <DashboardLayout role="fournisseur">
         <div className="mx-auto max-w-5xl px-4 py-10 sm:px-8">
-          <div className="h-64 animate-pulse rounded-2xl border border-gray-200 bg-white" />
+          <div className="h-64 animate-pulse rounded-[10px] border border-[var(--border)] bg-white" />
         </div>
       </DashboardLayout>
     );
@@ -332,7 +332,7 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
     return (
       <DashboardLayout role="fournisseur">
         <div className="mx-auto max-w-2xl px-4 py-10 sm:px-8">
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
+          <div className="rounded-[10px] border border-amber-200 bg-amber-50 p-6">
             <p className="font-semibold text-amber-800">Client introuvable</p>
             <p className="mt-2 text-sm text-amber-700">
               Aucune commande ni profil n&apos;est associé à cet identifiant pour votre compte.
@@ -348,7 +348,7 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
               dans Supabase SQL Editor.
             </p>
           </div>
-          <Link href="/dashboard/fournisseur/clients" className="mt-4 inline-block text-indigo-500 hover:text-indigo-600">
+          <Link href="/dashboard/fournisseur/clients" className="mt-4 inline-block text-[var(--accent)] hover:text-[var(--accent)]">
             ← Retour à la liste
           </Link>
         </div>
@@ -372,13 +372,13 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
         </div>
 
         {/* Header */}
-        <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="mb-6 rounded-[10px] border border-[var(--border)] bg-white p-6 shadow-sm">
           <div className="flex flex-wrap items-start gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 text-xl font-bold text-white">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[10px] bg-[var(--accent)] text-xl font-bold text-white">
               {nom.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl font-bold text-[#1A1A2E]">{nom}</h1>
+              <h1 className="text-xl font-bold text-[var(--text)]">{nom}</h1>
               {profil.raison_sociale && <p className="text-sm text-gray-600">{profil.raison_sociale}</p>}
               <p className="mt-1 text-xs text-gray-500">
                 {[profil.siret ? `SIRET ${profil.siret}` : null, profil.telephone, profil.email_contact || profil.email].filter(Boolean).join(" · ")}
@@ -396,7 +396,7 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
         </div>
 
         {/* Tabs */}
-        <div className="mb-5 flex flex-wrap gap-1 rounded-xl border border-gray-200 bg-white p-1 w-fit">
+        <div className="mb-5 flex flex-wrap gap-1 rounded-[8px] border border-[var(--border)] bg-white p-1 w-fit">
           {([
             { id: "overview",   label: "Vue d'ensemble" },
             { id: "historique", label: "Historique" },
@@ -408,7 +408,7 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
               key={t.id}
               onClick={() => setTab(t.id)}
               className={`min-h-[40px] rounded-lg px-3 py-1.5 text-sm font-medium ${
-                tab === t.id ? "bg-indigo-500 text-white" : "text-gray-500 hover:text-[#1A1A2E]"
+                tab === t.id ? "bg-[var(--accent)] text-white" : "text-gray-500 hover:text-[var(--text)]"
               }`}
             >
               {t.label}
@@ -426,8 +426,8 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
               <Kpi label="Panier moyen"   value={fmt(panierMoyen)} />
             </div>
 
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h2 className="text-base font-semibold text-[#1A1A2E]">Évolution CA (12 derniers mois)</h2>
+            <div className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
+              <h2 className="text-base font-semibold text-[var(--text)]">Évolution CA (12 derniers mois)</h2>
               <div className="mt-4 grid grid-cols-12 gap-1.5 items-end" style={{ height: 120 }}>
                 {evolution.map(e => {
                   const pct = e.valeur / maxEvo;
@@ -435,7 +435,7 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
                     <div key={e.mois} className="flex flex-col items-center gap-1">
                       <div className="flex-1 w-full flex items-end">
                         <div
-                          className="w-full rounded-t bg-indigo-500 transition-all"
+                          className="w-full rounded-t bg-[var(--accent)] transition-all"
                           style={{ height: `${Math.max(2, pct * 100)}%`, opacity: pct > 0 ? 1 : 0.2 }}
                           title={fmt(e.valeur)}
                         />
@@ -447,20 +447,20 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
               </div>
             </div>
 
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h2 className="text-base font-semibold text-[#1A1A2E]">Top produits achetés</h2>
+            <div className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
+              <h2 className="text-base font-semibold text-[var(--text)]">Top produits achetés</h2>
               {topProduits.length === 0 ? (
                 <p className="mt-2 text-sm text-gray-500">Aucun historique encore.</p>
               ) : (
                 <div className="mt-3 space-y-2">
                   {topProduits.map((p, i) => (
-                    <div key={p.nom} className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2">
+                    <div key={p.nom} className="flex items-center justify-between gap-3 rounded-lg bg-[var(--bg-subtle)] px-3 py-2">
                       <span className="flex items-center gap-2 truncate text-sm">
                         <span className="w-5 text-xs text-gray-400">#{i + 1}</span>
-                        <span className="truncate text-[#1A1A2E]">{p.nom}</span>
+                        <span className="truncate text-[var(--text)]">{p.nom}</span>
                       </span>
                       <span className="shrink-0 text-sm text-gray-500">
-                        {p.qte} unités · <span className="font-semibold text-[#1A1A2E]">{fmt(p.valeur)}</span>
+                        {p.qte} unités · <span className="font-semibold text-[var(--text)]">{fmt(p.valeur)}</span>
                       </span>
                     </div>
                   ))}
@@ -472,10 +472,10 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
 
         {/* HISTORIQUE */}
         {tab === "historique" && (
-          <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="overflow-x-auto rounded-[10px] border border-[var(--border)] bg-white shadow-sm">
             <table className="w-full min-w-[620px] text-sm">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
+                <tr className="border-b border-[var(--border)] bg-[var(--bg-subtle)] text-xs font-medium uppercase tracking-wide text-gray-500">
                   <th className="px-5 py-3 text-left">Date</th>
                   <th className="px-5 py-3 text-left">Réf.</th>
                   <th className="px-5 py-3 text-left">Statut</th>
@@ -487,7 +487,7 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
                 {commandes.length === 0 ? (
                   <tr><td colSpan={5} className="py-10 text-center text-gray-500">Aucune commande.</td></tr>
                 ) : commandes.map((c, i) => (
-                  <tr key={c.id} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                  <tr key={c.id} className={i % 2 === 0 ? "bg-white" : "bg-[var(--bg-subtle)]"}>
                     <td className="px-5 py-3 text-gray-500">{fmtDate(c.created_at)}</td>
                     <td className="px-5 py-3 font-mono text-gray-700">{c.id.slice(0, 8).toUpperCase()}</td>
                     <td className="px-5 py-3 text-gray-700">{c.statut.replace(/_/g, " ")}</td>
@@ -508,22 +508,22 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
             <div className="mb-3 flex flex-wrap justify-end gap-2">
               <button
                 onClick={exportReleveCsv}
-                className="min-h-[40px] rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-[#1A1A2E] hover:border-indigo-300"
+                className="min-h-[40px] rounded-lg border border-[var(--border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--text)] hover:border-indigo-300"
               >
                 ↓ CSV
               </button>
               <button
                 disabled
                 title="Nécessite un provider SMTP (à activer côté serveur)"
-                className="min-h-[40px] rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-400"
+                className="min-h-[40px] rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-1.5 text-xs font-medium text-gray-400"
               >
                 ✉ Envoyer par email (bientôt)
               </button>
             </div>
-            <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <div className="overflow-x-auto rounded-[10px] border border-[var(--border)] bg-white shadow-sm">
               <table className="w-full min-w-[700px] text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
+                  <tr className="border-b border-[var(--border)] bg-[var(--bg-subtle)] text-xs font-medium uppercase tracking-wide text-gray-500">
                     <th className="px-5 py-3 text-left">Date</th>
                     <th className="px-5 py-3 text-left">Type</th>
                     <th className="px-5 py-3 text-left">Référence</th>
@@ -536,9 +536,9 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
                   {releve.length === 0 ? (
                     <tr><td colSpan={6} className="py-10 text-center text-gray-500">Aucune ligne.</td></tr>
                   ) : releve.map((l, i) => (
-                    <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                    <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-[var(--bg-subtle)]"}>
                       <td className="px-5 py-3 text-gray-500">{fmtDate(l.date)}</td>
-                      <td className="px-5 py-3 text-[#1A1A2E]">{l.type}</td>
+                      <td className="px-5 py-3 text-[var(--text)]">{l.type}</td>
                       <td className="px-5 py-3 font-mono text-gray-600">{l.ref}</td>
                       <td className="px-5 py-3 text-right text-gray-700">{l.debit > 0 ? fmt(l.debit) : "—"}</td>
                       <td className="px-5 py-3 text-right text-emerald-600">{l.credit > 0 ? fmt(l.credit) : "—"}</td>
@@ -558,21 +558,21 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
           <div>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div className="text-sm text-gray-500">
-                Total payé : <span className="font-semibold text-[#1A1A2E]">{fmt(totalPaye)}</span>
+                Total payé : <span className="font-semibold text-[var(--text)]">{fmt(totalPaye)}</span>
                 {" · "}Solde dû : <span className={`font-semibold ${solde > 0 ? "text-rose-600" : "text-emerald-600"}`}>{fmt(solde)}</span>
               </div>
               <button
                 onClick={() => setAddPayOpen(true)}
-                className="min-h-[44px] rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-600"
+                className="min-h-[44px] rounded-[8px] bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-[var(--accent-hover)]"
               >
                 + Enregistrer un paiement
               </button>
             </div>
 
-            <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <div className="overflow-x-auto rounded-[10px] border border-[var(--border)] bg-white shadow-sm">
               <table className="w-full min-w-[620px] text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
+                  <tr className="border-b border-[var(--border)] bg-[var(--bg-subtle)] text-xs font-medium uppercase tracking-wide text-gray-500">
                     <th className="px-5 py-3 text-left">Date</th>
                     <th className="px-5 py-3 text-left">Mode</th>
                     <th className="px-5 py-3 text-left">Référence</th>
@@ -585,7 +585,7 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
                   {paiements.length === 0 ? (
                     <tr><td colSpan={6} className="py-10 text-center text-gray-500">Aucun paiement enregistré.</td></tr>
                   ) : paiements.map((p, i) => (
-                    <tr key={p.id} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                    <tr key={p.id} className={i % 2 === 0 ? "bg-white" : "bg-[var(--bg-subtle)]"}>
                       <td className="px-5 py-3 text-gray-500">{fmtDate(p.created_at)}</td>
                       <td className="px-5 py-3 text-gray-700">{p.mode ?? "—"}</td>
                       <td className="px-5 py-3 text-gray-600">{p.reference ?? "—"}</td>
@@ -609,8 +609,8 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
 
         {/* CONDITIONS */}
         {tab === "conditions" && (
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="text-base font-semibold text-[#1A1A2E]">Conditions commerciales</h2>
+          <div className="rounded-[10px] border border-[var(--border)] bg-white p-6 shadow-sm">
+            <h2 className="text-base font-semibold text-[var(--text)]">Conditions commerciales</h2>
             <p className="mt-1 text-xs text-gray-500">
               Paramètres spécifiques à ce client. Non visible par le restaurateur.
             </p>
@@ -620,7 +620,7 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
                 <select
                   value={conditions.delai_paiement_jours}
                   onChange={e => setConditions({ ...conditions, delai_paiement_jours: parseInt(e.target.value, 10) })}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500"
+                  className="w-full rounded-[8px] border border-[var(--border)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent)]"
                 >
                   {[0, 7, 15, 30, 45, 60, 90].map(d => <option key={d} value={d}>{d === 0 ? "Comptant" : `${d} jours`}</option>)}
                 </select>
@@ -631,7 +631,7 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
                   type="number" min="0" max="100" step="0.5"
                   value={conditions.remise_pct}
                   onChange={e => setConditions({ ...conditions, remise_pct: parseFloat(e.target.value) || 0 })}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500"
+                  className="w-full rounded-[8px] border border-[var(--border)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent)]"
                 />
               </div>
               <div>
@@ -640,7 +640,7 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
                   type="number" min="0" step="1"
                   value={conditions.montant_min}
                   onChange={e => setConditions({ ...conditions, montant_min: parseFloat(e.target.value) || 0 })}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500"
+                  className="w-full rounded-[8px] border border-[var(--border)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent)]"
                 />
               </div>
             </div>
@@ -651,14 +651,14 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
                 value={conditions.notes ?? ""}
                 onChange={e => setConditions({ ...conditions, notes: e.target.value })}
                 placeholder="ex : contact privilégié le mardi, accepte les livraisons tôt le matin…"
-                className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                className="w-full rounded-[8px] border border-[var(--border)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent)] focus:ring-2 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
               />
             </div>
             <div className="mt-5 flex justify-end">
               <button
                 onClick={saveConditions}
                 disabled={saving}
-                className="min-h-[44px] rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-600 disabled:opacity-50"
+                className="min-h-[44px] rounded-[8px] bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-[var(--accent-hover)] disabled:opacity-50"
               >
                 {saving ? "Sauvegarde…" : "Enregistrer"}
               </button>
@@ -670,9 +670,9 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
       {/* Modale Ajout Paiement */}
       {addPayOpen && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-2xl">
-            <div className="border-b border-gray-200 px-5 py-4">
-              <h2 className="text-lg font-bold text-[#1A1A2E]">Enregistrer un paiement</h2>
+          <div className="w-full max-w-md rounded-[10px] border border-[var(--border)] bg-white shadow-2xl">
+            <div className="border-b border-[var(--border)] px-5 py-4">
+              <h2 className="text-lg font-bold text-[var(--text)]">Enregistrer un paiement</h2>
             </div>
             <div className="space-y-3 p-5">
               <div>
@@ -680,7 +680,7 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
                 <select
                   value={newPay.commande_id}
                   onChange={e => setNewPay({ ...newPay, commande_id: e.target.value })}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500"
+                  className="w-full rounded-[8px] border border-[var(--border)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent)]"
                 >
                   <option value="">— Paiement général / partiel —</option>
                   {commandes.filter(c => c.statut !== "annulee").slice(0, 30).map(c => (
@@ -697,7 +697,7 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
                     type="number" min="0" step="0.01"
                     value={newPay.montant}
                     onChange={e => setNewPay({ ...newPay, montant: e.target.value })}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500"
+                    className="w-full rounded-[8px] border border-[var(--border)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent)]"
                   />
                 </div>
                 <div>
@@ -705,7 +705,7 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
                   <select
                     value={newPay.mode}
                     onChange={e => setNewPay({ ...newPay, mode: e.target.value })}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500"
+                    className="w-full rounded-[8px] border border-[var(--border)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent)]"
                   >
                     <option value="virement">Virement</option>
                     <option value="cheque">Chèque</option>
@@ -721,7 +721,7 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
                   value={newPay.reference}
                   onChange={e => setNewPay({ ...newPay, reference: e.target.value })}
                   placeholder="ex : VIR-20260420 ou n° chèque"
-                  className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500"
+                  className="w-full rounded-[8px] border border-[var(--border)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent)]"
                 />
               </div>
               <div>
@@ -729,22 +729,22 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
                 <input
                   value={newPay.notes}
                   onChange={e => setNewPay({ ...newPay, notes: e.target.value })}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500"
+                  className="w-full rounded-[8px] border border-[var(--border)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent)]"
                 />
               </div>
             </div>
-            <div className="flex justify-end gap-2 border-t border-gray-200 bg-gray-50 px-5 py-3">
+            <div className="flex justify-end gap-2 border-t border-[var(--border)] bg-[var(--bg-subtle)] px-5 py-3">
               <button
                 onClick={() => setAddPayOpen(false)}
                 disabled={saving}
-                className="min-h-[44px] rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-[#1A1A2E] hover:bg-gray-100 disabled:opacity-50"
+                className="min-h-[44px] rounded-[8px] border border-[var(--border)] bg-white px-4 py-2.5 text-sm font-medium text-[var(--text)] hover:bg-[var(--bg-subtle)] disabled:opacity-50"
               >
                 Annuler
               </button>
               <button
                 onClick={addPaiement}
                 disabled={saving}
-                className="min-h-[44px] rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-600 disabled:opacity-50"
+                className="min-h-[44px] rounded-[8px] bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-[var(--accent-hover)] disabled:opacity-50"
               >
                 {saving ? "Enregistrement…" : "Enregistrer"}
               </button>
@@ -754,7 +754,7 @@ export default function ClientDetail({ params }: { params: Promise<{ id: string 
       )}
 
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-50 max-w-xs rounded-2xl border px-4 py-3 shadow-2xl ${
+        <div className={`fixed bottom-6 right-6 z-50 max-w-xs rounded-[10px] border px-4 py-3 shadow-2xl ${
           toast.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-700"
         }`}>
           <p className="text-sm font-medium">{toast.msg}</p>
@@ -768,9 +768,9 @@ function Kpi({ label, value, accent }: { label: string; value: string; accent?: 
   const cls =
     accent === "rose"    ? "text-rose-600"    :
     accent === "emerald" ? "text-emerald-600" :
-                           "text-[#1A1A2E]";
+                           "text-[var(--text)]";
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+    <div className="rounded-[10px] border border-[var(--border)] bg-white p-4 shadow-sm">
       <p className="text-[11px] font-medium uppercase tracking-wider text-gray-500">{label}</p>
       <p className={`mt-1 text-xl font-bold ${cls}`}>{value}</p>
     </div>

@@ -143,28 +143,28 @@ export default function PrixProduitPage({ params }: { params: Promise<{ produit:
         {/* Header */}
         <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-[#1A1A2E]">{produitNom}</h1>
+            <h1 className="text-2xl font-bold text-[var(--text)]">{produitNom}</h1>
             <p className="mt-1 text-sm text-gray-500">
               {dernier
-                ? <>Dernier achat chez <span className="font-medium text-[#1A1A2E]">{dernier.fournNom}</span> le {formatShort(dernier.date)}</>
+                ? <>Dernier achat chez <span className="font-medium text-[var(--text)]">{dernier.fournNom}</span> le {formatShort(dernier.date)}</>
                 : "Aucun achat trouvé"}
             </p>
           </div>
           <Link
             href={ordrerUrl}
-            className="flex min-h-[44px] items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-600"
+            className="flex min-h-[44px] items-center gap-2 rounded-[8px] bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-[var(--accent-hover)]"
           >
             🛒 Commander ce produit
           </Link>
         </div>
 
         {loading ? (
-          <div className="h-64 animate-pulse rounded-2xl border border-gray-200 bg-white" />
+          <div className="h-64 animate-pulse rounded-[10px] border border-[var(--border)] bg-white" />
         ) : achats.length === 0 ? (
-          <div className="rounded-2xl border border-gray-200 bg-white py-20 text-center text-gray-500">
+          <div className="rounded-[10px] border border-[var(--border)] bg-white py-20 text-center text-gray-500">
             Aucun achat enregistré pour <span className="font-semibold">{produitNom}</span>.
             <br />
-            <Link href="/dashboard/restaurateur/gestion/prix" className="mt-3 inline-block text-indigo-500 hover:underline">
+            <Link href="/dashboard/restaurateur/gestion/prix" className="mt-3 inline-block text-[var(--accent)] hover:underline">
               ← Retour à l&apos;analyse
             </Link>
           </div>
@@ -182,8 +182,8 @@ export default function PrixProduitPage({ params }: { params: Promise<{ produit:
             </div>
 
             {/* Graphique */}
-            <div className="mb-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h2 className="mb-3 text-sm font-semibold text-[#1A1A2E]">Évolution du prix</h2>
+            <div className="mb-5 rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
+              <h2 className="mb-3 text-sm font-semibold text-[var(--text)]">Évolution du prix</h2>
               <div style={{ width: "100%", height: 320 }}>
                 <ResponsiveContainer>
                   <LineChart data={achats.map((a, i) => ({ ...a, idx: i }))} margin={{ top: 10, right: 20, bottom: 5, left: 10 }}>
@@ -197,11 +197,11 @@ export default function PrixProduitPage({ params }: { params: Promise<{ produit:
                         if (!active || !payload || payload.length === 0) return null;
                         const a = payload[0].payload as Achat;
                         return (
-                          <div className="rounded-lg border border-gray-200 bg-white p-3 text-xs shadow-md">
-                            <p className="font-semibold text-[#1A1A2E]">{formatLong(a.date)}</p>
+                          <div className="rounded-lg border border-[var(--border)] bg-white p-3 text-xs shadow-md">
+                            <p className="font-semibold text-[var(--text)]">{formatLong(a.date)}</p>
                             <p className="mt-1 text-gray-600">Fournisseur : {a.fournNom}</p>
                             <p className="text-gray-600">Qté : {a.quantite} {a.unite}</p>
-                            <p className="mt-1 font-bold text-[#1A1A2E]">{fmt(a.prix)} / {a.unite}</p>
+                            <p className="mt-1 font-bold text-[var(--text)]">{fmt(a.prix)} / {a.unite}</p>
                           </div>
                         );
                       }}
@@ -248,7 +248,7 @@ export default function PrixProduitPage({ params }: { params: Promise<{ produit:
 
             {/* Comparaison catalogue */}
             {alternatives.length > 0 && (
-              <div className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+              <div className="mb-5 rounded-[10px] border border-emerald-200 bg-emerald-50 p-5">
                 <h2 className="mb-2 text-sm font-semibold text-emerald-800">
                   Disponible chez {alternatives.length} fournisseur{alternatives.length > 1 ? "s" : ""} sur RestoPilot
                 </h2>
@@ -258,7 +258,7 @@ export default function PrixProduitPage({ params }: { params: Promise<{ produit:
                     const ecart   = dernier ? dernier.prix - a.prix : 0;
                     return (
                       <div key={a.fournId + i} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 text-sm">
-                        <span className="font-medium text-[#1A1A2E]">{a.fournNom}</span>
+                        <span className="font-medium text-[var(--text)]">{a.fournNom}</span>
                         <div className="flex items-center gap-2">
                           <span className={`font-semibold ${cheaper ? "text-emerald-600" : "text-gray-700"}`}>
                             {fmt(a.prix)} / {a.unite}
@@ -283,10 +283,10 @@ export default function PrixProduitPage({ params }: { params: Promise<{ produit:
             )}
 
             {/* Table chronologique */}
-            <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <div className="overflow-x-auto rounded-[10px] border border-[var(--border)] bg-white shadow-sm">
               <table className="w-full min-w-[640px] text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
+                  <tr className="border-b border-[var(--border)] bg-[var(--bg-subtle)] text-xs font-medium uppercase tracking-wide text-gray-500">
                     <th className="px-4 py-3 text-left">Date</th>
                     <th className="px-4 py-3 text-left">Fournisseur</th>
                     <th className="px-4 py-3 text-right">Quantité</th>
@@ -303,11 +303,11 @@ export default function PrixProduitPage({ params }: { params: Promise<{ produit:
                       <tr key={i}
                           className={isBiggest
                             ? "bg-rose-50"
-                            : i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                            : i % 2 === 0 ? "bg-white" : "bg-[var(--bg-subtle)]"}>
                         <td className="px-4 py-2.5 text-gray-600">{formatLong(a.date)}</td>
-                        <td className="px-4 py-2.5 text-[#1A1A2E]">{a.fournNom}</td>
+                        <td className="px-4 py-2.5 text-[var(--text)]">{a.fournNom}</td>
                         <td className="px-4 py-2.5 text-right text-gray-600">{a.quantite} {a.unite}</td>
-                        <td className="px-4 py-2.5 text-right font-semibold text-[#1A1A2E]">{fmt(a.prix)}</td>
+                        <td className="px-4 py-2.5 text-right font-semibold text-[var(--text)]">{fmt(a.prix)}</td>
                         <td className="px-4 py-2.5 text-right">
                           {variation === null ? (
                             <span className="text-gray-400">—</span>
@@ -316,7 +316,7 @@ export default function PrixProduitPage({ params }: { params: Promise<{ produit:
                               variation > 10     ? "bg-rose-100 text-rose-700" :
                               variation > 0      ? "bg-amber-100 text-amber-700" :
                               variation < -5     ? "bg-emerald-100 text-emerald-700" :
-                              "bg-gray-100 text-gray-500"
+                              "bg-[var(--bg-subtle)] text-gray-500"
                             }`}>
                               {variation > 0 ? "↑" : variation < 0 ? "↓" : "→"}
                               {" "}{variation >= 0 ? "+" : ""}{variation.toFixed(1)}%
@@ -340,10 +340,10 @@ export default function PrixProduitPage({ params }: { params: Promise<{ produit:
 function Kpi({ label, value, accent }: { label: string; value: string; accent?: "rose" | "emerald" }) {
   const cls = accent === "rose"    ? "border-rose-200 bg-rose-50 text-rose-700"
             : accent === "emerald" ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-            : "border-gray-200 bg-white text-[#1A1A2E]";
+            : "border-[var(--border)] bg-white text-[var(--text)]";
   const [border, bg, txt] = cls.split(" ");
   return (
-    <div className={`rounded-2xl border ${border} ${bg} p-3 shadow-sm`}>
+    <div className={`rounded-[10px] border ${border} ${bg} p-3 shadow-sm`}>
       <p className="text-[10px] font-medium uppercase tracking-wider text-gray-500">{label}</p>
       <p className={`mt-1 text-lg font-bold ${txt}`}>{value}</p>
     </div>

@@ -46,11 +46,11 @@ function LoginInner() {
       </div>
 
       <div className="relative z-10 w-full max-w-md animate-fade-in-up">
-        <Link href="/" className="mb-8 flex items-center gap-2 text-sm text-gray-500 transition-colors hover:text-[#1A1A2E]">
+        <Link href="/" className="mb-8 flex items-center gap-2 text-sm text-gray-500 transition-colors hover:text-[var(--text)]">
           <span>←</span><span>Retour à l&apos;accueil</span>
         </Link>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+        <div className="rounded-[10px] border border-[var(--border)] bg-white p-8 shadow-sm">
           <div className="mb-8 flex flex-col items-center gap-4 text-center">
             <div
               className="flex h-12 w-12 items-center justify-center rounded-[10px] text-white"
@@ -69,19 +69,19 @@ function LoginInner() {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <div className="flex flex-col gap-2">
-              <label htmlFor="email" className="text-sm font-medium text-[#1A1A2E]">Adresse email</label>
+              <label htmlFor="email" className="text-sm font-medium text-[var(--text)]">Adresse email</label>
               <input
                 id="email" type="email" required autoComplete="email"
                 placeholder="vous@exemple.com"
                 value={email} onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1A1A2E] placeholder-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                className="w-full rounded-[8px] border border-[var(--border)] bg-white px-4 py-3 text-sm text-[var(--text)] placeholder-gray-400 outline-none transition-all focus:border-[var(--accent)] focus:ring-2 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
               />
             </div>
 
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <label htmlFor="password" className="text-sm font-medium text-[#1A1A2E]">Mot de passe</label>
-                <Link href="/reset-password" className="text-xs text-indigo-500 hover:text-indigo-600">
+                <label htmlFor="password" className="text-sm font-medium text-[var(--text)]">Mot de passe</label>
+                <Link href="/reset-password" className="text-xs text-[var(--accent)] hover:text-[var(--accent)]">
                   Mot de passe oublié ?
                 </Link>
               </div>
@@ -90,7 +90,7 @@ function LoginInner() {
                   id="password" type={showPassword ? "text" : "password"} required autoComplete="current-password"
                   placeholder="••••••••"
                   value={password} onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 pr-12 text-sm text-[#1A1A2E] placeholder-gray-400 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                  className="w-full rounded-[8px] border border-[var(--border)] bg-white px-4 py-3 pr-12 text-sm text-[var(--text)] placeholder-gray-400 outline-none transition-all focus:border-[var(--accent)] focus:ring-2 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
                 />
                 <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600" aria-label={showPassword ? "Masquer" : "Afficher"}>
                   {showPassword ? "🙈" : "👁"}
@@ -99,12 +99,12 @@ function LoginInner() {
             </div>
 
             {error && (
-              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
+              <div className="rounded-[8px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
             )}
 
             <button
               type="submit" disabled={loading}
-              className="mt-1 flex h-12 w-full items-center justify-center rounded-xl bg-indigo-500 text-sm font-semibold text-white shadow-md shadow-indigo-500/20 transition-all hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-1 flex h-12 w-full items-center justify-center rounded-[8px] bg-[var(--accent)] text-sm font-semibold text-white shadow-md shadow-indigo-500/20 transition-all hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? (
                 <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -123,7 +123,7 @@ function LoginInner() {
 
           <p className="text-center text-sm text-gray-500">
             Pas encore de compte ?{" "}
-            <Link href="/register" className="font-semibold text-indigo-500 hover:text-indigo-600">
+            <Link href="/register" className="font-semibold text-[var(--accent)] hover:text-[var(--accent)]">
               S&apos;inscrire
             </Link>
           </p>

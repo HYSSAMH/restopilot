@@ -68,7 +68,7 @@ const TVA_OPTIONS = [
   { value: 10,  label: "10 % (restauration sur place)" },
   { value: 20,  label: "20 % (alcool, boissons)" },
 ];
-const inputCls = "min-h-[40px] rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20";
+const inputCls = "min-h-[40px] rounded-[8px] border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--accent)] focus:ring-2 focus:shadow-[0_0_0_3px_var(--accent-soft)]";
 
 // ── Unités disponibles pour un ingrédient donné ───────────────────────
 // Pour chaque unité proposée, on connaît son prix. On dérive les variantes
@@ -483,7 +483,7 @@ export default function FicheTechniquePage() {
   if (loading || !plat || !form) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-6 sm:px-8 sm:py-10">
-        <div className="h-40 animate-pulse rounded-2xl bg-gray-100" />
+        <div className="h-40 animate-pulse rounded-[10px] bg-[var(--bg-subtle)]" />
       </div>
     );
   }
@@ -492,7 +492,7 @@ export default function FicheTechniquePage() {
     <div className="mx-auto max-w-4xl px-4 py-6 sm:px-8 sm:py-10">
         {/* Breadcrumb */}
         <Link href="/dashboard/restaurateur/menu"
-              className="mb-4 inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 hover:border-indigo-300">
+              className="mb-4 inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-white px-3 py-1.5 text-sm text-gray-600 hover:border-indigo-300">
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
@@ -501,7 +501,7 @@ export default function FicheTechniquePage() {
 
         {/* Alertes */}
         {alertesHausse.length > 0 && (
-          <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+          <div className="mb-4 rounded-[10px] border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
             <p className="font-semibold">⚠ Ingrédient(s) avec variation &gt; 5 % :</p>
             <ul className="mt-1 list-disc pl-5">
               {alertesHausse.map((a, i) => (
@@ -512,9 +512,9 @@ export default function FicheTechniquePage() {
         )}
 
         {/* Header plat */}
-        <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <section className="mb-6 rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-start gap-4">
-            <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-100">
+            <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-[10px] border border-[var(--border)] bg-[var(--bg-subtle)]">
               {form.photo_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={form.photo_url} alt={form.nom} className="h-full w-full object-cover" />
@@ -560,8 +560,8 @@ export default function FicheTechniquePage() {
         </section>
 
         {/* Allergènes */}
-        <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h3 className="mb-3 text-sm font-semibold text-[#1A1A2E]">Allergènes</h3>
+        <section className="mb-6 rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
+          <h3 className="mb-3 text-sm font-semibold text-[var(--text)]">Allergènes</h3>
           <div className="flex flex-wrap gap-2">
             {ALLERGENES_UE.map(a => {
               const on = form.allergenes.includes(a);
@@ -569,7 +569,7 @@ export default function FicheTechniquePage() {
                 <button key={a}
                         onClick={() => setForm({ ...form, allergenes: on ? form.allergenes.filter(x => x !== a) : [...form.allergenes, a] })}
                         className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                          on ? "border-indigo-500 bg-indigo-500 text-white" : "border-gray-200 bg-white text-gray-600 hover:border-indigo-300"
+                          on ? "border-[var(--accent)] bg-[var(--accent)] text-white" : "border-[var(--border)] bg-white text-gray-600 hover:border-indigo-300"
                         }`}>
                   {a}
                 </button>
@@ -579,7 +579,7 @@ export default function FicheTechniquePage() {
         </section>
 
         {/* Tutoriel sous-recettes */}
-        <div className="mb-6 rounded-2xl border border-violet-200 bg-gradient-to-r from-violet-50 to-indigo-50 p-4">
+        <div className="mb-6 rounded-[10px] border border-violet-200 bg-gradient-to-r from-violet-50 to-indigo-50 p-4">
           <p className="text-sm font-semibold text-violet-900">💡 Comment composer une fiche technique ?</p>
           <p className="mt-1.5 text-xs leading-relaxed text-violet-800">
             Deux types d&apos;éléments peuvent composer votre recette :
@@ -591,11 +591,11 @@ export default function FicheTechniquePage() {
         </div>
 
         {/* Ingrédients */}
-        <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <section className="mb-6 rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-[#1A1A2E]">Composition ({ingredients.length})</h3>
+            <h3 className="text-sm font-semibold text-[var(--text)]">Composition ({ingredients.length})</h3>
             <button onClick={syncPrix} disabled={saving}
-                    className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50">
+                    className="rounded-[8px] border border-[var(--accent-border)] bg-[var(--accent-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--accent)] hover:bg-indigo-100 disabled:opacity-50">
               🔄 Mettre à jour les prix
             </button>
           </div>
@@ -605,25 +605,25 @@ export default function FicheTechniquePage() {
             <button
               type="button"
               onClick={() => { setPanel(panel === "mercuriale" ? "none" : "mercuriale"); setSearch(""); }}
-              className={`flex flex-col items-start gap-0.5 rounded-xl border p-3 text-left transition-all ${
+              className={`flex flex-col items-start gap-0.5 rounded-[8px] border p-3 text-left transition-all ${
                 panel === "mercuriale"
-                  ? "border-indigo-500 bg-indigo-50 shadow-sm"
-                  : "border-gray-200 bg-white hover:border-indigo-300"
+                  ? "border-[var(--accent)] bg-[var(--accent-soft)] shadow-sm"
+                  : "border-[var(--border)] bg-white hover:border-indigo-300"
               }`}
             >
-              <span className="text-sm font-semibold text-[#1A1A2E]">➕ Ajouter un ingrédient</span>
+              <span className="text-sm font-semibold text-[var(--text)]">➕ Ajouter un ingrédient</span>
               <span className="text-xs text-gray-500">Depuis la mercuriale ({tarifs.length} dispo.)</span>
             </button>
             <button
               type="button"
               onClick={() => { setPanel(panel === "sous_recette" ? "none" : "sous_recette"); setSearch(""); setSrQtyFor(null); }}
-              className={`flex flex-col items-start gap-0.5 rounded-xl border p-3 text-left transition-all ${
+              className={`flex flex-col items-start gap-0.5 rounded-[8px] border p-3 text-left transition-all ${
                 panel === "sous_recette"
                   ? "border-violet-500 bg-violet-50 shadow-sm"
-                  : "border-gray-200 bg-white hover:border-violet-300"
+                  : "border-[var(--border)] bg-white hover:border-violet-300"
               }`}
             >
-              <span className="text-sm font-semibold text-[#1A1A2E]">📋 Ajouter une sous-recette</span>
+              <span className="text-sm font-semibold text-[var(--text)]">📋 Ajouter une sous-recette</span>
               <span className="text-xs text-gray-500">
                 {sousRecettes.length === 0
                   ? "Aucune autre fiche existante"
@@ -633,21 +633,21 @@ export default function FicheTechniquePage() {
             <button
               type="button"
               onClick={addIngredientManual}
-              className="flex flex-col items-start gap-0.5 rounded-xl border border-gray-200 bg-white p-3 text-left transition-all hover:border-gray-400"
+              className="flex flex-col items-start gap-0.5 rounded-[8px] border border-[var(--border)] bg-white p-3 text-left transition-all hover:border-gray-400"
             >
-              <span className="text-sm font-semibold text-[#1A1A2E]">✏ Saisir manuellement</span>
+              <span className="text-sm font-semibold text-[var(--text)]">✏ Saisir manuellement</span>
               <span className="text-xs text-gray-500">Ingrédient hors mercuriale</span>
             </button>
           </div>
 
           {/* Panneau mercuriale */}
           {panel === "mercuriale" && (
-            <div className="mb-4 rounded-xl border border-indigo-200 bg-indigo-50/30 p-3">
+            <div className="mb-4 rounded-[8px] border border-[var(--accent-border)] bg-[var(--accent-soft)]/30 p-3">
               <input value={search} onChange={e => setSearch(e.target.value)}
                      autoFocus
                      placeholder="🔍 Rechercher un produit (nom ou fournisseur)…"
                      className={inputCls + " w-full"} />
-              <div className="mt-2 max-h-60 overflow-auto rounded-xl border border-indigo-100 bg-white">
+              <div className="mt-2 max-h-60 overflow-auto rounded-[8px] border border-indigo-100 bg-white">
                 {tarifsFiltered.length === 0 ? (
                   <p className="p-3 text-xs text-gray-500">Aucun produit trouvé.</p>
                 ) : (
@@ -656,15 +656,15 @@ export default function FicheTechniquePage() {
                     const srcLabel = t.source === "mercuriale"
                       ? (t.tarif_id ? "Mercuriale — lié" : "Mercuriale")
                       : t.source === "historique" ? "Historique" : "Facture importée";
-                    const srcBadge = t.source === "mercuriale" ? "bg-indigo-50 text-indigo-700"
+                    const srcBadge = t.source === "mercuriale" ? "bg-[var(--accent-soft)] text-[var(--accent)]"
                                    : t.source === "historique" ? "bg-emerald-50 text-emerald-700"
                                    : "bg-amber-50 text-amber-700";
                     const hasCondit = t.prix_unite_travail != null && t.unite_travail != null;
                     return (
                       <button key={t.id} onClick={() => addIngredientFromTarif(t)}
-                              className="flex w-full items-center justify-between border-b border-gray-100 px-3 py-2 text-left text-sm hover:bg-indigo-50 last:border-b-0">
+                              className="flex w-full items-center justify-between border-b border-[var(--border)] px-3 py-2 text-left text-sm hover:bg-[var(--accent-soft)] last:border-b-0">
                         <div className="min-w-0">
-                          <p className="truncate font-medium text-[#1A1A2E]">{srcIcon} {t.produit_nom}</p>
+                          <p className="truncate font-medium text-[var(--text)]">{srcIcon} {t.produit_nom}</p>
                           <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs">
                             <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${srcBadge}`}>{srcLabel}</span>
                             <span className="text-gray-500">{t.fournisseur_nom ?? "—"} · {t.unite}</span>
@@ -680,7 +680,7 @@ export default function FicheTechniquePage() {
                             </p>
                           )}
                         </div>
-                        <span className="shrink-0 text-sm font-semibold text-indigo-600">{fmt(t.prix_ht)} HT</span>
+                        <span className="shrink-0 text-sm font-semibold text-[var(--accent)]">{fmt(t.prix_ht)} HT</span>
                       </button>
                     );
                   })
@@ -691,7 +691,7 @@ export default function FicheTechniquePage() {
 
           {/* Panneau sous-recettes */}
           {panel === "sous_recette" && (
-            <div className="mb-4 rounded-xl border border-violet-200 bg-violet-50/30 p-3">
+            <div className="mb-4 rounded-[8px] border border-violet-200 bg-violet-50/30 p-3">
               {sousRecettes.length === 0 ? (
                 <div className="rounded-lg bg-white p-4 text-center">
                   <p className="text-sm font-medium text-gray-700">Aucune sous-recette disponible</p>
@@ -710,7 +710,7 @@ export default function FicheTechniquePage() {
                          autoFocus
                          placeholder="🔍 Rechercher une fiche technique…"
                          className={inputCls + " w-full"} />
-                  <div className="mt-2 max-h-72 overflow-auto rounded-xl border border-violet-100 bg-white">
+                  <div className="mt-2 max-h-72 overflow-auto rounded-[8px] border border-violet-100 bg-white">
                     {sousRecettesFiltered.length === 0 ? (
                       <p className="p-3 text-xs text-gray-500">Aucune fiche trouvée.</p>
                     ) : (
@@ -718,7 +718,7 @@ export default function FicheTechniquePage() {
                         const isSelected = srQtyFor === sr.id;
                         const disabled   = sr.cout_par_portion <= 0;
                         return (
-                          <div key={sr.id} className="border-b border-gray-100 last:border-b-0">
+                          <div key={sr.id} className="border-b border-[var(--border)] last:border-b-0">
                             <button
                               type="button"
                               onClick={() => {
@@ -732,7 +732,7 @@ export default function FicheTechniquePage() {
                               }`}
                             >
                               <div>
-                                <p className="font-medium text-[#1A1A2E]">📋 {sr.nom}</p>
+                                <p className="font-medium text-[var(--text)]">📋 {sr.nom}</p>
                                 <p className="text-xs text-gray-500">
                                   {sr.categorie_nom ?? "Sans catégorie"} ·{" "}
                                   {sr.portions_par_recette} portion{sr.portions_par_recette > 1 ? "s" : ""} par recette
@@ -751,7 +751,7 @@ export default function FicheTechniquePage() {
                                 <span className="text-xs text-gray-600">×</span>
                                 <span className="text-xs font-semibold text-violet-700">{fmt(sr.cout_par_portion)}</span>
                                 <span className="text-xs text-gray-600">=</span>
-                                <span className="text-sm font-bold text-[#1A1A2E]">{fmt(srQty * sr.cout_par_portion)}</span>
+                                <span className="text-sm font-bold text-[var(--text)]">{fmt(srQty * sr.cout_par_portion)}</span>
                                 <button
                                   type="button"
                                   onClick={() => addIngredientFromSousRecette(sr, srQty)}
@@ -779,7 +779,7 @@ export default function FicheTechniquePage() {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[640px] text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500">
+                  <tr className="border-b border-[var(--border)] text-xs uppercase tracking-wide text-gray-500">
                     <th className="px-2 py-2 text-left">Ingrédient</th>
                     <th className="px-2 py-2 text-right">Qté</th>
                     <th className="px-2 py-2 text-left">Unité</th>
@@ -792,7 +792,7 @@ export default function FicheTechniquePage() {
                   {ingredients.map(i => {
                     const isSR = !!i.sous_recette_id;
                     const isOpen = isSR && !!expanded[i.id];
-                    const rowBg = isSR ? "bg-violet-50/50" : i.tarif_id ? "" : "bg-gray-50/50";
+                    const rowBg = isSR ? "bg-violet-50/50" : i.tarif_id ? "" : "bg-[var(--bg-subtle)]/50";
                     return (
                       <Fragment key={i.id}>
                         <tr className={rowBg}>
@@ -814,7 +814,7 @@ export default function FicheTechniquePage() {
                                   if (v && v !== i.nom) updateIngredient(i, { nom: v });
                                 }} className={inputCls + " w-full"} readOnly={isSR} />
                                 {isSR && <p className="mt-0.5 text-[10px] font-medium text-violet-700">📋 sous-recette — coût synchronisé</p>}
-                                {!isSR && i.tarif_id && <p className="mt-0.5 text-[10px] text-indigo-600">🔗 lié mercuriale</p>}
+                                {!isSR && i.tarif_id && <p className="mt-0.5 text-[10px] text-[var(--accent)]">🔗 lié mercuriale</p>}
                                 {!isSR && !i.tarif_id && <p className="mt-0.5 text-[10px] text-gray-500">✏ saisi manuel</p>}
                               </div>
                             </div>
@@ -864,7 +864,7 @@ export default function FicheTechniquePage() {
                                      if (v !== Number(i.prix_unitaire)) updateIngredient(i, { prix_unitaire: v });
                                    }} className={inputCls + " w-24 text-right"} readOnly={isSR} />
                           </td>
-                          <td className="px-2 py-1.5 text-right font-semibold text-[#1A1A2E]">{fmt(Number(i.cout_total))}</td>
+                          <td className="px-2 py-1.5 text-right font-semibold text-[var(--text)]">{fmt(Number(i.cout_total))}</td>
                           <td className="px-2 py-1.5 text-right">
                             <button onClick={() => deleteIngredient(i.id)}
                                     className="rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-600 hover:bg-red-100">×</button>
@@ -886,7 +886,7 @@ export default function FicheTechniquePage() {
                                         {c.sous_recette_id ? "📋" : c.tarif_id ? "🛒" : "✏"} {c.nom}
                                       </span>
                                       <span className="text-gray-500">
-                                        {Number(c.quantite)} {c.unite} × {fmt(Number(c.prix_unitaire))} = <span className="font-semibold text-[#1A1A2E]">{fmt(Number(c.cout_total))}</span>
+                                        {Number(c.quantite)} {c.unite} × {fmt(Number(c.prix_unitaire))} = <span className="font-semibold text-[var(--text)]">{fmt(Number(c.cout_total))}</span>
                                       </span>
                                     </li>
                                   ))}
@@ -900,9 +900,9 @@ export default function FicheTechniquePage() {
                   })}
                 </tbody>
                 <tfoot>
-                  <tr className="border-t border-gray-200 bg-gray-50/50">
+                  <tr className="border-t border-[var(--border)] bg-[var(--bg-subtle)]/50">
                     <td colSpan={4} className="px-2 py-1 text-right text-xs text-gray-500">Ingrédients directs :</td>
-                    <td className="px-2 py-1 text-right text-sm text-[#1A1A2E]">{fmt(coutBreakdown.direct)}</td>
+                    <td className="px-2 py-1 text-right text-sm text-[var(--text)]">{fmt(coutBreakdown.direct)}</td>
                     <td />
                   </tr>
                   {coutBreakdown.sr > 0 && (
@@ -912,14 +912,14 @@ export default function FicheTechniquePage() {
                       <td />
                     </tr>
                   )}
-                  <tr className="border-t-2 border-gray-200 bg-gray-50">
+                  <tr className="border-t-2 border-[var(--border)] bg-[var(--bg-subtle)]">
                     <td colSpan={4} className="px-2 py-2 text-right text-sm font-semibold">Coût total recette HT :</td>
-                    <td className="px-2 py-2 text-right font-bold text-[#1A1A2E]">{fmt(Number(plat.cout_revient_total))}</td>
+                    <td className="px-2 py-2 text-right font-bold text-[var(--text)]">{fmt(Number(plat.cout_revient_total))}</td>
                     <td />
                   </tr>
                   <tr>
                     <td colSpan={4} className="px-2 py-1 text-right text-xs text-gray-500">Coût HT par portion ({plat.portions_par_recette}) :</td>
-                    <td className="px-2 py-1 text-right font-semibold text-indigo-600">{fmt(coutUnit)}</td>
+                    <td className="px-2 py-1 text-right font-semibold text-[var(--accent)]">{fmt(coutUnit)}</td>
                     <td />
                   </tr>
                 </tfoot>
@@ -929,8 +929,8 @@ export default function FicheTechniquePage() {
         </section>
 
         {/* Tarification */}
-        <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h3 className="mb-3 text-sm font-semibold text-[#1A1A2E]">Tarification</h3>
+        <section className="mb-6 rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
+          <h3 className="mb-3 text-sm font-semibold text-[var(--text)]">Tarification</h3>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="flex flex-col gap-1">
               <span className="text-xs font-medium text-gray-600">TVA</span>
@@ -944,7 +944,7 @@ export default function FicheTechniquePage() {
                      onChange={e => setForm({ ...form, marge_souhaitee_pct: parseFloat(e.target.value) || 0 })}
                      className={inputCls} />
             </label>
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 sm:col-span-2">
+            <div className="rounded-[8px] border border-emerald-200 bg-emerald-50/50 p-3 sm:col-span-2">
               <p className="text-xs text-emerald-700">Prix conseillé TTC (pour marge {form.marge_souhaitee_pct}%) :</p>
               <div className="mt-1 flex items-center justify-between">
                 <p className="text-2xl font-bold text-emerald-700">{fmt(prixConseilleTTC)}</p>
@@ -964,7 +964,7 @@ export default function FicheTechniquePage() {
 
           {/* Indicateur marge actuelle */}
           {form.prix_vente_ttc > 0 && (
-            <div className={`mt-3 rounded-xl border px-4 py-3 text-sm ${
+            <div className={`mt-3 rounded-[8px] border px-4 py-3 text-sm ${
               margePct >= 70 ? "border-emerald-200 bg-emerald-50 text-emerald-800"
               : margePct >= 50 ? "border-amber-200 bg-amber-50 text-amber-800"
               : "border-rose-200 bg-rose-50 text-rose-800"
@@ -981,8 +981,8 @@ export default function FicheTechniquePage() {
         </section>
 
         {/* Simulation */}
-        <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h3 className="mb-3 text-sm font-semibold text-[#1A1A2E]">Simulation de rentabilité</h3>
+        <section className="mb-6 rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
+          <h3 className="mb-3 text-sm font-semibold text-[var(--text)]">Simulation de rentabilité</h3>
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-gray-600">Portions vendues par jour</span>
             <input type="number" min="0" value={portionsParJour}
@@ -997,8 +997,8 @@ export default function FicheTechniquePage() {
         </section>
 
         {/* Instructions */}
-        <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h3 className="mb-3 text-sm font-semibold text-[#1A1A2E]">Notes et instructions</h3>
+        <section className="mb-6 rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
+          <h3 className="mb-3 text-sm font-semibold text-[var(--text)]">Notes et instructions</h3>
           <textarea value={form.instructions ?? ""} onChange={e => setForm({ ...form, instructions: e.target.value })}
                     rows={4} placeholder="Étapes de préparation, astuces, conseils de service…"
                     className={inputCls + " w-full"} />
@@ -1007,17 +1007,17 @@ export default function FicheTechniquePage() {
         {/* Actions */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <button onClick={deletePlat}
-                  className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100">
+                  className="rounded-[8px] border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100">
             Supprimer ce plat
           </button>
           <button onClick={saveForm} disabled={saving}
-                  className="rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-6 py-2.5 text-sm font-semibold text-white shadow-md disabled:opacity-50">
+                  className="rounded-[8px] bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-white shadow-md disabled:opacity-50">
             {saving ? "Enregistrement…" : "💾 Enregistrer la fiche"}
           </button>
         </div>
 
         {toast && (
-          <div className={`fixed bottom-6 right-6 z-50 max-w-md rounded-2xl border px-4 py-3 shadow-2xl ${
+          <div className={`fixed bottom-6 right-6 z-50 max-w-md rounded-[10px] border px-4 py-3 shadow-2xl ${
             toast.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-700"
           }`}>
             <p className="text-sm font-medium">{toast.msg}</p>
@@ -1029,9 +1029,9 @@ export default function FicheTechniquePage() {
 
 function SimCard({ label, ca, cm, marge }: { label: string; ca: number; cm: number; marge: number }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+    <div className="rounded-[8px] border border-[var(--border)] bg-[var(--bg-subtle)] p-3">
       <p className="text-[10px] font-medium uppercase tracking-wider text-gray-500">{label}</p>
-      <p className="mt-1 text-xs text-gray-600">CA TTC : <span className="font-bold text-[#1A1A2E]">{fmt(ca)}</span></p>
+      <p className="mt-1 text-xs text-gray-600">CA TTC : <span className="font-bold text-[var(--text)]">{fmt(ca)}</span></p>
       <p className="text-xs text-gray-600">Coût matières : <span className="font-semibold text-rose-600">{fmt(cm)}</span></p>
       <p className="text-xs text-gray-600">Marge brute : <span className="font-semibold text-emerald-600">{fmt(marge)}</span></p>
     </div>

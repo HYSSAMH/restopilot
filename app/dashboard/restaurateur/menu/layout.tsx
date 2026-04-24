@@ -3,32 +3,32 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import { Icon, type IconName } from "@/components/ui/Icon";
 
-const TABS = [
-  { href: "/dashboard/restaurateur/menu",            label: "🍽️ Mes plats",       match: "exact" as const },
-  { href: "/dashboard/restaurateur/menu/rapport",    label: "📊 Rapport marge",    match: "prefix" as const },
-  { href: "/dashboard/restaurateur/menu/mercuriale", label: "🛒 Ma mercuriale",    match: "prefix" as const },
+const TABS: { href: string; label: string; icon: IconName; match: "exact" | "prefix" }[] = [
+  { href: "/dashboard/restaurateur/menu", label: "Mes plats", icon: "chef-hat", match: "exact" },
+  { href: "/dashboard/restaurateur/menu/rapport", label: "Rapport marge", icon: "trending-up", match: "prefix" },
+  { href: "/dashboard/restaurateur/menu/mercuriale", label: "Ma mercuriale", icon: "book-open", match: "prefix" },
 ];
 
 export default function MenuLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // Masque la barre d'onglets sur les fiches individuelles (/menu/[plat_id])
-  // → l'URL a un segment dynamique qui n'est pas un des tabs connus
   const isFiche = /^\/dashboard\/restaurateur\/menu\/[^/]+$/.test(pathname)
-               && !TABS.some(t => pathname === t.href);
+    && !TABS.some(t => pathname === t.href);
 
   return (
     <DashboardLayout role="restaurateur">
       {!isFiche && (
-        <div className="mx-auto max-w-6xl px-4 pt-6 sm:px-8 sm:pt-10">
-          <div className="mb-6 flex items-center gap-2 text-sm text-gray-400">
-            <Link href="/dashboard/restaurateur" className="hover:text-gray-600">Dashboard</Link>
-            <span>/</span>
-            <span className="text-gray-600">Menu</span>
-          </div>
-          <h1 className="mb-6 text-2xl font-bold text-[#1A1A2E]">Espace menu</h1>
-          <div className="mb-6 flex gap-1 overflow-x-auto rounded-xl border border-gray-200 bg-white p-1">
+        <div className="mb-6">
+          <header className="mb-6">
+            <h1 className="page-title">Espace menu</h1>
+            <p className="page-sub">Fiches techniques, marges et mercuriale consolidée.</p>
+          </header>
+          <nav
+            role="tablist"
+            className="inline-flex gap-[2px] p-1 bg-[var(--bg-subtle)] rounded-[9px] w-fit max-w-full overflow-x-auto"
+          >
             {TABS.map(t => {
               const active = t.match === "exact"
                 ? pathname === t.href
@@ -37,15 +37,22 @@ export default function MenuLayout({ children }: { children: React.ReactNode }) 
                 <Link
                   key={t.href}
                   href={t.href}
-                  className={`min-h-[40px] shrink-0 rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
-                    active ? "bg-indigo-500 text-white" : "text-gray-500 hover:text-[#1A1A2E]"
-                  }`}
+                  role="tab"
+                  aria-selected={active}
+                  className={[
+                    "shrink-0 inline-flex items-center gap-[6px] px-[14px] py-[7px] rounded-[6px]",
+                    "text-[12.5px] font-semibold transition-all duration-[120ms]",
+                    active
+                      ? "bg-white text-[var(--text)] shadow-[var(--elev-1)]"
+                      : "bg-transparent text-[var(--text-muted)] hover:text-[var(--text)]",
+                  ].join(" ")}
                 >
+                  <Icon name={t.icon} size={14} />
                   {t.label}
                 </Link>
               );
             })}
-          </div>
+          </nav>
         </div>
       )}
       {children}

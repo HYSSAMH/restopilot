@@ -25,7 +25,7 @@ const CHIP: Record<AvoirStatut, { label: string; cls: string }> = {
   en_attente: { label: "En attente fournisseur", cls: "border-amber-200 bg-amber-50 text-amber-700" },
   accepte:    { label: "Accepté",                cls: "border-emerald-200 bg-emerald-50 text-emerald-700" },
   conteste:   { label: "Contesté — litige",      cls: "border-rose-200 bg-rose-50 text-rose-700" },
-  annule:     { label: "Annulé par resto",       cls: "border-gray-200 bg-gray-50 text-gray-600" },
+  annule:     { label: "Annulé par resto",       cls: "border-[var(--border)] bg-[var(--bg-subtle)] text-gray-600" },
 };
 
 function fmt(n: number) {
@@ -111,7 +111,7 @@ export default function AdminAvoirs() {
         </div>
 
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-[#1A1A2E]">Avoirs &amp; litiges</h1>
+          <h1 className="text-2xl font-bold text-[var(--text)]">Avoirs &amp; litiges</h1>
           <p className="mt-1 text-sm text-gray-500">
             {counts.litiges} litige{counts.litiges > 1 ? "s" : ""} en attente d&apos;arbitrage.
           </p>
@@ -133,7 +133,7 @@ export default function AdminAvoirs() {
               className={`min-h-[40px] rounded-full px-3 py-1.5 text-xs font-medium ${
                 filter === f.id
                   ? "bg-rose-500 text-white"
-                  : "border border-gray-200 bg-white text-gray-500 hover:text-[#1A1A2E]"
+                  : "border border-[var(--border)] bg-white text-gray-500 hover:text-[var(--text)]"
               }`}
             >
               {f.label}
@@ -144,11 +144,11 @@ export default function AdminAvoirs() {
         {loading ? (
           <div className="space-y-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-28 animate-pulse rounded-2xl border border-gray-200 bg-white" />
+              <div key={i} className="h-28 animate-pulse rounded-[10px] border border-[var(--border)] bg-white" />
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-2xl border border-gray-200 bg-white py-20 text-center text-gray-500">
+          <div className="rounded-[10px] border border-[var(--border)] bg-white py-20 text-center text-gray-500">
             Aucun avoir dans cette catégorie.
           </div>
         ) : (
@@ -156,7 +156,7 @@ export default function AdminAvoirs() {
             {filtered.map((r) => {
               const isLitige = r.avoir_statut === "conteste" && !r.avoir_arbitre_admin;
               return (
-                <div key={r.id} className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                <div key={r.id} className="overflow-hidden rounded-[10px] border border-[var(--border)] bg-white shadow-sm">
                   <div className="flex flex-wrap items-start justify-between gap-3 p-5">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
@@ -164,17 +164,17 @@ export default function AdminAvoirs() {
                           {CHIP[r.avoir_statut].label}
                         </span>
                         {r.avoir_arbitre_admin && (
-                          <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700">
+                          <span className="rounded-full border border-[var(--accent-border)] bg-[var(--accent-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--accent)]">
                             Arbitré admin
                           </span>
                         )}
                       </div>
                       <p className="mt-2 text-sm">
-                        <Link href={r.restaurateur_id ? `/admin/users/${r.restaurateur_id}` : "#"} className="font-semibold text-[#1A1A2E] hover:text-indigo-600">
+                        <Link href={r.restaurateur_id ? `/admin/users/${r.restaurateur_id}` : "#"} className="font-semibold text-[var(--text)] hover:text-[var(--accent)]">
                           {r.restaurateur_id ? (restoNames[r.restaurateur_id] ?? r.restaurateur_nom) : r.restaurateur_nom}
                         </Link>
                         <span className="text-gray-400"> réclame un avoir à </span>
-                        <Link href={`/admin/users/${r.fournisseur_id}`} className="font-semibold text-[#1A1A2E] hover:text-indigo-600">
+                        <Link href={`/admin/users/${r.fournisseur_id}`} className="font-semibold text-[var(--text)] hover:text-[var(--accent)]">
                           {fournNames[r.fournisseur_id] ?? "—"}
                         </Link>
                       </p>
@@ -197,10 +197,10 @@ export default function AdminAvoirs() {
                   </div>
 
                   {isLitige && (
-                    <div className="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 bg-gray-50 px-5 py-3">
+                    <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[var(--border)] bg-[var(--bg-subtle)] px-5 py-3">
                       <button
                         onClick={() => regenerateAvoirPDF(r.id).catch(console.error)}
-                        className="min-h-[40px] rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-[#1A1A2E] hover:bg-gray-100"
+                        className="min-h-[40px] rounded-lg border border-[var(--border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--text)] hover:bg-[var(--bg-subtle)]"
                       >
                         ↓ PDF
                       </button>

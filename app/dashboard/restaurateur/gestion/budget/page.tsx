@@ -339,16 +339,16 @@ export default function BudgetPage() {
     setGenerating(null);
   }
 
-  const inputCls = "min-h-[40px] rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20";
+  const inputCls = "min-h-[40px] rounded-[8px] border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--accent)] focus:ring-2 focus:shadow-[0_0_0_3px_var(--accent-soft)]";
 
   return (
     <div className="flex flex-col gap-5">
       <h2 className="text-[18px] font-[650] tracking-[-0.01em] text-[var(--text)]">Budget &amp; coûts matières</h2>
 
       {/* ── FILTRE PÉRIODE ─────────────────────── */}
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="text-sm font-semibold text-[#1A1A2E]">Période analysée</h3>
+          <h3 className="text-sm font-semibold text-[var(--text)]">Période analysée</h3>
           <p className="text-xs text-gray-500">
             {formatPeriodLabel(periodPreset, periodFrom, periodTo)}
           </p>
@@ -360,8 +360,8 @@ export default function BudgetPage() {
               onClick={() => applyPreset(p.id)}
               className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                 periodPreset === p.id
-                  ? "bg-indigo-500 text-white"
-                  : "border border-gray-200 bg-white text-gray-600 hover:border-indigo-300 hover:text-indigo-600"
+                  ? "bg-[var(--accent)] text-white"
+                  : "border border-[var(--border)] bg-white text-gray-600 hover:border-indigo-300 hover:text-[var(--accent)]"
               }`}
             >
               {p.label}
@@ -388,7 +388,7 @@ export default function BudgetPage() {
             />
           </label>
           {periodPreset === "custom" && (
-            <span className="self-center rounded-md bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-600">
+            <span className="self-center rounded-md bg-[var(--accent-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--accent)]">
               Personnalisé
             </span>
           )}
@@ -399,7 +399,7 @@ export default function BudgetPage() {
       {alertes.length > 0 && (
         <div className="flex flex-col gap-2">
           {alertes.map((a, i) => (
-            <div key={i} className={`rounded-2xl border px-4 py-3 text-sm font-medium ${
+            <div key={i} className={`rounded-[10px] border px-4 py-3 text-sm font-medium ${
               a.type === "rose"   ? "border-rose-200 bg-rose-50 text-rose-800"
                                   : "border-amber-200 bg-amber-50 text-amber-800"
             }`}>
@@ -410,8 +410,8 @@ export default function BudgetPage() {
       )}
 
       {/* ── OBJECTIF ───────────────────────────── */}
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h3 className="text-sm font-semibold text-[#1A1A2E]">Objectif coût matière</h3>
+      <section className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
+        <h3 className="text-sm font-semibold text-[var(--text)]">Objectif coût matière</h3>
         <div className="mt-3 flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-gray-600">Objectif (% du CA)</span>
@@ -420,28 +420,28 @@ export default function BudgetPage() {
                    className={inputCls + " w-32"} />
           </label>
           <p className="text-xs text-gray-500">
-            Budget cible ce mois : <span className="font-semibold text-[#1A1A2E]">{fmt((objectifPct / 100) * caMoisCourant)}</span>
+            Budget cible ce mois : <span className="font-semibold text-[var(--text)]">{fmt((objectifPct / 100) * caMoisCourant)}</span>
           </p>
         </div>
       </section>
 
       {/* ── HISTORIQUE DES SAISIES ───────────── */}
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-[#1A1A2E]">Historique des saisies CA</h3>
+          <h3 className="text-sm font-semibold text-[var(--text)]">Historique des saisies CA</h3>
           <p className="text-xs text-gray-500">
             {filteredCaRows.length} saisie{filteredCaRows.length > 1 ? "s" : ""} · {formatPeriodLabel(periodPreset, periodFrom, periodTo)}
           </p>
         </div>
         {loading ? (
-          <div className="h-32 animate-pulse rounded-xl bg-gray-100" />
+          <div className="h-32 animate-pulse rounded-[8px] bg-[var(--bg-subtle)]" />
         ) : filteredCaRows.length === 0 ? (
           <p className="text-sm text-gray-500">Aucune saisie sur cette période.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-xs font-medium uppercase tracking-wide text-gray-500">
+                <tr className="border-b border-[var(--border)] text-xs font-medium uppercase tracking-wide text-gray-500">
                   <th className="px-3 py-2 text-left">Date</th>
                   <th className="px-3 py-2 text-left">Mode</th>
                   <th className="px-3 py-2 text-left">Saisi par</th>
@@ -461,8 +461,8 @@ export default function BudgetPage() {
                       ? "Vous"
                       : saisisParNames[r.saisi_par] ?? "Employé";
                   return (
-                  <tr key={r.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-[#1A1A2E]">
+                  <tr key={r.id} className="hover:bg-[var(--bg-subtle)]">
+                    <td className="px-3 py-2 text-[var(--text)]">
                       {r.mode_saisie === "mensuel"
                         ? r.date.slice(0, 7)
                         : new Date(r.date).toLocaleDateString("fr-FR")}
@@ -473,12 +473,12 @@ export default function BudgetPage() {
                     <td className="px-3 py-2 text-right text-gray-600">{r.mode_saisie === "mensuel" ? "—" : fmt(Number(r.cb_montant ?? 0))}</td>
                     <td className="px-3 py-2 text-right text-gray-600">{r.mode_saisie === "mensuel" ? "—" : fmt(Number(r.tr_total ?? 0))}</td>
                     <td className="px-3 py-2 text-right text-gray-600">{r.mode_saisie === "mensuel" ? "—" : fmt(Number(r.autres_total ?? 0))}</td>
-                    <td className="px-3 py-2 text-right font-semibold text-[#1A1A2E]">{fmt(Number(r.ca_total ?? 0))}</td>
+                    <td className="px-3 py-2 text-right font-semibold text-[var(--text)]">{fmt(Number(r.ca_total ?? 0))}</td>
                     <td className="px-3 py-2 text-right">
                       <div className="flex justify-end gap-1">
                         <Link
                           href={`/dashboard/restaurateur/gestion/saisie-ca?edit=${r.id}`}
-                          className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs hover:border-indigo-300"
+                          className="rounded-lg border border-[var(--border)] bg-white px-2 py-1 text-xs hover:border-indigo-300"
                         >
                           Modifier
                         </Link>
@@ -495,8 +495,8 @@ export default function BudgetPage() {
       </section>
 
       {/* ── DASHBOARD HISTORIQUE ─────────────── */}
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h3 className="mb-4 text-sm font-semibold text-[#1A1A2E]">
+      <section className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
+        <h3 className="mb-4 text-sm font-semibold text-[var(--text)]">
           Tableau de bord — {formatPeriodLabel(periodPreset, periodFrom, periodTo)}
         </h3>
         <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -569,60 +569,60 @@ export default function BudgetPage() {
       </section>
 
       {/* ── RAPPORTS PDF ─────────────────────── */}
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h3 className="mb-3 text-sm font-semibold text-[#1A1A2E]">Rapports exportables</h3>
+      <section className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
+        <h3 className="mb-3 text-sm font-semibold text-[var(--text)]">Rapports exportables</h3>
 
         <div className="grid gap-3 md:grid-cols-2">
           {/* Mensuel */}
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+          <div className="rounded-[8px] border border-[var(--border)] bg-[var(--bg-subtle)] p-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-600">📊 Rapport mensuel</p>
             <p className="mt-1 text-xs text-gray-500">CA par mode · dépenses par catégorie · comparaison M-1</p>
             <div className="mt-3 flex flex-wrap items-end gap-2">
               <input type="month" value={rapportMois} onChange={e => setRapportMois(e.target.value)} className={inputCls} />
               <button onClick={() => exportRapport("mensuel")} disabled={generating !== null}
-                      className="min-h-[40px] rounded-xl bg-indigo-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-600 disabled:opacity-50">
+                      className="min-h-[40px] rounded-[8px] bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[var(--accent-hover)] disabled:opacity-50">
                 {generating === "mensuel" ? "…" : "↓ Générer"}
               </button>
             </div>
           </div>
 
           {/* Annuel */}
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+          <div className="rounded-[8px] border border-[var(--border)] bg-[var(--bg-subtle)] p-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-600">📅 Rapport annuel</p>
             <p className="mt-1 text-xs text-gray-500">Synthèse 12 mois · meilleur/pire mois · tendances</p>
             <div className="mt-3 flex flex-wrap items-end gap-2">
               <input type="number" value={rapportAnnee} onChange={e => setRapportAnnee(parseInt(e.target.value) || new Date().getFullYear())}
                      className={inputCls + " w-24"} />
               <button onClick={() => exportRapport("annuel")} disabled={generating !== null}
-                      className="min-h-[40px] rounded-xl bg-indigo-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-600 disabled:opacity-50">
+                      className="min-h-[40px] rounded-[8px] bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[var(--accent-hover)] disabled:opacity-50">
                 {generating === "annuel" ? "…" : "↓ Générer"}
               </button>
             </div>
           </div>
 
           {/* Fournisseurs */}
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+          <div className="rounded-[8px] border border-[var(--border)] bg-[var(--bg-subtle)] p-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-600">🏷️ Rapport fournisseurs</p>
             <p className="mt-1 text-xs text-gray-500">Dépenses par fournisseur sur la période</p>
             <div className="mt-3 flex flex-wrap items-end gap-2">
               <input type="date" value={rapportFrom} onChange={e => setRFrom(e.target.value)} className={inputCls + " w-36"} />
               <input type="date" value={rapportTo}   onChange={e => setRTo(e.target.value)}   className={inputCls + " w-36"} />
               <button onClick={() => exportRapport("fournisseurs")} disabled={generating !== null}
-                      className="min-h-[40px] rounded-xl bg-indigo-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-600 disabled:opacity-50">
+                      className="min-h-[40px] rounded-[8px] bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[var(--accent-hover)] disabled:opacity-50">
                 {generating === "fournisseurs" ? "…" : "↓ Générer"}
               </button>
             </div>
           </div>
 
           {/* Produits */}
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+          <div className="rounded-[8px] border border-[var(--border)] bg-[var(--bg-subtle)] p-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-600">📦 Rapport produits</p>
             <p className="mt-1 text-xs text-gray-500">Top produits achetés · prix min/max/moyen</p>
             <div className="mt-3 flex flex-wrap items-end gap-2">
               <input type="date" value={rapportFrom} onChange={e => setRFrom(e.target.value)} className={inputCls + " w-36"} />
               <input type="date" value={rapportTo}   onChange={e => setRTo(e.target.value)}   className={inputCls + " w-36"} />
               <button onClick={() => exportRapport("produits")} disabled={generating !== null}
-                      className="min-h-[40px] rounded-xl bg-indigo-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-600 disabled:opacity-50">
+                      className="min-h-[40px] rounded-[8px] bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[var(--accent-hover)] disabled:opacity-50">
                 {generating === "produits" ? "…" : "↓ Générer"}
               </button>
             </div>
@@ -631,7 +631,7 @@ export default function BudgetPage() {
       </section>
 
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-50 max-w-md rounded-2xl border px-4 py-3 shadow-2xl ${
+        <div className={`fixed bottom-6 right-6 z-50 max-w-md rounded-[10px] border px-4 py-3 shadow-2xl ${
           toast.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-700"
         }`}>
           <p className="text-sm font-medium">{toast.msg}</p>

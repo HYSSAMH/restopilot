@@ -47,7 +47,7 @@ function catIcone(id: string) { return CATEGORIES.find(c => c.id === id)?.icone 
 function catLabel(id: string) { return CATEGORIES.find(c => c.id === id)?.label ?? id; }
 
 const BADGE_CONFIG: Record<string, { label: string; chip: string; dot: string }> = {
-  nouveaute:   { label: "Nouveauté",   chip: "border-indigo-200 bg-indigo-50 text-indigo-600", dot: "bg-violet-400" },
+  nouveaute:   { label: "Nouveauté",   chip: "border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--accent)]", dot: "bg-violet-400" },
   prix_baisse: { label: "Prix baisse", chip: "border-sky-500/30 bg-sky-500/10 text-sky-300",          dot: "bg-sky-400"    },
   promotion:   { label: "Promotion",   chip: "border-amber-500/30 bg-amber-500/10 text-amber-300",    dot: "bg-amber-400"  },
 };
@@ -92,9 +92,9 @@ type SortKey      = "date_desc" | "date_asc" | "name_asc" | "price_asc" | "price
 
 function StatCard({ label, value, sub, color }: { label: string; value: number | string; sub?: string; color?: string }) {
   return (
-    <div className={`rounded-2xl border px-5 py-4 ${color ?? "border-gray-200 bg-white"}`}>
+    <div className={`rounded-[10px] border px-5 py-4 ${color ?? "border-[var(--border)] bg-white"}`}>
       <p className="text-xs text-gray-500">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-[#1A1A2E]">{value}</p>
+      <p className="mt-1 text-2xl font-bold text-[var(--text)]">{value}</p>
       {sub && <p className="mt-0.5 text-xs text-gray-400">{sub}</p>}
     </div>
   );
@@ -404,7 +404,7 @@ function MercurialePage() {
         {/* Header */}
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[#1A1A2E]">Ma mercuriale</h1>
+            <h1 className="text-2xl font-bold text-[var(--text)]">Ma mercuriale</h1>
             <p className="mt-1 text-sm text-gray-500">
               Gérez vos produits, prix et stocks visibles par les restaurateurs.
             </p>
@@ -414,7 +414,7 @@ function MercurialePage() {
             <button
               onClick={handleImportClick}
               disabled={importState.status === "running"}
-              className="flex shrink-0 items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-500/15 px-4 py-2.5 text-sm font-medium text-indigo-600 transition-all hover:bg-indigo-500/30 hover:text-violet-200 disabled:opacity-50"
+              className="flex shrink-0 items-center gap-2 rounded-[8px] border border-[var(--accent-border)] bg-[var(--accent)]/15 px-4 py-2.5 text-sm font-medium text-[var(--accent)] transition-all hover:bg-[var(--accent)]/30 hover:text-violet-200 disabled:opacity-50"
             >
               {importState.status === "running" ? (
                 <>
@@ -437,7 +437,7 @@ function MercurialePage() {
             </button>
             <button
               onClick={openAdd}
-              className="flex shrink-0 items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-2.5 text-sm font-semibold text-[#1A1A2E] shadow-lg shadow-indigo-500/20 hover:from-indigo-600 hover:to-violet-600 transition-all"
+              className="flex shrink-0 items-center gap-2 rounded-[8px] bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-[var(--text)] shadow-lg shadow-indigo-500/20 hover:from-indigo-600 hover:to-violet-600 transition-all"
             >
               <span className="text-lg leading-none">+</span>
               Ajouter un produit
@@ -446,7 +446,7 @@ function MercurialePage() {
         </div>
 
         {importError && (
-          <div className="mb-4 flex items-center gap-3 rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3">
+          <div className="mb-4 flex items-center gap-3 rounded-[8px] border border-red-500/25 bg-red-500/10 px-4 py-3">
             <span className="text-red-400">⚠</span>
             <p className="flex-1 text-sm text-red-400">{importError}</p>
             <button onClick={() => setImportError(null)} className="text-red-400/60 hover:text-red-400">✕</button>
@@ -462,12 +462,12 @@ function MercurialePage() {
             label="Stock faible"
             value={nbStockFaible}
             sub="< 10 unités"
-            color={nbStockFaible > 0 ? "border-amber-500/25 bg-amber-500/8" : "border-gray-200 bg-white"}
+            color={nbStockFaible > 0 ? "border-amber-500/25 bg-amber-500/8" : "border-[var(--border)] bg-white"}
           />
         </div>
 
         {/* ── Filtres ─────────────────────────────────────────────────── */}
-        <div className="mb-4 space-y-3 rounded-2xl border border-gray-200 bg-gray-50 p-4">
+        <div className="mb-4 space-y-3 rounded-[10px] border border-[var(--border)] bg-[var(--bg-subtle)] p-4">
           {/* Search + dropdowns */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative min-w-48 flex-1">
@@ -478,20 +478,20 @@ function MercurialePage() {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Rechercher un produit..."
-                className="w-full rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-4 text-sm text-[#1A1A2E] placeholder-gray-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                className="w-full rounded-[8px] border border-[var(--border)] bg-white py-2 pl-9 pr-4 text-sm text-[var(--text)] placeholder-gray-400 outline-none focus:border-[var(--accent)] focus:ring-2 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
               />
             </div>
             <select
               value={categoryFilter}
               onChange={e => setCategoryFilter(e.target.value as CategoryFilter)}
-              className="rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm text-[#1A1A2E] outline-none focus:border-indigo-500"
+              className="rounded-[8px] border border-[var(--border)] bg-white px-3.5 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
             >
               {CATEGORY_FILTERS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
             </select>
             <select
               value={sortBy}
               onChange={e => setSortBy(e.target.value as SortKey)}
-              className="rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm text-[#1A1A2E] outline-none focus:border-indigo-500"
+              className="rounded-[8px] border border-[var(--border)] bg-white px-3.5 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
             >
               <option value="date_desc">Plus récents</option>
               <option value="date_asc">Plus anciens</option>
@@ -505,13 +505,13 @@ function MercurialePage() {
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-gray-500">Statut :</span>
-              <div className="flex gap-1 rounded-xl border border-gray-200 bg-white p-1">
+              <div className="flex gap-1 rounded-[8px] border border-[var(--border)] bg-white p-1">
                 {(["tous", "actifs", "inactifs"] as const).map(f => (
                   <button
                     key={f}
                     onClick={() => setStatusFilter(f)}
                     className={`rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition-all ${
-                      statusFilter === f ? "bg-indigo-500 text-[#1A1A2E] shadow" : "text-gray-500 hover:text-gray-700"
+                      statusFilter === f ? "bg-[var(--accent)] text-[var(--text)] shadow" : "text-gray-500 hover:text-gray-700"
                     }`}
                   >
                     {f}
@@ -521,7 +521,7 @@ function MercurialePage() {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-gray-500">Badge :</span>
-              <div className="flex gap-1 rounded-xl border border-gray-200 bg-white p-1">
+              <div className="flex gap-1 rounded-[8px] border border-[var(--border)] bg-white p-1">
                 {([
                   { id: "tous",        label: "Tous"        },
                   { id: "nouveaute",   label: "Nouveautés"  },
@@ -532,7 +532,7 @@ function MercurialePage() {
                     key={f.id}
                     onClick={() => setBadgeFilter(f.id)}
                     className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                      badgeFilter === f.id ? "bg-indigo-500 text-[#1A1A2E] shadow" : "text-gray-500 hover:text-gray-700"
+                      badgeFilter === f.id ? "bg-[var(--accent)] text-[var(--text)] shadow" : "text-gray-500 hover:text-gray-700"
                     }`}
                   >
                     {f.label}
@@ -568,7 +568,7 @@ function MercurialePage() {
 
           {selectedIds.size > 0 ? (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-600">
+              <span className="rounded-full border border-[var(--accent-border)] bg-[var(--accent-soft)] px-3 py-1 text-xs font-medium text-[var(--accent)]">
                 {selectedIds.size} sélectionné{selectedIds.size > 1 ? "s" : ""}
               </span>
               {selectedIds.size < totalFiltered && (
@@ -581,13 +581,13 @@ function MercurialePage() {
               )}
               <button
                 onClick={() => setBulkConfirm("deactivate")}
-                className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-all hover:bg-white/10 hover:text-[#1A1A2E]"
+                className="flex items-center gap-1.5 rounded-[8px] border border-[var(--border)] bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-all hover:bg-white/10 hover:text-[var(--text)]"
               >
                 Désactiver la sélection
               </button>
               <button
                 onClick={() => setBulkConfirm("delete")}
-                className="flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/15 px-3 py-1.5 text-xs font-medium text-red-300 transition-all hover:bg-red-500/30 hover:text-red-200"
+                className="flex items-center gap-1.5 rounded-[8px] border border-red-500/30 bg-red-500/15 px-3 py-1.5 text-xs font-medium text-red-300 transition-all hover:bg-red-500/30 hover:text-red-200"
               >
                 Supprimer la sélection
               </button>
@@ -605,11 +605,11 @@ function MercurialePage() {
         {loading ? (
           <div className="space-y-2">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-14 animate-pulse rounded-2xl border border-gray-200 bg-white" />
+              <div key={i} className="h-14 animate-pulse rounded-[10px] border border-[var(--border)] bg-white" />
             ))}
           </div>
         ) : pageItems.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-gray-200 bg-white py-24 text-center">
+          <div className="flex flex-col items-center justify-center gap-3 rounded-[10px] border border-[var(--border)] bg-white py-24 text-center">
             <span className="text-5xl">{entries.length === 0 ? "📦" : "🔍"}</span>
             <p className="text-gray-500">
               {entries.length === 0
@@ -619,17 +619,17 @@ function MercurialePage() {
             {entries.length === 0 && (
               <button
                 onClick={openAdd}
-                className="mt-1 rounded-xl bg-indigo-500/20 px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-500 hover:text-[#1A1A2E] transition-all"
+                className="mt-1 rounded-[8px] bg-[var(--accent)]/20 px-4 py-2 text-sm font-medium text-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--text)] transition-all"
               >
                 Ajouter votre premier produit
               </button>
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
+          <div className="overflow-x-auto rounded-[10px] border border-[var(--border)] bg-white">
             <div className="min-w-[640px]">
             {/* Header row */}
-            <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto] items-center gap-4 border-b border-gray-200 bg-gray-50 px-5 py-3 text-xs font-medium uppercase tracking-wide text-gray-400">
+            <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto] items-center gap-4 border-b border-[var(--border)] bg-[var(--bg-subtle)] px-5 py-3 text-xs font-medium uppercase tracking-wide text-gray-400">
               <label className="flex h-5 w-5 cursor-pointer items-center justify-center" title="Tout sélectionner (page en cours)">
                 <input
                   type="checkbox"
@@ -655,7 +655,7 @@ function MercurialePage() {
                   <div
                     key={entry.tarif_id}
                     className={`grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto] items-center gap-4 px-5 py-3.5 transition-colors ${
-                      selected ? "bg-indigo-500/10 hover:bg-indigo-500/15" : "hover:bg-gray-50"
+                      selected ? "bg-[var(--accent)]/10 hover:bg-[var(--accent)]/15" : "hover:bg-[var(--bg-subtle)]"
                     }`}
                   >
                     <label className="flex h-5 w-5 cursor-pointer items-center justify-center">
@@ -677,12 +677,12 @@ function MercurialePage() {
                           className="h-9 w-9 shrink-0 rounded-lg object-cover ring-1 ring-gray-200"
                         />
                       ) : (
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-50 text-xl ring-1 ring-gray-200">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--bg-subtle)] text-xl ring-1 ring-gray-200">
                           {entry.icone}
                         </span>
                       )}
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-[#1A1A2E]">{entry.nom}</p>
+                        <p className="truncate text-sm font-medium text-[var(--text)]">{entry.nom}</p>
                         {badge && (
                           <span className={`mt-0.5 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${BADGE_CONFIG[badge].chip}`}>
                             <span className={`h-1 w-1 rounded-full ${BADGE_CONFIG[badge].dot}`} />
@@ -695,7 +695,7 @@ function MercurialePage() {
                     <span className="hidden w-24 text-xs text-gray-500 sm:block">{catLabel(entry.categorie)}</span>
 
                     <div className="w-24 text-right">
-                      <span className="text-sm font-semibold text-[#1A1A2E]">{entry.prix.toFixed(2)} €</span>
+                      <span className="text-sm font-semibold text-[var(--text)]">{entry.prix.toFixed(2)} €</span>
                       <span className="ml-1 text-xs text-gray-400">/{entry.unite}</span>
                     </div>
 
@@ -715,7 +715,7 @@ function MercurialePage() {
                         className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-all ${
                           entry.actif
                             ? "bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25"
-                            : "bg-gray-100 text-gray-400 hover:bg-gray-100"
+                            : "bg-[var(--bg-subtle)] text-gray-400 hover:bg-[var(--bg-subtle)]"
                         }`}
                       >
                         <span className={`h-1.5 w-1.5 rounded-full ${entry.actif ? "bg-emerald-400" : "bg-white/30"}`} />
@@ -729,8 +729,8 @@ function MercurialePage() {
                         title={entry.photos?.length ? `${entry.photos.length} photo${entry.photos.length > 1 ? "s" : ""}` : "Ajouter une photo"}
                         className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${
                           entry.photos?.length
-                            ? "border-indigo-200 bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
-                            : "border-gray-200 bg-white text-gray-500 hover:bg-indigo-50 hover:text-indigo-600"
+                            ? "border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--accent)] hover:bg-indigo-100"
+                            : "border-[var(--border)] bg-white text-gray-500 hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]"
                         }`}
                       >
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
@@ -741,7 +741,7 @@ function MercurialePage() {
                       <button
                         onClick={() => openEdit(entry)}
                         title="Modifier"
-                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-indigo-500/20 hover:text-indigo-600"
+                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-white text-gray-500 transition-colors hover:bg-[var(--accent)]/20 hover:text-[var(--accent)]"
                       >
                         <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -750,7 +750,7 @@ function MercurialePage() {
                       <button
                         onClick={() => setConfirmDelete(entry.tarif_id)}
                         title="Supprimer"
-                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-red-500/20 hover:text-red-400"
+                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-white text-gray-500 transition-colors hover:bg-red-500/20 hover:text-red-400"
                       >
                         <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -777,7 +777,7 @@ function MercurialePage() {
               <button
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={safePage === 1}
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-white/10 hover:text-[#1A1A2E] disabled:opacity-30"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-white text-gray-500 transition-colors hover:bg-white/10 hover:text-[var(--text)] disabled:opacity-30"
               >
                 ‹
               </button>
@@ -790,8 +790,8 @@ function MercurialePage() {
                     onClick={() => setCurrentPage(p)}
                     className={`flex h-8 min-w-8 items-center justify-center rounded-lg border px-2 text-xs font-medium transition-colors ${
                       p === safePage
-                        ? "border-violet-500/50 bg-indigo-500 text-[#1A1A2E]"
-                        : "border-gray-200 bg-white text-gray-500 hover:bg-white/10 hover:text-[#1A1A2E]"
+                        ? "border-violet-500/50 bg-[var(--accent)] text-[var(--text)]"
+                        : "border-[var(--border)] bg-white text-gray-500 hover:bg-white/10 hover:text-[var(--text)]"
                     }`}
                   >
                     {p}
@@ -801,7 +801,7 @@ function MercurialePage() {
               <button
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={safePage === totalPages}
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-white/10 hover:text-[#1A1A2E] disabled:opacity-30"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-white text-gray-500 transition-colors hover:bg-white/10 hover:text-[var(--text)] disabled:opacity-30"
               >
                 ›
               </button>
@@ -814,9 +814,9 @@ function MercurialePage() {
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeModal} />
-          <div className="relative w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl shadow-black/50">
+          <div className="relative w-full max-w-md rounded-[10px] border border-[var(--border)] bg-white p-6 shadow-2xl shadow-black/50">
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-[#1A1A2E]">
+              <h2 className="text-lg font-bold text-[var(--text)]">
                 {editingId ? "Modifier le produit" : "Ajouter un produit"}
               </h2>
               <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 transition-colors text-xl leading-none">✕</button>
@@ -829,7 +829,7 @@ function MercurialePage() {
                   value={form.nom}
                   onChange={e => setForm(f => ({ ...f, nom: e.target.value }))}
                   placeholder="ex : Tomates cerises"
-                  className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-[#1A1A2E] placeholder-gray-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                  className="w-full rounded-[8px] border border-[var(--border)] bg-white px-3.5 py-2.5 text-sm text-[var(--text)] placeholder-gray-400 outline-none focus:border-[var(--accent)] focus:ring-2 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
                 />
               </div>
 
@@ -841,10 +841,10 @@ function MercurialePage() {
                       key={cat.id}
                       type="button"
                       onClick={() => setForm(f => ({ ...f, categorie: cat.id }))}
-                      className={`flex flex-col items-center gap-1 rounded-xl border py-2 text-xs transition-all ${
+                      className={`flex flex-col items-center gap-1 rounded-[8px] border py-2 text-xs transition-all ${
                         form.categorie === cat.id
-                          ? "border-violet-500/50 bg-indigo-500/20 text-indigo-600"
-                          : "border-gray-200 bg-white text-gray-500 hover:bg-gray-100"
+                          ? "border-violet-500/50 bg-[var(--accent)]/20 text-[var(--accent)]"
+                          : "border-[var(--border)] bg-white text-gray-500 hover:bg-[var(--bg-subtle)]"
                       }`}
                     >
                       <span className="text-xl">{cat.icone}</span>
@@ -864,7 +864,7 @@ function MercurialePage() {
                     value={form.prix}
                     onChange={e => setForm(f => ({ ...f, prix: e.target.value }))}
                     placeholder="0.00"
-                    className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-[#1A1A2E] placeholder-gray-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    className="w-full rounded-[8px] border border-[var(--border)] bg-white px-3.5 py-2.5 text-sm text-[var(--text)] placeholder-gray-400 outline-none focus:border-[var(--accent)] focus:ring-2 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
                   />
                 </div>
                 <div>
@@ -872,7 +872,7 @@ function MercurialePage() {
                   <select
                     value={form.unite}
                     onChange={e => setForm(f => ({ ...f, unite: e.target.value }))}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-[#1A1A2E] outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    className="w-full rounded-[8px] border border-[var(--border)] bg-white px-3.5 py-2.5 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
                   >
                     {UNITES.map(u => <option key={u} value={u}>{u}</option>)}
                   </select>
@@ -889,11 +889,11 @@ function MercurialePage() {
                   value={form.stock}
                   onChange={e => setForm(f => ({ ...f, stock: e.target.value }))}
                   placeholder="ex : 50"
-                  className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-[#1A1A2E] placeholder-gray-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                  className="w-full rounded-[8px] border border-[var(--border)] bg-white px-3.5 py-2.5 text-sm text-[var(--text)] placeholder-gray-400 outline-none focus:border-[var(--accent)] focus:ring-2 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
                 />
               </div>
 
-              <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+              <div className="flex items-center justify-between rounded-[8px] border border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-3">
                 <div>
                   <p className="text-sm text-gray-700">Visible dans le catalogue</p>
                   <p className="text-xs text-gray-400">Les restaurateurs peuvent commander ce produit</p>
@@ -908,7 +908,7 @@ function MercurialePage() {
               </div>
 
               {formError && (
-                <p className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-2.5 text-sm text-red-400">
+                <p className="rounded-[8px] border border-red-500/25 bg-red-500/10 px-4 py-2.5 text-sm text-red-400">
                   {formError}
                 </p>
               )}
@@ -917,14 +917,14 @@ function MercurialePage() {
             <div className="mt-5 flex gap-3">
               <button
                 onClick={closeModal}
-                className="flex-1 rounded-xl border border-gray-200 bg-white py-2.5 text-sm font-medium text-gray-500 transition-all hover:bg-gray-100 hover:text-gray-700"
+                className="flex-1 rounded-[8px] border border-[var(--border)] bg-white py-2.5 text-sm font-medium text-gray-500 transition-all hover:bg-[var(--bg-subtle)] hover:text-gray-700"
               >
                 Annuler
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex-1 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 py-2.5 text-sm font-semibold text-[#1A1A2E] shadow-lg shadow-indigo-500/20 transition-all hover:from-indigo-600 hover:to-violet-600 disabled:opacity-50"
+                className="flex-1 rounded-[8px] bg-[var(--accent)] py-2.5 text-sm font-semibold text-[var(--text)] shadow-lg shadow-indigo-500/20 transition-all hover:from-indigo-600 hover:to-violet-600 disabled:opacity-50"
               >
                 {saving ? "Enregistrement…" : editingId ? "Enregistrer" : "Ajouter"}
               </button>
@@ -937,23 +937,23 @@ function MercurialePage() {
       {confirmDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfirmDelete(null)} />
-          <div className="relative w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-2xl shadow-black/50">
+          <div className="relative w-full max-w-sm rounded-[10px] border border-[var(--border)] bg-white p-6 text-center shadow-2xl shadow-black/50">
             <span className="text-4xl">🗑️</span>
-            <h2 className="mt-3 text-lg font-bold text-[#1A1A2E]">Supprimer ce produit ?</h2>
+            <h2 className="mt-3 text-lg font-bold text-[var(--text)]">Supprimer ce produit ?</h2>
             <p className="mt-1.5 text-sm text-gray-500">
               Il sera retiré de votre mercuriale et ne sera plus visible dans le catalogue restaurateur.
             </p>
             <div className="mt-5 flex gap-3">
               <button
                 onClick={() => setConfirmDelete(null)}
-                className="flex-1 rounded-xl border border-gray-200 bg-white py-2.5 text-sm font-medium text-gray-500 transition-all hover:bg-gray-100"
+                className="flex-1 rounded-[8px] border border-[var(--border)] bg-white py-2.5 text-sm font-medium text-gray-500 transition-all hover:bg-[var(--bg-subtle)]"
               >
                 Annuler
               </button>
               <button
                 onClick={handleDelete}
                 disabled={deleting}
-                className="flex-1 rounded-xl border border-red-500/30 bg-red-500/20 py-2.5 text-sm font-semibold text-red-400 transition-all hover:bg-red-500 hover:text-[#1A1A2E] disabled:opacity-50"
+                className="flex-1 rounded-[8px] border border-red-500/30 bg-red-500/20 py-2.5 text-sm font-semibold text-red-400 transition-all hover:bg-red-500 hover:text-[var(--text)] disabled:opacity-50"
               >
                 {deleting ? "Suppression…" : "Supprimer"}
               </button>
@@ -966,9 +966,9 @@ function MercurialePage() {
       {bulkConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !bulkProcessing && setBulkConfirm(null)} />
-          <div className="relative w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-2xl shadow-black/50">
+          <div className="relative w-full max-w-sm rounded-[10px] border border-[var(--border)] bg-white p-6 text-center shadow-2xl shadow-black/50">
             <span className="text-4xl">{bulkConfirm === "delete" ? "🗑️" : "⏸️"}</span>
-            <h2 className="mt-3 text-lg font-bold text-[#1A1A2E]">
+            <h2 className="mt-3 text-lg font-bold text-[var(--text)]">
               {bulkConfirm === "delete" ? "Supprimer" : "Désactiver"} {selectedIds.size} produit{selectedIds.size > 1 ? "s" : ""} ?
             </h2>
             <p className="mt-1.5 text-sm text-gray-500">
@@ -980,17 +980,17 @@ function MercurialePage() {
               <button
                 onClick={() => setBulkConfirm(null)}
                 disabled={bulkProcessing}
-                className="flex-1 rounded-xl border border-gray-200 bg-white py-2.5 text-sm font-medium text-gray-500 transition-all hover:bg-gray-100 disabled:opacity-30"
+                className="flex-1 rounded-[8px] border border-[var(--border)] bg-white py-2.5 text-sm font-medium text-gray-500 transition-all hover:bg-[var(--bg-subtle)] disabled:opacity-30"
               >
                 Annuler
               </button>
               <button
                 onClick={bulkConfirm === "delete" ? handleBulkDelete : handleBulkDeactivate}
                 disabled={bulkProcessing}
-                className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all disabled:opacity-50 ${
+                className={`flex-1 rounded-[8px] py-2.5 text-sm font-semibold transition-all disabled:opacity-50 ${
                   bulkConfirm === "delete"
-                    ? "border border-red-500/30 bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-[#1A1A2E]"
-                    : "border border-gray-200 bg-gray-100 text-[#1A1A2E] hover:bg-white/15"
+                    ? "border border-red-500/30 bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-[var(--text)]"
+                    : "border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text)] hover:bg-white/15"
                 }`}
               >
                 {bulkProcessing ? "Application…" : bulkConfirm === "delete" ? "Supprimer" : "Désactiver"}

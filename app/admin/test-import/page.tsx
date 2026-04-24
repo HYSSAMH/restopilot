@@ -90,14 +90,14 @@ export default function TestImportPage() {
   return (
     <AdminLayout>
       <div className="mx-auto max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
-        <h1 className="text-2xl font-bold text-[#1A1A2E]">Tester l&apos;extraction facture</h1>
+        <h1 className="text-2xl font-bold text-[var(--text)]">Tester l&apos;extraction facture</h1>
         <p className="mt-1 text-sm text-gray-500">
           Page de diagnostic : upload un PDF ou une image, vois le texte brut extrait par pdf-parse
           puis le JSON retourné par Claude. Aucune commande n&apos;est créée dans la DB.
         </p>
 
-        <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-indigo-300 bg-indigo-50/40 px-4 py-4 text-sm font-medium text-indigo-700 hover:bg-indigo-50">
+        <section className="mt-6 rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
+          <label className="flex cursor-pointer items-center gap-3 rounded-[8px] border border-dashed border-indigo-300 bg-[var(--accent-soft)]/40 px-4 py-4 text-sm font-medium text-[var(--accent)] hover:bg-[var(--accent-soft)]">
             <input
               type="file"
               accept=".pdf,image/*"
@@ -115,23 +115,23 @@ export default function TestImportPage() {
           {etape !== "idle" && (
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
               {etape === "extracting" && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-700">1/2 Extraction texte…</span>}
-              {etape === "analyzing"  && <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-indigo-700">2/2 Analyse Claude…</span>}
+              {etape === "analyzing"  && <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[var(--accent)]">2/2 Analyse Claude…</span>}
               {etape === "done"       && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">✓ Terminé</span>}
               {etape === "error"      && <span className="rounded-full bg-rose-50 px-2 py-0.5 text-rose-700">❌ Erreur</span>}
               {mediaType && <span className="text-gray-500">{mediaType}</span>}
             </div>
           )}
           {error && (
-            <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <div className="mt-3 rounded-[8px] border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               {error}
             </div>
           )}
         </section>
 
         {extract && (
-          <section className="mt-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <section className="mt-4 rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold text-[#1A1A2E]">
+              <h2 className="text-sm font-semibold text-[var(--text)]">
                 Étape 1 — Texte brut extrait (pdf-parse)
               </h2>
               <p className="text-xs text-gray-500">
@@ -144,14 +144,14 @@ export default function TestImportPage() {
                 en mode image (Claude vision).
               </p>
             ) : null}
-            <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-gray-50 p-3 font-mono text-[11px] text-gray-700">
+            <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-[var(--bg-subtle)] p-3 font-mono text-[11px] text-gray-700">
               {extract.text || "(vide)"}
             </pre>
           </section>
         )}
 
         {parseResult != null && (
-          <section className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/30 p-5 shadow-sm">
+          <section className="mt-4 rounded-[10px] border border-emerald-200 bg-emerald-50/30 p-5 shadow-sm">
             <h2 className="mb-2 text-sm font-semibold text-emerald-900">
               Étape 2 — JSON structuré par Claude
             </h2>
@@ -162,9 +162,9 @@ export default function TestImportPage() {
         )}
 
         {rawResponse && etape === "error" && (
-          <section className="mt-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h2 className="mb-2 text-sm font-semibold text-[#1A1A2E]">Réponse serveur brute</h2>
-            <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-gray-50 p-3 font-mono text-[11px] text-gray-700">
+          <section className="mt-4 rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
+            <h2 className="mb-2 text-sm font-semibold text-[var(--text)]">Réponse serveur brute</h2>
+            <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-[var(--bg-subtle)] p-3 font-mono text-[11px] text-gray-700">
               {rawResponse}
             </pre>
           </section>

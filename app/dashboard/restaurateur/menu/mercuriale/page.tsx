@@ -17,7 +17,7 @@ interface ProduitRow extends ProduitSource {
 
 type SortKey = "nom" | "prix_asc" | "prix_desc" | "updated";
 
-const inputCls = "min-h-[40px] rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20";
+const inputCls = "min-h-[40px] rounded-[8px] border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--accent)] focus:ring-2 focus:shadow-[0_0_0_3px_var(--accent-soft)]";
 
 const SOURCE_LABEL: Record<Source, string> = {
   mercuriale: "Mercuriale (fournisseur)",
@@ -25,7 +25,7 @@ const SOURCE_LABEL: Record<Source, string> = {
   import:     "Facture importée",
 };
 const SOURCE_BADGE: Record<Source, string> = {
-  mercuriale: "bg-indigo-50 text-indigo-700",
+  mercuriale: "bg-[var(--accent-soft)] text-[var(--accent)]",
   historique: "bg-emerald-50 text-emerald-700",
   import:     "bg-amber-50 text-amber-700",
 };
@@ -147,34 +147,37 @@ export default function MercurialePage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-10 sm:px-8">
-      <p className="mb-6 text-sm text-gray-500">
-        Vue consolidée de toutes vos sources de produits. Prix HT et TTC, variations et comparateur inter-fournisseurs.
-      </p>
+    <section>
+      <div className="mb-6">
+        <h2 className="text-[18px] font-[650] tracking-[-0.01em] text-[var(--text)]">Ma mercuriale</h2>
+        <p className="text-[13px] text-[var(--text-muted)] mt-[2px]">
+          Vue consolidée de toutes vos sources de produits. Prix HT et TTC, variations et comparateur inter-fournisseurs.
+        </p>
+      </div>
 
       {loading ? (
-        <div className="h-64 animate-pulse rounded-2xl bg-gray-100" />
+        <div className="h-64 animate-pulse rounded-[10px] bg-[var(--bg-subtle)]" />
       ) : (
         <>
           {/* Compteurs de sources */}
           <div className="mb-6 grid grid-cols-3 gap-3 text-center">
-            <div className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-3">
-              <p className="text-[10px] font-medium uppercase tracking-wider text-indigo-700">Mercuriale fournisseurs</p>
-              <p className="mt-1 text-xl font-bold text-indigo-700">{counts.tarifs}</p>
+            <div className="rounded-[8px] border border-[var(--accent-border)] bg-[var(--accent-soft)]/50 p-3">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-[var(--accent)]">Mercuriale fournisseurs</p>
+              <p className="mt-1 text-xl font-bold text-[var(--accent)]">{counts.tarifs}</p>
             </div>
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3">
+            <div className="rounded-[8px] border border-emerald-200 bg-emerald-50/50 p-3">
               <p className="text-[10px] font-medium uppercase tracking-wider text-emerald-700">Historique + factures</p>
               <p className="mt-1 text-xl font-bold text-emerald-700">{counts.lignes}</p>
             </div>
-            <div className="rounded-xl border border-gray-200 bg-white p-3">
+            <div className="rounded-[8px] border border-[var(--border)] bg-white p-3">
               <p className="text-[10px] font-medium uppercase tracking-wider text-gray-500">Total unique</p>
-              <p className="mt-1 text-xl font-bold text-[#1A1A2E]">{rows.length}</p>
+              <p className="mt-1 text-xl font-bold text-[var(--text)]">{rows.length}</p>
             </div>
           </div>
 
           {/* Alertes hausses */}
           {alertes.length > 0 && (
-            <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <div className="mb-6 rounded-[10px] border border-amber-200 bg-amber-50 p-4">
               <p className="text-sm font-semibold text-amber-900">
                 ⚠ {alertes.length} produit{alertes.length > 1 ? "s" : ""} utilisé{alertes.length > 1 ? "s" : ""} dans vos fiches techniques {alertes.length > 1 ? "ont" : "a"} changé de prix ({" > "}5 %)
               </p>
@@ -197,7 +200,7 @@ export default function MercurialePage() {
           )}
 
           {/* Filtres */}
-          <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+          <section className="mb-6 rounded-[10px] border border-[var(--border)] bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-end gap-3">
               <label className="flex flex-1 min-w-[200px] flex-col gap-1">
                 <span className="text-xs font-medium text-gray-600">Recherche</span>
@@ -239,7 +242,7 @@ export default function MercurialePage() {
               </label>
               {(search || catFilter || fournFilter || srcFilter) && (
                 <button onClick={() => { setSearch(""); setCatFilter(""); setFournFilter(""); setSrcFilter(""); }}
-                        className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-600 hover:border-indigo-300">
+                        className="rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-xs text-gray-600 hover:border-indigo-300">
                   Réinitialiser
                 </button>
               )}
@@ -247,9 +250,9 @@ export default function MercurialePage() {
           </section>
 
           {/* Liste complète */}
-          <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <section className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-[#1A1A2E]">Produits ({filtered.length})</h3>
+              <h3 className="text-sm font-semibold text-[var(--text)]">Produits ({filtered.length})</h3>
             </div>
             {filtered.length === 0 ? (
               <p className="text-sm text-gray-500">Aucun produit ne correspond.</p>
@@ -319,7 +322,7 @@ export default function MercurialePage() {
                                 className={`rounded-lg border px-2 py-1 text-xs font-semibold transition-colors ${
                                   r.prix_unite_travail != null
                                     ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                                    : "border-gray-200 bg-white text-gray-600 hover:border-violet-300 hover:text-violet-600"
+                                    : "border-[var(--border)] bg-white text-gray-600 hover:border-violet-300 hover:text-violet-600"
                                 }`}
                                 title={r.prix_unite_travail != null
                                   ? `Prix de travail : ${fmt(r.prix_unite_travail)} / ${r.unite_travail}`
@@ -330,7 +333,7 @@ export default function MercurialePage() {
                               {r.produit_id ? (
                                 <Link
                                   href={`/dashboard/restaurateur/commandes?produit=${r.produit_id}`}
-                                  className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+                                  className="rounded-lg border border-[var(--accent-border)] bg-[var(--accent-soft)] px-3 py-1 text-xs font-semibold text-[var(--accent)] hover:bg-indigo-100"
                                 >
                                   Commander
                                 </Link>
@@ -361,7 +364,7 @@ export default function MercurialePage() {
             if (typeof window !== "undefined") {
               const el = document.createElement("div");
               el.textContent = msg;
-              el.className = "fixed bottom-6 right-6 z-[100] rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 shadow-2xl";
+              el.className = "fixed bottom-6 right-6 z-[100] rounded-[10px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 shadow-2xl";
               document.body.appendChild(el);
               setTimeout(() => el.remove(), 3500);
             }
@@ -369,7 +372,7 @@ export default function MercurialePage() {
           supa={supa}
         />
       )}
-    </div>
+    </section>
   );
 }
 
@@ -477,28 +480,28 @@ function ConditionnementModal({
     setSaving(false);
   }
 
-  const inputCls = "min-h-[40px] w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20";
+  const inputCls = "min-h-[40px] w-full rounded-[8px] border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--accent)] focus:ring-2 focus:shadow-[0_0_0_3px_var(--accent-soft)]";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={onClose}>
-      <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div className="w-full max-w-xl rounded-[10px] bg-white p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="mb-4 flex items-start justify-between">
           <div>
-            <h2 className="text-lg font-bold text-[#1A1A2E]">Configurer le conditionnement</h2>
+            <h2 className="text-lg font-bold text-[var(--text)]">Configurer le conditionnement</h2>
             <p className="mt-0.5 text-sm text-gray-500">{produit.produit_nom}</p>
           </div>
           <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-[6px] text-[var(--text-subtle)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text)]" aria-label="Fermer"><Icon name="x" size={14} /></button>
         </div>
 
         {/* Base facture (non modifiable) */}
-        <div className="mb-5 rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm">
+        <div className="mb-5 rounded-[8px] border border-[var(--border)] bg-[var(--bg-subtle)] p-3 text-sm">
           <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Prix d&apos;achat (facture — non modifiable)</p>
-          <p className="mt-1 text-lg font-bold text-[#1A1A2E]">{fmt(produit.prix_ht)} HT / {produit.unite}</p>
+          <p className="mt-1 text-lg font-bold text-[var(--text)]">{fmt(produit.prix_ht)} HT / {produit.unite}</p>
         </div>
 
         {/* Contenu du conditionnement */}
         <div className="mb-4">
-          <p className="mb-2 text-sm font-semibold text-[#1A1A2E]">Contenu du conditionnement</p>
+          <p className="mb-2 text-sm font-semibold text-[var(--text)]">Contenu du conditionnement</p>
           <div className="grid gap-3 sm:grid-cols-3">
             <label className="flex flex-col gap-1">
               <span className="text-xs font-medium text-gray-600">Nombre de sous-unités</span>
@@ -526,14 +529,14 @@ function ConditionnementModal({
 
         {/* Unité de travail */}
         <div className="mb-4">
-          <p className="mb-2 text-sm font-semibold text-[#1A1A2E]">Unité utilisée dans les fiches techniques</p>
+          <p className="mb-2 text-sm font-semibold text-[var(--text)]">Unité utilisée dans les fiches techniques</p>
           <select value={uniteTravail} onChange={e => setUniteTravail(e.target.value)} className={inputCls}>
             {UNITES_TRAVAIL.map(u => <option key={u} value={u}>{u}</option>)}
           </select>
         </div>
 
         {/* Preview */}
-        <div className={`mb-5 rounded-xl border p-4 ${
+        <div className={`mb-5 rounded-[8px] border p-4 ${
           preview != null ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"
         }`}>
           {preview != null ? (
@@ -565,17 +568,17 @@ function ConditionnementModal({
         <div className="flex flex-wrap items-center justify-between gap-3">
           {produit.conditionnement_nb != null ? (
             <button onClick={reset} disabled={saving}
-                    className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 disabled:opacity-50">
+                    className="rounded-[8px] border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 disabled:opacity-50">
               Retirer le conditionnement
             </button>
           ) : <span />}
           <div className="flex gap-2">
             <button onClick={onClose} disabled={saving}
-                    className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm">
+                    className="rounded-[8px] border border-[var(--border)] bg-white px-4 py-2 text-sm">
               Annuler
             </button>
             <button onClick={save} disabled={saving || preview == null}
-                    className="rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-5 py-2 text-sm font-semibold text-white shadow-md disabled:opacity-50">
+                    className="rounded-[8px] bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white shadow-md disabled:opacity-50">
               {saving ? "Enregistrement…" : "Enregistrer"}
             </button>
           </div>

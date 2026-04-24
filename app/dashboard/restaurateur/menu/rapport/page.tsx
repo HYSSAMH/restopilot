@@ -70,15 +70,15 @@ const QUADRANTS = {
     label: "Action Immédiate",
     emoji: "⚫",
     color: "#6B7280",
-    bg:    "bg-gray-100",
-    border:"border-gray-300",
+    bg:    "bg-[var(--bg-subtle)]",
+    border:"border-[var(--border-strong)]",
     text:  "text-gray-700",
     desc:  "Petite marge + Petit volume",
     reco:  "À reformuler, repricer, ou supprimer de la carte. Ils occupent une ligne sans contribuer. Libérez la place.",
   },
 } as const;
 
-const inputCls = "min-h-[40px] rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20";
+const inputCls = "min-h-[40px] rounded-[8px] border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--accent)] focus:ring-2 focus:shadow-[0_0_0_3px_var(--accent-soft)]";
 
 export default function RapportMargePage() {
   const { profile } = useProfile();
@@ -234,32 +234,38 @@ export default function RapportMargePage() {
   }));
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-10 sm:px-8">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-gray-500">Matrice BCG : marge % vs volume de ventes — pour prioriser vos actions.</p>
-        <button onClick={exportPdf} disabled={generating || analyse.infos.length === 0}
-                className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold hover:border-indigo-300 disabled:opacity-50">
+    <section>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-[18px] font-[650] tracking-[-0.01em] text-[var(--text)]">Rapport de marge</h2>
+          <p className="text-[13px] text-[var(--text-muted)] mt-[2px]">Matrice BCG : marge % vs volume de ventes — pour prioriser vos actions.</p>
+        </div>
+        <button
+          onClick={exportPdf}
+          disabled={generating || analyse.infos.length === 0}
+          className="inline-flex items-center gap-[7px] h-9 px-[14px] rounded-[8px] border border-[var(--border-strong)] bg-white text-[12.5px] font-[550] text-[var(--text)] hover:bg-[var(--bg-subtle)] disabled:opacity-50"
+        >
           {generating ? "Génération…" : "↓ Export PDF"}
         </button>
       </div>
 
       {loading ? (
-        <div className="h-64 animate-pulse rounded-2xl bg-gray-100" />
+        <div className="h-64 animate-pulse rounded-[10px] bg-[var(--bg-subtle)]" />
       ) : analyse.infos.length === 0 ? (
-        <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center">
+        <div className="rounded-[10px] border border-[var(--border)] bg-white p-8 text-center">
           <p className="text-[18px] font-[650] tracking-[-0.01em] text-[var(--text)]">Aucun plat à analyser</p>
           <p className="mt-1 text-sm text-gray-500">
             Créez au moins une fiche technique avec un prix de vente pour voir apparaître la matrice.
           </p>
           <Link href="/dashboard/restaurateur/menu"
-                className="mt-4 inline-block rounded-xl bg-indigo-500 px-5 py-2 text-sm font-semibold text-white">
+                className="mt-4 inline-block rounded-[8px] bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white">
             ← Aller au menu
           </Link>
         </div>
       ) : (
         <>
           {/* Matrice */}
-          <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <section className="mb-6 rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
             <p className="mb-2 text-xs font-medium text-gray-600">
               Matrice — chaque point est un plat (médiane marge : {analyse.thrMarge.toFixed(1)} % · médiane ventes : {analyse.thrVentes.toFixed(0)}/sem)
             </p>
@@ -282,8 +288,8 @@ export default function RapportMargePage() {
                       if (!active || !payload?.length) return null;
                       const p = payload[0].payload as { nom: string; x: number; y: number };
                       return (
-                        <div className="rounded-lg border border-gray-200 bg-white p-2 text-xs shadow-md">
-                          <p className="font-semibold text-[#1A1A2E]">{p.nom}</p>
+                        <div className="rounded-lg border border-[var(--border)] bg-white p-2 text-xs shadow-md">
+                          <p className="font-semibold text-[var(--text)]">{p.nom}</p>
                           <p className="text-gray-600">Marge : {p.y.toFixed(1)} %</p>
                           <p className="text-gray-600">{p.x.toFixed(0)} ventes/sem</p>
                         </div>
@@ -304,7 +310,7 @@ export default function RapportMargePage() {
               const info = QUADRANTS[q];
               const list = analyse.byQuadrant[q];
               return (
-                <section key={q} className={`rounded-2xl border ${info.border} ${info.bg} p-5 shadow-sm`}>
+                <section key={q} className={`rounded-[10px] border ${info.border} ${info.bg} p-5 shadow-sm`}>
                   <div className="mb-2 flex items-center gap-2">
                     <span className="text-xl">{info.emoji}</span>
                     <h3 className={`text-sm font-bold ${info.text}`}>{info.label}</h3>
@@ -319,7 +325,7 @@ export default function RapportMargePage() {
                       {list.slice(0, 8).map(i => (
                         <li key={i.plat.id} className="flex items-center justify-between gap-2 py-1">
                           <Link href={`/dashboard/restaurateur/menu/${i.plat.id}`}
-                                className="truncate text-sm font-medium text-[#1A1A2E] hover:text-indigo-600">
+                                className="truncate text-sm font-medium text-[var(--text)] hover:text-[var(--accent)]">
                             {i.plat.nom}
                           </Link>
                           <span className="shrink-0 text-xs text-gray-600">
@@ -335,13 +341,13 @@ export default function RapportMargePage() {
           </div>
 
           {/* Table ventes (saisie rapide) */}
-          <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h3 className="mb-3 text-sm font-semibold text-[#1A1A2E]">Mettre à jour les volumes de ventes</h3>
+          <section className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-[var(--text)]">Mettre à jour les volumes de ventes</h3>
             <p className="mb-3 text-xs text-gray-500">Saisissez le nombre de ventes moyennes par semaine pour chaque plat. Le classement BCG se met à jour en direct.</p>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[640px] text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500">
+                  <tr className="border-b border-[var(--border)] text-xs uppercase tracking-wide text-gray-500">
                     <th className="px-3 py-2 text-left">Plat</th>
                     <th className="px-3 py-2 text-left">Catégorie</th>
                     <th className="px-3 py-2 text-right">Prix TTC</th>
@@ -356,7 +362,7 @@ export default function RapportMargePage() {
                     <tr key={i.plat.id}>
                       <td className="px-3 py-2">
                         <Link href={`/dashboard/restaurateur/menu/${i.plat.id}`}
-                              className="font-medium text-[#1A1A2E] hover:text-indigo-600">{i.plat.nom}</Link>
+                              className="font-medium text-[var(--text)] hover:text-[var(--accent)]">{i.plat.nom}</Link>
                       </td>
                       <td className="px-3 py-2 text-gray-500">{i.categorie}</td>
                       <td className="px-3 py-2 text-right">{fmt(Number(i.plat.prix_vente_ttc))}</td>
@@ -372,7 +378,7 @@ export default function RapportMargePage() {
                                }}
                                className={inputCls + " w-20 text-right"} />
                       </td>
-                      <td className="px-3 py-2 text-right font-semibold text-indigo-600">
+                      <td className="px-3 py-2 text-right font-semibold text-[var(--accent)]">
                         {fmt(i.margeEuro * i.ventes * 4.33)}
                       </td>
                     </tr>
@@ -383,6 +389,6 @@ export default function RapportMargePage() {
           </section>
         </>
       )}
-    </div>
+    </section>
   );
 }

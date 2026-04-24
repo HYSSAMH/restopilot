@@ -76,18 +76,18 @@ export default function AdminDashboard() {
         <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-3">
           <Kpi label="Volume total"   value={stats ? fmtEuro(stats.volumeTotal) : undefined} loading={loading} wide />
           <Kpi label="Total commandes" value={stats?.totalCommandes} loading={loading} />
-          <div className="col-span-2 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm lg:col-span-1">
+          <div className="col-span-2 rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm lg:col-span-1">
             <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Raccourcis</p>
             <div className="mt-3 flex flex-col gap-2">
               <Link
                 href="/admin/users"
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-[#1A1A2E] transition-colors hover:border-indigo-300 hover:text-indigo-600"
+                className="rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm font-medium text-[var(--text)] transition-colors hover:border-indigo-300 hover:text-[var(--accent)]"
               >
                 → Gérer les utilisateurs
               </Link>
               <Link
                 href="/admin/commandes"
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-[#1A1A2E] transition-colors hover:border-indigo-300 hover:text-indigo-600"
+                className="rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm font-medium text-[var(--text)] transition-colors hover:border-indigo-300 hover:text-[var(--accent)]"
               >
                 → Voir toutes les commandes
               </Link>
