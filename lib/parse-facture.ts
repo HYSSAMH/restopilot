@@ -92,6 +92,8 @@ function guessCat(nom: string): string {
 
 function matchNumero(text: string): string | null {
   const patterns = [
+    // Odoo : "PRO FORMA Facture FAC/2025/02999" ou "Avoir RFAC/2025/00149"
+    /(?:PRO\s*FORMA\s+)?(?:Facture|Avoir)\s+([A-Z]{1,6}\/\d{4}\/\d{3,6})/i,
     /(?:FACTURE|FACT|FAC)\s*(?:N[°oº]|NO|NUM[ÉE]RO)?\s*[:.]?\s*([A-Z]{0,4}[\-_ ]?\d{3,}[\-_ ]?\d*[A-Z0-9\-]*)/i,
     /\bN[°oº]\s*[:.]?\s*(F[A-Z0-9\-]{3,20})\b/i,
     /facture\s*(?:n[°o]?\s*)?[:\-]?\s*([A-Z0-9\/\-_]{3,20})/i,
@@ -147,13 +149,36 @@ function matchEmail(text: string): string | null {
 }
 
 function matchTotaux(text: string): { ht: number | null; tva: number | null; ttc: number | null } {
-  const reHT = /total\s+(?:net\s+)?h\.?t\.?\s*[:=.]?\s*([\d\s]+[,\.]\d{2})/i;
-  const reTVA = /total\s+t\.?v\.?a\.?(?:\s*\([\d.,]+\s*%\))?\s*[:=.]?\s*([\d\s]+[,\.]\d{2})/i;
-  const reTTC = /(?:total\s+)?(?:net\s+[aà]\s+payer|t\.?t\.?c\.?|montant\s+ttc)\s*[:=.]?\s*([\d\s]+[,\.]\d{2})/i;
+  const reHT = [
+    /total\s+(?:net\s+)?h\.?t\.?\s*[:=.]?\s*([\d\s]+[,\.]\d{2})/i,
+    // Odoo : "Montant hors taxes 368,24 €"
+    /montant\s+hors\s+taxes\s*[:=.]?\s*([\d\s]+[,\.]\d{2})/i,
+    /montant\s+h\.?t\.?\s*[:=.]?\s*([\d\s]+[,\.]\d{2})/i,
+  ];
+  const reTVA = [
+    /total\s+t\.?v\.?a\.?(?:\s*\([\d.,]+\s*%\))?\s*[:=.]?\s*([\d\s]+[,\.]\d{2})/i,
+    // Odoo : "TVA 5,5% 20,25 €"
+    /\bTVA\s+\d+[.,]\d+\s*%\s+([\d\s]+[,\.]\d{2})\s*€/i,
+  ];
+  const reTTC = [
+    /(?:total\s+)?(?:net\s+[aà]\s+payer|t\.?t\.?c\.?|montant\s+ttc)\s*[:=.]?\s*([\d\s]+[,\.]\d{2})/i,
+    // Odoo : "Total 388,49 €" (en fin de bloc, précédé de TVA)
+    /\bTotal\s+([\d\s]+[,\.]\d{2})\s*€/,
+  ];
+  const findFirst = (regexes: RegExp[]): number | null => {
+    for (const r of regexes) {
+      const m = text.match(r);
+      if (m) {
+        const n = parseMontant(m[1]);
+        if (n != null) return n;
+      }
+    }
+    return null;
+  };
   return {
-    ht: parseMontant(text.match(reHT)?.[1] ?? null),
-    tva: parseMontant(text.match(reTVA)?.[1] ?? null),
-    ttc: parseMontant(text.match(reTTC)?.[1] ?? null),
+    ht: findFirst(reHT),
+    tva: findFirst(reTVA),
+    ttc: findFirst(reTTC),
   };
 }
 
@@ -236,15 +261,56 @@ const GEN_LINE_RE = new RegExp(
   "i",
 );
 
+/**
+ * Format Odoo (MKH, Le Trèfle, etc.) :
+ *   [code] DESCRIPTION QTY Unité(s) PRIX_UNIT TVA X% TOTAL €
+ * Ex :
+ *   [odoo251] POULET PAC CALIBRE AU KG 14,47 Unité(s) 3,500 TVA 5.5% 50,65 €
+ *   [Odoo72] CREME LIQUIDE PRESIDENT LÉGÈRE 18% 1L 18,00 Unité(s) 3,583 TVA 5.5% 64,49 €
+ */
+const ODOO_LINE_RE = new RegExp(
+  String.raw`^\s*` +
+    String.raw`\[([A-Za-z0-9_\-]+)\]\s+` +                    // 1 : code produit
+    String.raw`(.+?)\s+` +                                    // 2 : désignation (non gourmand)
+    String.raw`(\d+(?:[.,]\d+)?)\s+Unit[ée]?\(s\)\s+` +       // 3 : quantité
+    String.raw`(\d+(?:[.,]\d+)?)\s+` +                        // 4 : prix unitaire
+    String.raw`TVA\s+(\d+(?:[.,]\d+)?)\s*%\s+` +              // 5 : taux TVA
+    String.raw`(\d+[.,]\d{2})\s*€?\s*$`,                      // 6 : total
+  "i",
+);
+
 function parseLignes(text: string): ParsedLigne[] {
   const lignes: ParsedLigne[] = [];
   const rawLines = text.split(/\r?\n/);
   for (const raw of rawLines) {
     const line = raw.replace(/\s+/g, " ").trim();
     if (line.length < 10) continue;
-    if (/^(total|sous[\s-]?total|tva|h\.?t\.?|ttc|net|acompte|remise|désignation|designation|quantit|unité|prix)/i.test(line)) continue;
+    if (/^(total|sous[\s-]?total|tva|h\.?t\.?|ttc|net|acompte|remise|désignation|designation|quantit|unité|prix|port\s)/i.test(line)) continue;
 
-    let m = DPS_LINE_RE.exec(line);
+    // 1) Pattern Odoo — prioritaire car très spécifique
+    let m = ODOO_LINE_RE.exec(line);
+    if (m) {
+      const [, , designation, qte, pu, tva, total] = m;
+      const nom = designation.trim();
+      if (nom.length < 3) continue;
+      const quantite = parseMontant(qte) ?? 0;
+      const prixU = parseMontant(pu) ?? 0;
+      const totalTxt = parseMontant(total) ?? (quantite * prixU);
+      const tvaPct = parseMontant(tva);
+      lignes.push({
+        nom,
+        categorie: guessCat(nom),
+        quantite,
+        unite: "u",  // Odoo : toujours "Unité(s)"
+        prix_unitaire: prixU,
+        total: totalTxt,
+        tva_taux: tvaPct != null && tvaPct >= 0 && tvaPct <= 30 ? tvaPct : null,
+      });
+      continue;
+    }
+
+    // 2) Pattern DPS Market
+    m = DPS_LINE_RE.exec(line);
     if (m) {
       const [, , designation, tva, qte, unite, , pu, , , totalHT] = m;
       const nom = designation.trim();
@@ -265,6 +331,7 @@ function parseLignes(text: string): ParsedLigne[] {
       continue;
     }
 
+    // 3) Pattern générique (qté + unité courte + pu + total)
     m = GEN_LINE_RE.exec(line);
     if (m) {
       const [, designation, qte, unite, pu, totalHT] = m;
