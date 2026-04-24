@@ -186,13 +186,6 @@ export default function RapportsPage() {
 
   return (
     <DashboardLayout role="restaurateur">
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-10">
-        <div className="mb-6 flex items-center gap-2 text-sm text-gray-400">
-          <Link href="/dashboard/restaurateur" className="hover:text-gray-600">Dashboard</Link>
-          <span>/</span>
-          <span className="text-gray-600">Rapports d&apos;achats</span>
-        </div>
-
         <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="page-title">Rapports d&apos;achats</h1>
@@ -204,7 +197,7 @@ export default function RapportsPage() {
             <select
               value={period}
               onChange={e => setPeriod(e.target.value as typeof period)}
-              className="min-h-[44px] rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm outline-none focus:border-indigo-500"
+              className="min-h-[44px] rounded-[8px] border border-[var(--border)] bg-white px-3.5 py-2 text-sm outline-none focus:border-[var(--accent)]"
             >
               <option value="30">30 derniers jours</option>
               <option value="90">90 derniers jours</option>
@@ -214,7 +207,7 @@ export default function RapportsPage() {
             <button
               onClick={exportCsv}
               disabled={filtered.length === 0}
-              className="min-h-[44px] rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-[#1A1A2E] hover:border-indigo-300 hover:text-indigo-600 disabled:opacity-50"
+              className="min-h-[44px] rounded-[8px] border border-[var(--border)] bg-white px-4 py-2 text-sm font-medium text-[var(--text)] hover:border-indigo-300 hover:text-[var(--accent)] disabled:opacity-50"
             >
               ↓ Export CSV
             </button>
@@ -234,9 +227,9 @@ export default function RapportsPage() {
         </div>
 
         {loading ? (
-          <div className="h-64 animate-pulse rounded-2xl border border-gray-200 bg-white" />
+          <div className="h-64 animate-pulse rounded-[10px] border border-[var(--border)] bg-white" />
         ) : filtered.length === 0 ? (
-          <div className="rounded-2xl border border-gray-200 bg-white py-20 text-center text-gray-500">
+          <div className="rounded-[10px] border border-[var(--border)] bg-white py-20 text-center text-gray-500">
             Aucune commande sur la période sélectionnée.
           </div>
         ) : (
@@ -254,15 +247,15 @@ export default function RapportsPage() {
             </div>
 
             {/* Sélecteur produit + évolution */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h2 className="text-base font-semibold text-[#1A1A2E]">Évolution &amp; comparaison</h2>
+            <div className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
+              <h2 className="text-base font-semibold text-[var(--text)]">Évolution &amp; comparaison</h2>
               <p className="mt-1 text-xs text-gray-500">
                 Sélectionnez un produit pour voir l&apos;évolution de son prix et la comparaison par fournisseur.
               </p>
               <select
                 value={selectedProduit ?? ""}
                 onChange={e => setSelectedProduit(e.target.value || null)}
-                className="mt-3 min-h-[44px] w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm outline-none focus:border-indigo-500"
+                className="mt-3 min-h-[44px] w-full rounded-[8px] border border-[var(--border)] bg-white px-3.5 py-2 text-sm outline-none focus:border-[var(--accent)]"
               >
                 <option value="">— Choisir un produit —</option>
                 {topParValeur.map(p => (
@@ -277,10 +270,10 @@ export default function RapportsPage() {
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
                       Comparaison par fournisseur
                     </p>
-                    <div className="overflow-x-auto rounded-xl border border-gray-200">
+                    <div className="overflow-x-auto rounded-[8px] border border-[var(--border)]">
                       <table className="w-full min-w-[500px] text-sm">
                         <thead>
-                          <tr className="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
+                          <tr className="border-b border-[var(--border)] bg-[var(--bg-subtle)] text-xs font-medium uppercase tracking-wide text-gray-500">
                             <th className="px-3 py-2 text-left">Fournisseur</th>
                             <th className="px-3 py-2 text-right">Prix moyen</th>
                             <th className="px-3 py-2 text-right">Min</th>
@@ -291,11 +284,11 @@ export default function RapportsPage() {
                         <tbody className="divide-y divide-gray-100">
                           {parFournisseur.map((p, i) => (
                             <tr key={p.id} className={i === 0 ? "bg-emerald-50" : ""}>
-                              <td className="px-3 py-2 font-medium text-[#1A1A2E]">
+                              <td className="px-3 py-2 font-medium text-[var(--text)]">
                                 {fournNames[p.id] ?? "—"}
                                 {i === 0 && <span className="ml-2 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">Meilleur</span>}
                               </td>
-                              <td className="px-3 py-2 text-right font-semibold text-[#1A1A2E]">{fmt(p.prixMoyen)}</td>
+                              <td className="px-3 py-2 text-right font-semibold text-[var(--text)]">{fmt(p.prixMoyen)}</td>
                               <td className="px-3 py-2 text-right text-gray-500">{fmt(p.prixMin)}</td>
                               <td className="px-3 py-2 text-right text-gray-500">{fmt(p.prixMax)}</td>
                               <td className="px-3 py-2 text-right text-gray-500">{p.nb}</td>
@@ -311,10 +304,10 @@ export default function RapportsPage() {
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
                       Évolution du prix
                     </p>
-                    <div className="overflow-x-auto rounded-xl border border-gray-200">
+                    <div className="overflow-x-auto rounded-[8px] border border-[var(--border)]">
                       <table className="w-full min-w-[500px] text-sm">
                         <thead>
-                          <tr className="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
+                          <tr className="border-b border-[var(--border)] bg-[var(--bg-subtle)] text-xs font-medium uppercase tracking-wide text-gray-500">
                             <th className="px-3 py-2 text-left">Date</th>
                             <th className="px-3 py-2 text-left">Fournisseur</th>
                             <th className="px-3 py-2 text-right">Prix unit.</th>
@@ -325,8 +318,8 @@ export default function RapportsPage() {
                           {evolutionPrix.map((l, i) => (
                             <tr key={i}>
                               <td className="px-3 py-2 text-gray-500">{new Date(l.date).toLocaleDateString("fr-FR")}</td>
-                              <td className="px-3 py-2 text-[#1A1A2E]">{fournNames[l.fournisseur_id] ?? "—"}</td>
-                              <td className="px-3 py-2 text-right font-semibold text-[#1A1A2E]">{fmt(l.prix_snapshot)}</td>
+                              <td className="px-3 py-2 text-[var(--text)]">{fournNames[l.fournisseur_id] ?? "—"}</td>
+                              <td className="px-3 py-2 text-right font-semibold text-[var(--text)]">{fmt(l.prix_snapshot)}</td>
                               <td className="px-3 py-2 text-right text-gray-500">{l.quantite}</td>
                             </tr>
                           ))}
@@ -339,16 +332,15 @@ export default function RapportsPage() {
             </div>
           </div>
         )}
-      </div>
     </DashboardLayout>
   );
 }
 
 function Kpi({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: "emerald" }) {
-  const border = accent === "emerald" ? "border-emerald-200 bg-emerald-50" : "border-gray-200 bg-white";
-  const txt    = accent === "emerald" ? "text-emerald-700" : "text-[#1A1A2E]";
+  const border = accent === "emerald" ? "border-emerald-200 bg-emerald-50" : "border-[var(--border)] bg-white";
+  const txt    = accent === "emerald" ? "text-emerald-700" : "text-[var(--text)]";
   return (
-    <div className={`rounded-2xl border ${border} p-5 shadow-sm`}>
+    <div className={`rounded-[10px] border ${border} p-5 shadow-sm`}>
       <p className="text-xs font-medium uppercase tracking-wider text-gray-500">{label}</p>
       <p className={`mt-1.5 text-xl font-bold ${txt}`}>{value}</p>
       {sub && <p className="mt-0.5 text-[11px] text-gray-500">{sub}</p>}
@@ -363,8 +355,8 @@ function TopCard({
   items: { nom: string; value: number; display: string; max: number; onClick?: () => void }[];
 }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-      <h3 className="text-base font-semibold text-[#1A1A2E]">{title}</h3>
+    <div className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
+      <h3 className="text-base font-semibold text-[var(--text)]">{title}</h3>
       <div className="mt-3 flex flex-col gap-2">
         {items.map((it, i) => {
           const pct = Math.round((it.value / it.max) * 100);
@@ -372,17 +364,17 @@ function TopCard({
             <button
               key={it.nom}
               onClick={it.onClick}
-              className="group flex flex-col gap-1 rounded-xl border border-transparent bg-gray-50 px-3 py-2 text-left transition-colors hover:border-indigo-200 hover:bg-indigo-50"
+              className="group flex flex-col gap-1 rounded-[8px] border border-transparent bg-[var(--bg-subtle)] px-3 py-2 text-left transition-colors hover:border-[var(--accent-border)] hover:bg-[var(--accent-soft)]"
             >
               <div className="flex items-center justify-between gap-3">
-                <span className="flex items-center gap-2 truncate text-sm font-medium text-[#1A1A2E]">
+                <span className="flex items-center gap-2 truncate text-sm font-medium text-[var(--text)]">
                   <span className="w-5 shrink-0 text-xs text-gray-400">#{i + 1}</span>
                   <span className="truncate">{it.nom}</span>
                 </span>
-                <span className="shrink-0 text-sm font-semibold text-[#1A1A2E]">{it.display}</span>
+                <span className="shrink-0 text-sm font-semibold text-[var(--text)]">{it.display}</span>
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
-                <div className="h-full bg-indigo-500 transition-all" style={{ width: `${pct}%` }} />
+                <div className="h-full bg-[var(--accent)] transition-all" style={{ width: `${pct}%` }} />
               </div>
             </button>
           );

@@ -195,13 +195,13 @@ export default function ClientsList() {
 
         <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-[#1A1A2E]">Mes clients</h1>
+            <h1 className="text-2xl font-bold text-[var(--text)]">Mes clients</h1>
             <p className="mt-1 text-sm text-gray-500">
               {rows.length} client{rows.length > 1 ? "s" : ""} au total.
             </p>
           </div>
           {totalCreances > 0 && (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2">
+            <div className="rounded-[8px] border border-rose-200 bg-rose-50 px-4 py-2">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-rose-700">Créances en retard</p>
               <p className="text-lg font-bold text-rose-700">{fmt(totalCreances)}</p>
             </div>
@@ -214,9 +214,9 @@ export default function ClientsList() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Rechercher un client"
-            className="flex-1 min-w-48 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+            className="flex-1 min-w-48 rounded-[8px] border border-[var(--border)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent)] focus:ring-2 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
           />
-          <div className="flex gap-1 rounded-xl border border-gray-200 bg-white p-1">
+          <div className="flex gap-1 rounded-[8px] border border-[var(--border)] bg-white p-1">
             {([
               { id: "tous",      label: `Tous (${counts.tous})` },
               { id: "actif",     label: `Actifs (${counts.actif})` },
@@ -227,7 +227,7 @@ export default function ClientsList() {
                 key={f.id}
                 onClick={() => setStatutFilter(f.id)}
                 className={`min-h-[40px] rounded-lg px-3 py-1.5 text-xs font-medium ${
-                  statutFilter === f.id ? "bg-indigo-500 text-white" : "text-gray-500 hover:text-[#1A1A2E]"
+                  statutFilter === f.id ? "bg-[var(--accent)] text-white" : "text-gray-500 hover:text-[var(--text)]"
                 }`}
               >
                 {f.label}
@@ -240,18 +240,18 @@ export default function ClientsList() {
         {loading ? (
           <div className="space-y-2">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-14 animate-pulse rounded-2xl border border-gray-200 bg-white" />
+              <div key={i} className="h-14 animate-pulse rounded-[10px] border border-[var(--border)] bg-white" />
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-2xl border border-gray-200 bg-white py-20 text-center text-gray-500">
+          <div className="rounded-[10px] border border-[var(--border)] bg-white py-20 text-center text-gray-500">
             {rows.length === 0 ? "Aucun client n'a encore commandé chez vous." : "Aucun client ne correspond."}
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="overflow-x-auto rounded-[10px] border border-[var(--border)] bg-white shadow-sm">
             <table className="w-full min-w-[820px] text-sm">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
+                <tr className="border-b border-[var(--border)] bg-[var(--bg-subtle)] text-xs font-medium uppercase tracking-wide text-gray-500">
                   <th className="px-5 py-3 text-left">Client</th>
                   <th className="px-5 py-3 text-left">Contact</th>
                   <th className="px-5 py-3 text-left">Dernière cmd</th>
@@ -263,9 +263,9 @@ export default function ClientsList() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filtered.map((r, i) => (
-                  <tr key={r.id} className={i % 2 === 0 ? "bg-white hover:bg-gray-50" : "bg-gray-50 hover:bg-gray-100"}>
+                  <tr key={r.id} className={i % 2 === 0 ? "bg-white hover:bg-[var(--bg-subtle)]" : "bg-[var(--bg-subtle)] hover:bg-[var(--bg-subtle)]"}>
                     <td className="px-5 py-3">
-                      <p className="font-medium text-[#1A1A2E]">{r.nom}</p>
+                      <p className="font-medium text-[var(--text)]">{r.nom}</p>
                       <p className="text-[11px] text-gray-500">{r.nbCommandes} commande{r.nbCommandes > 1 ? "s" : ""} · 1re le {formatDate(r.premiereCommande)}</p>
                     </td>
                     <td className="px-5 py-3">
@@ -273,7 +273,7 @@ export default function ClientsList() {
                       {r.adresse && <p className="truncate text-[11px] text-gray-500">{r.adresse}</p>}
                     </td>
                     <td className="px-5 py-3 text-gray-500">{formatDate(r.derniereCommande)}</td>
-                    <td className="px-5 py-3 text-right font-semibold text-[#1A1A2E]">{fmt(r.caTotal)}</td>
+                    <td className="px-5 py-3 text-right font-semibold text-[var(--text)]">{fmt(r.caTotal)}</td>
                     <td className={`px-5 py-3 text-right font-semibold ${r.solde > 0 ? "text-rose-600" : "text-emerald-600"}`}>
                       {fmt(r.solde)}
                     </td>
@@ -283,7 +283,7 @@ export default function ClientsList() {
                     <td className="px-5 py-3 text-right">
                       <Link
                         href={`/dashboard/fournisseur/clients/${r.id}`}
-                        className="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-[#1A1A2E] hover:border-indigo-300 hover:text-indigo-600"
+                        className="inline-flex items-center rounded-lg border border-[var(--border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--text)] hover:border-indigo-300 hover:text-[var(--accent)]"
                       >
                         Fiche →
                       </Link>
@@ -302,7 +302,7 @@ export default function ClientsList() {
 function StatutChip({ statut }: { statut: "actif" | "inactif" | "en_retard" }) {
   const cfg = {
     actif:     { label: "Actif",         cls: "border-emerald-200 bg-emerald-50 text-emerald-700" },
-    inactif:   { label: "Inactif",       cls: "border-gray-200 bg-gray-50 text-gray-600" },
+    inactif:   { label: "Inactif",       cls: "border-[var(--border)] bg-[var(--bg-subtle)] text-gray-600" },
     en_retard: { label: "En retard",     cls: "border-rose-200 bg-rose-50 text-rose-700" },
   }[statut];
   return (

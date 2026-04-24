@@ -35,7 +35,7 @@ const totalEspeces = (e: EspDet) =>
 
 export default function SaisieCaPage() {
   return (
-    <Suspense fallback={<div className="h-40 animate-pulse rounded-2xl bg-gray-100" />}>
+    <Suspense fallback={<div className="h-40 animate-pulse rounded-[10px] bg-[var(--bg-subtle)]" />}>
       <SaisieCaInner />
     </Suspense>
   );
@@ -164,7 +164,7 @@ function SaisieCaInner() {
     setSaving(false);
   }, [supa, mode, saisieDate, saisieMois, especes, cbMt, cbRef, tr, autres, caMensuel, caTotalJour, notes, editId, editIdParam, router]);
 
-  const inputCls = "min-h-[40px] rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20";
+  const inputCls = "min-h-[40px] rounded-[8px] border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--accent)] focus:ring-2 focus:shadow-[0_0_0_3px_var(--accent-soft)]";
 
   return (
     <div className="flex flex-col gap-5">
@@ -172,7 +172,7 @@ function SaisieCaInner() {
       <div>
         <Link
           href="/dashboard/restaurateur/gestion/budget"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:border-indigo-300 hover:text-indigo-600"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-white px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:border-indigo-300 hover:text-[var(--accent)]"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -186,21 +186,21 @@ function SaisieCaInner() {
       </h2>
 
       {loadingEdit && (
-        <div className="rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-500 shadow-sm">
+        <div className="rounded-[10px] border border-[var(--border)] bg-white p-4 text-sm text-gray-500 shadow-sm">
           Chargement de la saisie…
         </div>
       )}
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="text-sm font-semibold text-[#1A1A2E]">Détail de la recette</h3>
-          <div className="flex gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1">
+          <h3 className="text-sm font-semibold text-[var(--text)]">Détail de la recette</h3>
+          <div className="flex gap-1 rounded-[8px] border border-[var(--border)] bg-[var(--bg-subtle)] p-1">
             {(["journalier", "mensuel"] as const).map(m => (
               <button
                 key={m}
                 type="button"
                 onClick={() => setMode(m)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium ${mode === m ? "bg-indigo-500 text-white" : "text-gray-500 hover:text-[#1A1A2E]"}`}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium ${mode === m ? "bg-[var(--accent)] text-white" : "text-gray-500 hover:text-[var(--text)]"}`}
               >
                 {m === "journalier" ? "Journalier" : "Mensuel"}
               </button>
@@ -217,7 +217,7 @@ function SaisieCaInner() {
             </label>
 
             {/* Espèces */}
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+            <div className="rounded-[8px] border border-[var(--border)] bg-[var(--bg-subtle)] p-4">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-600">💶 Espèces</h4>
               <div className="mt-2 grid gap-2 sm:grid-cols-5">
                 {(["50", "20", "10", "5"] as const).map(b => (
@@ -236,12 +236,12 @@ function SaisieCaInner() {
                 </label>
               </div>
               <p className="mt-2 text-xs text-gray-500">
-                Total espèces : <span className="font-semibold text-[#1A1A2E]">{fmt(totalEspeces(especes))}</span>
+                Total espèces : <span className="font-semibold text-[var(--text)]">{fmt(totalEspeces(especes))}</span>
               </p>
             </div>
 
             {/* CB */}
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+            <div className="rounded-[8px] border border-[var(--border)] bg-[var(--bg-subtle)] p-4">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-600">💳 Carte bancaire</h4>
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
                 <label className="flex flex-col gap-1">
@@ -257,11 +257,11 @@ function SaisieCaInner() {
             </div>
 
             {/* Tickets Restaurant */}
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+            <div className="rounded-[8px] border border-[var(--border)] bg-[var(--bg-subtle)] p-4">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-600">🎫 Tickets restaurant</h4>
                 <button type="button" onClick={() => setTr([...tr, { emetteur: "Swile", nb: 1, valeur: 10.5, total: 10.5 }])}
-                        className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs hover:bg-gray-100">+ Ligne</button>
+                        className="rounded-lg border border-[var(--border-strong)] bg-white px-2 py-1 text-xs hover:bg-[var(--bg-subtle)]">+ Ligne</button>
               </div>
               {tr.length === 0 ? (
                 <p className="mt-2 text-xs text-gray-500">Aucun ticket saisi.</p>
@@ -288,24 +288,24 @@ function SaisieCaInner() {
                                nl[i] = { ...nl[i], valeur, total: nl[i].nb * valeur };
                                setTr(nl);
                              }} className={inputCls} />
-                      <input readOnly value={fmt(l.nb * l.valeur)} className={inputCls + " bg-gray-100"} />
+                      <input readOnly value={fmt(l.nb * l.valeur)} className={inputCls + " bg-[var(--bg-subtle)]"} />
                       <button type="button" onClick={() => setTr(tr.filter((_, j) => j !== i))}
                               className="rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-600 hover:bg-red-100">×</button>
                     </div>
                   ))}
                   <p className="text-xs text-gray-500">
-                    Total TR : <span className="font-semibold text-[#1A1A2E]">{fmt(tr.reduce((s, l) => s + l.nb * l.valeur, 0))}</span>
+                    Total TR : <span className="font-semibold text-[var(--text)]">{fmt(tr.reduce((s, l) => s + l.nb * l.valeur, 0))}</span>
                   </p>
                 </div>
               )}
             </div>
 
             {/* Autres */}
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+            <div className="rounded-[8px] border border-[var(--border)] bg-[var(--bg-subtle)] p-4">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-600">➕ Autres paiements</h4>
                 <button type="button" onClick={() => setAutres([...autres, { mode: "virement", montant: 0, reference: "" }])}
-                        className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs hover:bg-gray-100">+ Ligne</button>
+                        className="rounded-lg border border-[var(--border-strong)] bg-white px-2 py-1 text-xs hover:bg-[var(--bg-subtle)]">+ Ligne</button>
               </div>
               {autres.length === 0 ? (
                 <p className="mt-2 text-xs text-gray-500">Aucune autre entrée.</p>
@@ -357,22 +357,22 @@ function SaisieCaInner() {
         </label>
 
         {/* Total + save */}
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-4">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-4">
           <p className="text-sm text-gray-600">
-            Total CA : <span className="text-lg font-bold text-indigo-600">{fmt(caTotalJour)}</span>
+            Total CA : <span className="text-lg font-bold text-[var(--accent)]">{fmt(caTotalJour)}</span>
           </p>
           <div className="flex gap-2">
             {editId && (
               <Link
                 href="/dashboard/restaurateur/gestion/saisie-ca"
                 onClick={() => { setEditId(null); resetForm(); }}
-                className="min-h-[44px] rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm"
+                className="min-h-[44px] rounded-[8px] border border-[var(--border)] bg-white px-4 py-2 text-sm"
               >
                 Annuler
               </Link>
             )}
             <button type="button" onClick={saveCa} disabled={saving || caTotalJour <= 0}
-                    className="min-h-[44px] rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-600 disabled:opacity-50">
+                    className="min-h-[44px] rounded-[8px] bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[var(--accent-hover)] disabled:opacity-50">
               {saving ? "Enregistrement…" : editId ? "Mettre à jour" : "Enregistrer"}
             </button>
           </div>
@@ -380,7 +380,7 @@ function SaisieCaInner() {
       </section>
 
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-50 max-w-md rounded-2xl border px-4 py-3 shadow-2xl ${
+        <div className={`fixed bottom-6 right-6 z-50 max-w-md rounded-[10px] border px-4 py-3 shadow-2xl ${
           toast.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-700"
         }`}>
           <p className="text-sm font-medium">{toast.msg}</p>

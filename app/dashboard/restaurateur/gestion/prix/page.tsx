@@ -139,12 +139,12 @@ export default function PrixPage() {
       </div>
 
       {loading ? (
-        <div className="h-64 animate-pulse rounded-2xl border border-gray-200 bg-white" />
+        <div className="h-64 animate-pulse rounded-[10px] border border-[var(--border)] bg-white" />
       ) : (
         <>
           {/* Alertes */}
           {alertes.length > 0 && (
-            <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5">
+            <div className="rounded-[10px] border border-rose-200 bg-rose-50 p-5">
               <h3 className="flex items-center gap-1.5 text-sm font-[650] text-[var(--danger)]"><Icon name="alert-triangle" size={14} /> Hausses de prix détectées</h3>
               <p className="mt-1 text-xs text-rose-700">
                 Ces produits ont augmenté de plus de 10% par rapport à votre dernière commande.
@@ -153,7 +153,7 @@ export default function PrixPage() {
                 {alertes.slice(0, 8).map(p => (
                   <Link key={p.produit} href={detailHref(p.produit)}
                         className="flex w-full items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-sm transition-colors hover:bg-rose-100">
-                    <span className="truncate text-[#1A1A2E]">{p.produit}</span>
+                    <span className="truncate text-[var(--text)]">{p.produit}</span>
                     <span className="flex shrink-0 items-center gap-2">
                       <span className="font-semibold text-rose-700">+{p.evolPct.toFixed(1)}%</span>
                       <span className="text-rose-500">→</span>
@@ -165,13 +165,13 @@ export default function PrixPage() {
           )}
 
           {/* Sélecteur produit + courbe */}
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <h3 className="text-sm font-semibold text-[#1A1A2E]">Évolution du prix</h3>
+              <h3 className="text-sm font-semibold text-[var(--text)]">Évolution du prix</h3>
               <select
                 value={selected ?? ""}
                 onChange={e => setSelected(e.target.value || null)}
-                className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm"
+                className="min-h-[40px] rounded-[8px] border border-[var(--border)] bg-white px-3 py-1.5 text-sm"
               >
                 <option value="">— Choisir un produit —</option>
                 {parProduit.slice(0, 50).map(p => <option key={p.produit} value={p.produit}>{p.produit}</option>)}
@@ -213,10 +213,10 @@ export default function PrixPage() {
           </div>
 
           {/* Tableau par produit */}
-          <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="overflow-x-auto rounded-[10px] border border-[var(--border)] bg-white shadow-sm">
             <table className="w-full min-w-[720px] text-sm">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
+                <tr className="border-b border-[var(--border)] bg-[var(--bg-subtle)] text-xs font-medium uppercase tracking-wide text-gray-500">
                   <th className="px-4 py-3 text-left">Produit</th>
                   <th className="px-4 py-3 text-right">Dernier prix</th>
                   <th className="px-4 py-3 text-right">Évolution</th>
@@ -231,8 +231,8 @@ export default function PrixPage() {
                   const economie = p.meilleurCatalogue && p.meilleurCatalogue.prix < p.dernierPrix
                     ? p.dernierPrix - p.meilleurCatalogue.prix : 0;
                   return (
-                    <tr key={p.produit} onClick={() => router.push(detailHref(p.produit))} className="cursor-pointer hover:bg-indigo-50">
-                      <td className="px-4 py-2 font-medium text-[#1A1A2E]">
+                    <tr key={p.produit} onClick={() => router.push(detailHref(p.produit))} className="cursor-pointer hover:bg-[var(--accent-soft)]">
+                      <td className="px-4 py-2 font-medium text-[var(--text)]">
                         {p.produit}
                         <span className="ml-1 text-gray-400">→</span>
                       </td>
@@ -261,9 +261,9 @@ export default function PrixPage() {
 function Kpi({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: "emerald" | "rose" }) {
   const cls = accent === "emerald" ? "border-emerald-200 bg-emerald-50 text-emerald-700"
             : accent === "rose"    ? "border-rose-200 bg-rose-50 text-rose-700"
-            : "border-gray-200 bg-white text-[#1A1A2E]";
+            : "border-[var(--border)] bg-white text-[var(--text)]";
   return (
-    <div className={`rounded-2xl border ${cls.split(" ").slice(0, 2).join(" ")} p-4 shadow-sm`}>
+    <div className={`rounded-[10px] border ${cls.split(" ").slice(0, 2).join(" ")} p-4 shadow-sm`}>
       <p className="text-[11px] font-medium uppercase tracking-wider text-gray-500">{label}</p>
       <p className={`mt-1 text-xl font-bold ${cls.split(" ")[2]}`}>{value}</p>
       {sub && <p className="mt-0.5 text-[10px] text-gray-500">{sub}</p>}
@@ -273,9 +273,9 @@ function Kpi({ label, value, sub, accent }: { label: string; value: string; sub?
 
 function Stat({ label, value, hint, accent }: { label: string; value: string; hint?: string; accent?: "emerald" }) {
   return (
-    <div className={`rounded-xl border px-3 py-2 ${accent === "emerald" ? "border-emerald-200 bg-emerald-50" : "border-gray-200 bg-gray-50"}`}>
+    <div className={`rounded-[8px] border px-3 py-2 ${accent === "emerald" ? "border-emerald-200 bg-emerald-50" : "border-[var(--border)] bg-[var(--bg-subtle)]"}`}>
       <p className="text-[10px] uppercase tracking-wider text-gray-500">{label}</p>
-      <p className={`mt-0.5 font-semibold ${accent === "emerald" ? "text-emerald-700" : "text-[#1A1A2E]"}`}>{value}</p>
+      <p className={`mt-0.5 font-semibold ${accent === "emerald" ? "text-emerald-700" : "text-[var(--text)]"}`}>{value}</p>
       {hint && <p className="mt-0.5 text-[10px] text-gray-500">{hint}</p>}
     </div>
   );

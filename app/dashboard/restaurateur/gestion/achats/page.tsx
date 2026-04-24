@@ -174,12 +174,12 @@ export default function AchatsPage() {
       <h2 className="text-[18px] font-[650] tracking-[-0.01em] text-[var(--text)]">Historique d&apos;achats</h2>
 
       {/* Filtres */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="rounded-[10px] border border-[var(--border)] bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-gray-600">Période</span>
             <select value={period} onChange={e => setPeriod(e.target.value as Period)}
-                    className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm focus:border-indigo-500">
+                    className="min-h-[40px] rounded-[8px] border border-[var(--border)] bg-white px-3 py-1.5 text-sm focus:border-[var(--accent)]">
               <option value="jour">Aujourd&apos;hui</option>
               <option value="7j">7 derniers jours</option>
               <option value="30j">30 derniers jours</option>
@@ -194,19 +194,19 @@ export default function AchatsPage() {
               <label className="flex flex-col gap-1">
                 <span className="text-xs font-medium text-gray-600">Du</span>
                 <input type="date" value={persoFrom} onChange={e => setPFrom(e.target.value)}
-                       className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm" />
+                       className="min-h-[40px] rounded-[8px] border border-[var(--border)] bg-white px-3 py-1.5 text-sm" />
               </label>
               <label className="flex flex-col gap-1">
                 <span className="text-xs font-medium text-gray-600">Au</span>
                 <input type="date" value={persoTo} onChange={e => setPTo(e.target.value)}
-                       className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm" />
+                       className="min-h-[40px] rounded-[8px] border border-[var(--border)] bg-white px-3 py-1.5 text-sm" />
               </label>
             </>
           )}
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-gray-600">Fournisseur</span>
             <select value={fournFilter} onChange={e => setFF(e.target.value)}
-                    className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm">
+                    className="min-h-[40px] rounded-[8px] border border-[var(--border)] bg-white px-3 py-1.5 text-sm">
               <option value="tous">Tous</option>
               {fournUniques.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
             </select>
@@ -214,7 +214,7 @@ export default function AchatsPage() {
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-gray-600">Catégorie</span>
             <select value={categFilter} onChange={e => setCF(e.target.value)}
-                    className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm">
+                    className="min-h-[40px] rounded-[8px] border border-[var(--border)] bg-white px-3 py-1.5 text-sm">
               <option value="tous">Toutes</option>
               {Object.entries(CAT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
@@ -222,10 +222,10 @@ export default function AchatsPage() {
           <label className="flex flex-1 min-w-48 flex-col gap-1">
             <span className="text-xs font-medium text-gray-600">Produit</span>
             <input value={produitSearch} onChange={e => setPS(e.target.value)} placeholder="Rechercher…"
-                   className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm" />
+                   className="min-h-[40px] rounded-[8px] border border-[var(--border)] bg-white px-3 py-1.5 text-sm" />
           </label>
           <button onClick={exportCsv} disabled={lignes.length === 0}
-                  className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium hover:border-indigo-300 disabled:opacity-50">
+                  className="min-h-[40px] rounded-[8px] border border-[var(--border)] bg-white px-3 py-1.5 text-sm font-medium hover:border-indigo-300 disabled:opacity-50">
             ↓ Export CSV
           </button>
         </div>
@@ -240,12 +240,12 @@ export default function AchatsPage() {
       </div>
 
       {loading ? (
-        <div className="h-64 animate-pulse rounded-2xl border border-gray-200 bg-white" />
+        <div className="h-64 animate-pulse rounded-[10px] border border-[var(--border)] bg-white" />
       ) : (
         <>
           {/* Graphique évolution */}
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h3 className="mb-3 text-sm font-semibold text-[#1A1A2E]">Évolution des dépenses</h3>
+          <div className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-[var(--text)]">Évolution des dépenses</h3>
             {evolution.length === 0 ? (
               <p className="py-10 text-center text-sm text-gray-500">Aucune donnée pour la période.</p>
             ) : (
@@ -270,10 +270,10 @@ export default function AchatsPage() {
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="overflow-x-auto rounded-[10px] border border-[var(--border)] bg-white shadow-sm">
             <table className="w-full min-w-[880px] text-sm">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
+                <tr className="border-b border-[var(--border)] bg-[var(--bg-subtle)] text-xs font-medium uppercase tracking-wide text-gray-500">
                   <th className="px-4 py-3 text-left">Date</th>
                   <th className="px-4 py-3 text-left">Produit</th>
                   <th className="px-4 py-3 text-left">Fournisseur</th>
@@ -293,13 +293,13 @@ export default function AchatsPage() {
                   const tva      = totalHT * 0.20;
                   const totalTTC = totalHT * 1.20;
                   return (
-                    <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                    <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-[var(--bg-subtle)]"}>
                       <td className="px-4 py-2 text-gray-500">{new Date(l.date).toLocaleDateString("fr-FR")}</td>
-                      <td className="px-4 py-2 text-[#1A1A2E]">{l.produit}</td>
+                      <td className="px-4 py-2 text-[var(--text)]">{l.produit}</td>
                       <td className="px-4 py-2 text-gray-600">{l.fournNom}</td>
                       <td className="px-4 py-2 text-right text-gray-600">{l.quantite} {l.unite}</td>
                       <td className="px-4 py-2 text-right text-gray-600">{fmt(l.prix_unitaire)}</td>
-                      <td className="px-4 py-2 text-right font-semibold text-[#1A1A2E]">{fmt(totalHT)}</td>
+                      <td className="px-4 py-2 text-right font-semibold text-[var(--text)]">{fmt(totalHT)}</td>
                       <td className="px-4 py-2 text-right text-gray-500">{fmt(tva)}</td>
                       <td className="px-4 py-2 text-right text-gray-700">{fmt(totalTTC)}</td>
                     </tr>
@@ -320,10 +320,10 @@ export default function AchatsPage() {
 }
 
 function Kpi({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: "emerald" }) {
-  const border = accent === "emerald" ? "border-emerald-200 bg-emerald-50" : "border-gray-200 bg-white";
-  const txt    = accent === "emerald" ? "text-emerald-700" : "text-[#1A1A2E]";
+  const border = accent === "emerald" ? "border-emerald-200 bg-emerald-50" : "border-[var(--border)] bg-white";
+  const txt    = accent === "emerald" ? "text-emerald-700" : "text-[var(--text)]";
   return (
-    <div className={`rounded-2xl border ${border} p-4 shadow-sm`}>
+    <div className={`rounded-[10px] border ${border} p-4 shadow-sm`}>
       <p className="text-[11px] font-medium uppercase tracking-wider text-gray-500">{label}</p>
       <p className={`mt-1 text-xl font-bold ${txt}`}>{value}</p>
       {sub && <p className="mt-0.5 text-[10px] text-gray-500">{sub}</p>}
@@ -334,8 +334,8 @@ function Kpi({ label, value, sub, accent }: { label: string; value: string; sub?
 function TopChart({ title, items, dataKey, isEuro }: { title: string; items: { nom: string; valeur: number; qte: number }[]; dataKey: "valeur" | "qte"; isEuro?: boolean }) {
   const data = items.map(i => ({ nom: i.nom.slice(0, 20), [dataKey]: dataKey === "valeur" ? i.valeur : i.qte }));
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-      <h3 className="mb-3 text-sm font-semibold text-[#1A1A2E]">{title}</h3>
+    <div className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
+      <h3 className="mb-3 text-sm font-semibold text-[var(--text)]">{title}</h3>
       {items.length === 0 ? (
         <p className="py-8 text-center text-sm text-gray-500">Aucune donnée.</p>
       ) : (

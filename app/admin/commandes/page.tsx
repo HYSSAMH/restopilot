@@ -111,17 +111,17 @@ function CommandesInner() {
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-10">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-[#1A1A2E]">Commandes</h1>
+            <h1 className="text-2xl font-bold text-[var(--text)]">Commandes</h1>
             <p className="mt-1 text-sm text-gray-500">
               {filtered.length} commande{filtered.length > 1 ? "s" : ""} affichée{filtered.length > 1 ? "s" : ""}
               {userFilter && (
-                <> · <Link href="/admin/commandes" className="text-indigo-500 hover:underline">voir tout</Link></>
+                <> · <Link href="/admin/commandes" className="text-[var(--accent)] hover:underline">voir tout</Link></>
               )}
             </p>
           </div>
-          <div className="rounded-xl border border-gray-200 bg-white px-4 py-2 shadow-sm">
+          <div className="rounded-[8px] border border-[var(--border)] bg-white px-4 py-2 shadow-sm">
             <p className="text-[11px] font-medium uppercase tracking-wider text-gray-500">Volume affiché</p>
-            <p className="text-lg font-bold text-[#1A1A2E]">{fmt(totalVolume)}</p>
+            <p className="text-lg font-bold text-[var(--text)]">{fmt(totalVolume)}</p>
           </div>
         </div>
 
@@ -131,12 +131,12 @@ function CommandesInner() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Rechercher (restaurateur ou fournisseur)"
-            className="flex-1 min-w-48 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+            className="flex-1 min-w-48 rounded-[8px] border border-[var(--border)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent)] focus:ring-2 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
           />
           <select
             value={filtreStatut}
             onChange={e => setFiltreStatut(e.target.value as typeof filtreStatut)}
-            className="min-h-[44px] rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm outline-none focus:border-indigo-500"
+            className="min-h-[44px] rounded-[8px] border border-[var(--border)] bg-white px-3.5 py-2 text-sm outline-none focus:border-[var(--accent)]"
           >
             <option value="tous">Tous statuts</option>
             {Object.entries(STATUT_LABELS).map(([k, v]) => (
@@ -146,7 +146,7 @@ function CommandesInner() {
           <select
             value={filtreDate}
             onChange={e => setFiltreDate(e.target.value as typeof filtreDate)}
-            className="min-h-[44px] rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm outline-none focus:border-indigo-500"
+            className="min-h-[44px] rounded-[8px] border border-[var(--border)] bg-white px-3.5 py-2 text-sm outline-none focus:border-[var(--accent)]"
           >
             <option value="tous">Toutes dates</option>
             <option value="jour">Aujourd&apos;hui</option>
@@ -159,18 +159,18 @@ function CommandesInner() {
         {loading ? (
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-14 animate-pulse rounded-2xl border border-gray-200 bg-white" />
+              <div key={i} className="h-14 animate-pulse rounded-[10px] border border-[var(--border)] bg-white" />
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-2xl border border-gray-200 bg-white py-20 text-center text-gray-500">
+          <div className="rounded-[10px] border border-[var(--border)] bg-white py-20 text-center text-gray-500">
             Aucune commande ne correspond aux filtres.
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="overflow-x-auto rounded-[10px] border border-[var(--border)] bg-white shadow-sm">
             <table className="w-full min-w-[760px] text-sm">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
+                <tr className="border-b border-[var(--border)] bg-[var(--bg-subtle)] text-xs font-medium uppercase tracking-wide text-gray-500">
                   <th className="px-5 py-3 text-left">Date</th>
                   <th className="px-5 py-3 text-left">Restaurateur</th>
                   <th className="px-5 py-3 text-left">Fournisseur</th>
@@ -180,13 +180,13 @@ function CommandesInner() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filtered.map((r, i) => (
-                  <tr key={r.id} className={i % 2 === 0 ? "bg-white hover:bg-gray-50" : "bg-gray-50 hover:bg-gray-100"}>
+                  <tr key={r.id} className={i % 2 === 0 ? "bg-white hover:bg-[var(--bg-subtle)]" : "bg-[var(--bg-subtle)] hover:bg-[var(--bg-subtle)]"}>
                     <td className="px-5 py-3 text-gray-500">
                       {new Date(r.created_at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                     </td>
                     <td className="px-5 py-3">
                       {r.restaurateur_id ? (
-                        <Link href={`/admin/users/${r.restaurateur_id}`} className="text-[#1A1A2E] hover:text-indigo-600">
+                        <Link href={`/admin/users/${r.restaurateur_id}`} className="text-[var(--text)] hover:text-[var(--accent)]">
                           {r.restaurateur_nom}
                         </Link>
                       ) : (
@@ -194,7 +194,7 @@ function CommandesInner() {
                       )}
                     </td>
                     <td className="px-5 py-3">
-                      <Link href={`/admin/users/${r.fournisseur_id}`} className="text-[#1A1A2E] hover:text-indigo-600">
+                      <Link href={`/admin/users/${r.fournisseur_id}`} className="text-[var(--text)] hover:text-[var(--accent)]">
                         {names[r.fournisseur_id] ?? "—"}
                       </Link>
                     </td>
@@ -203,7 +203,7 @@ function CommandesInner() {
                         {STATUT_LABELS[r.statut]}
                       </span>
                     </td>
-                    <td className="px-5 py-3 text-right font-semibold text-[#1A1A2E]">{fmt(r.montant_total)}</td>
+                    <td className="px-5 py-3 text-right font-semibold text-[var(--text)]">{fmt(r.montant_total)}</td>
                   </tr>
                 ))}
               </tbody>

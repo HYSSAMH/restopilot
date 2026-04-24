@@ -190,11 +190,11 @@ function RegisterInner() {
       </div>
 
       <div className="relative z-10 w-full max-w-lg animate-fade-in-up">
-        <Link href="/" className="mb-6 flex items-center gap-2 text-sm text-gray-500 transition-colors hover:text-[#1A1A2E]">
+        <Link href="/" className="mb-6 flex items-center gap-2 text-sm text-gray-500 transition-colors hover:text-[var(--text)]">
           <span>←</span><span>Retour à l&apos;accueil</span>
         </Link>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+        <div className="rounded-[10px] border border-[var(--border)] bg-white p-8 shadow-sm">
           <div className="mb-6 text-center">
             <h1 className="page-title">Créer mon compte</h1>
             <p className="page-sub">Gratuit · 2 minutes</p>
@@ -202,24 +202,24 @@ function RegisterInner() {
 
           {/* ── Choix du rôle ─────────────────────────────────── */}
           <div className="mb-5">
-            <p className="mb-2 text-xs font-medium text-[#1A1A2E]">Je suis :</p>
+            <p className="mb-2 text-xs font-medium text-[var(--text)]">Je suis :</p>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {ROLES.map(r => (
                 <button
                   key={r.id}
                   type="button"
                   onClick={() => setRole(r.id)}
-                  className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-all ${
+                  className={`flex items-start gap-3 rounded-[8px] border p-3 text-left transition-all ${
                     role === r.id
-                      ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500/20"
-                      : "border-gray-200 bg-white hover:bg-white"
+                      ? "border-[var(--accent)] bg-[var(--accent-soft)] ring-2 ring-indigo-500/20"
+                      : "border-[var(--border)] bg-white hover:bg-white"
                   }`}
                 >
                   <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${r.gradient}`}>
                     <span className="text-lg">{r.icon}</span>
                   </div>
                   <div className="min-w-0">
-                    <p className={`text-sm font-semibold ${role === r.id ? "text-[#1A1A2E]" : "text-[#1A1A2E]/80"}`}>{r.label}</p>
+                    <p className={`text-sm font-semibold ${role === r.id ? "text-[var(--text)]" : "text-[var(--text)]/80"}`}>{r.label}</p>
                     <p className="mt-0.5 text-[11px] leading-snug text-gray-500">{r.sub}</p>
                   </div>
                 </button>
@@ -230,79 +230,79 @@ function RegisterInner() {
           {/* ── Formulaire ────────────────────────────────────── */}
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
-              <label htmlFor="reg-etab" className="mb-1.5 block text-xs font-medium text-[#1A1A2E]">
+              <label htmlFor="reg-etab" className="mb-1.5 block text-xs font-medium text-[var(--text)]">
                 Nom de l&apos;établissement *
               </label>
               <input
                 id="reg-etab" name="nom_etablissement" autoComplete="organization" required
                 value={nomEtablissement} onChange={e => setNomEtab(e.target.value)}
                 placeholder={role === "fournisseur" ? "ex : ProFrais Distribution" : "ex : Le Bistrot Parisien"}
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-[#1A1A2E] placeholder-gray-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                className="w-full rounded-[8px] border border-[var(--border)] bg-white px-4 py-2.5 text-sm text-[var(--text)] placeholder-gray-400 outline-none focus:border-[var(--accent)] focus:ring-2 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label htmlFor="reg-prenom" className="mb-1.5 block text-xs font-medium text-[#1A1A2E]">Prénom</label>
+                <label htmlFor="reg-prenom" className="mb-1.5 block text-xs font-medium text-[var(--text)]">Prénom</label>
                 <input
                   id="reg-prenom" name="given-name" autoComplete="given-name"
                   value={prenom} onChange={e => setPrenom(e.target.value)}
                   placeholder="Marc"
-                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-[#1A1A2E] placeholder-gray-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                  className="w-full rounded-[8px] border border-[var(--border)] bg-white px-4 py-2.5 text-sm text-[var(--text)] placeholder-gray-400 outline-none focus:border-[var(--accent)] focus:ring-2 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
                 />
               </div>
               <div>
-                <label htmlFor="reg-nom" className="mb-1.5 block text-xs font-medium text-[#1A1A2E]">Nom</label>
+                <label htmlFor="reg-nom" className="mb-1.5 block text-xs font-medium text-[var(--text)]">Nom</label>
                 <input
                   id="reg-nom" name="family-name" autoComplete="family-name"
                   value={nom} onChange={e => setNom(e.target.value)}
                   placeholder="Dupont"
-                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-[#1A1A2E] placeholder-gray-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                  className="w-full rounded-[8px] border border-[var(--border)] bg-white px-4 py-2.5 text-sm text-[var(--text)] placeholder-gray-400 outline-none focus:border-[var(--accent)] focus:ring-2 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="reg-email" className="mb-1.5 block text-xs font-medium text-[#1A1A2E]">Adresse email *</label>
+              <label htmlFor="reg-email" className="mb-1.5 block text-xs font-medium text-[var(--text)]">Adresse email *</label>
               <input
                 id="reg-email" name="email" required type="email" autoComplete="email"
                 value={email} onChange={e => setEmail(e.target.value)}
                 placeholder="vous@exemple.com"
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-[#1A1A2E] placeholder-gray-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                className="w-full rounded-[8px] border border-[var(--border)] bg-white px-4 py-2.5 text-sm text-[var(--text)] placeholder-gray-400 outline-none focus:border-[var(--accent)] focus:ring-2 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
               />
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label htmlFor="reg-password" className="mb-1.5 block text-xs font-medium text-[#1A1A2E]">Mot de passe *</label>
+                <label htmlFor="reg-password" className="mb-1.5 block text-xs font-medium text-[var(--text)]">Mot de passe *</label>
                 <input
                   id="reg-password" name="new-password" required type="password" autoComplete="new-password" minLength={8}
                   value={password} onChange={e => setPassword(e.target.value)}
                   placeholder="8+ caractères"
-                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-[#1A1A2E] placeholder-gray-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                  className="w-full rounded-[8px] border border-[var(--border)] bg-white px-4 py-2.5 text-sm text-[var(--text)] placeholder-gray-400 outline-none focus:border-[var(--accent)] focus:ring-2 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
                 />
               </div>
               <div>
-                <label htmlFor="reg-password-confirm" className="mb-1.5 block text-xs font-medium text-[#1A1A2E]">Confirmation *</label>
+                <label htmlFor="reg-password-confirm" className="mb-1.5 block text-xs font-medium text-[var(--text)]">Confirmation *</label>
                 <input
                   id="reg-password-confirm" name="new-password-confirm" required type="password" autoComplete="new-password"
                   value={confirmPassword} onChange={e => setConfirm(e.target.value)}
                   placeholder="Retapez le mot de passe"
-                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-[#1A1A2E] placeholder-gray-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                  className="w-full rounded-[8px] border border-[var(--border)] bg-white px-4 py-2.5 text-sm text-[var(--text)] placeholder-gray-400 outline-none focus:border-[var(--accent)] focus:ring-2 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
                 />
               </div>
             </div>
 
             {error && (
-              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
+              <div className="rounded-[8px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
             )}
             {success && (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-600">{success}</div>
+              <div className="rounded-[8px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-600">{success}</div>
             )}
 
             <button
               type="submit" disabled={loading || !!success}
-              className="mt-1 flex h-12 w-full items-center justify-center rounded-xl bg-indigo-500 text-sm font-semibold text-[#1A1A2E] shadow-lg shadow-indigo-500/20 transition-all hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-1 flex h-12 w-full items-center justify-center rounded-[8px] bg-[var(--accent)] text-sm font-semibold text-[var(--text)] shadow-lg shadow-indigo-500/20 transition-all hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? (
                 <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -315,7 +315,7 @@ function RegisterInner() {
 
           <p className="mt-5 text-center text-sm text-gray-500">
             Déjà inscrit ?{" "}
-            <Link href="/login" className="font-medium text-indigo-500 transition-colors hover:text-indigo-600">
+            <Link href="/login" className="font-medium text-[var(--accent)] transition-colors hover:text-[var(--accent)]">
               Se connecter
             </Link>
           </p>

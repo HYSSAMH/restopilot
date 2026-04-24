@@ -107,18 +107,17 @@ export default function EquipePage() {
 
   return (
     <DashboardLayout role="restaurateur">
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
-        <div className="mb-8">
+        <header className="mb-6">
           <h1 className="page-title">Mon équipe</h1>
-          <p className="mt-1.5 text-sm text-gray-500">
+          <p className="page-sub">
             Créez des comptes pour vos salariés — ils accèdent uniquement à la saisie du chiffre d&apos;affaires.
           </p>
-        </div>
+        </header>
 
         {/* Formulaire création */}
         <form
           onSubmit={handleCreate}
-          className="mb-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+          className="mb-8 rounded-[10px] border border-[var(--border)] bg-white p-6 shadow-sm"
         >
           <h2 className="text-[18px] font-[650] tracking-[-0.01em] text-[var(--text)]">Nouvel employé</h2>
           <p className="mt-1 text-xs text-gray-500">
@@ -129,7 +128,7 @@ export default function EquipePage() {
               <label htmlFor="emp-prenom" className="text-xs font-medium text-gray-600">Prénom</label>
               <input
                 id="emp-prenom" name="prenom" value={prenom} onChange={(e) => setPrenom(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-[#1A1A2E] focus:border-indigo-400 focus:outline-none"
+                className="mt-1 w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm text-[var(--text)] focus:border-indigo-400 focus:outline-none"
                 placeholder="Marie"
               />
             </div>
@@ -137,7 +136,7 @@ export default function EquipePage() {
               <label htmlFor="emp-nom" className="text-xs font-medium text-gray-600">Nom</label>
               <input
                 id="emp-nom" name="nom" value={nom} onChange={(e) => setNom(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-[#1A1A2E] focus:border-indigo-400 focus:outline-none"
+                className="mt-1 w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm text-[var(--text)] focus:border-indigo-400 focus:outline-none"
                 placeholder="Durand"
               />
             </div>
@@ -145,7 +144,7 @@ export default function EquipePage() {
               <label htmlFor="emp-email" className="text-xs font-medium text-gray-600">Email</label>
               <input
                 id="emp-email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-[#1A1A2E] focus:border-indigo-400 focus:outline-none"
+                className="mt-1 w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm text-[var(--text)] focus:border-indigo-400 focus:outline-none"
                 placeholder="marie@exemple.com"
               />
             </div>
@@ -154,12 +153,12 @@ export default function EquipePage() {
               <div className="mt-1 flex gap-2">
                 <input
                   id="emp-password" name="password" type="text" value={password} onChange={(e) => setPassword(e.target.value)}
-                  className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-[#1A1A2E] focus:border-indigo-400 focus:outline-none"
+                  className="flex-1 rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm text-[var(--text)] focus:border-indigo-400 focus:outline-none"
                   placeholder="8 caractères minimum"
                 />
                 <button
                   type="button" onClick={generatePassword}
-                  className="rounded-lg border border-gray-200 px-3 text-xs font-medium text-gray-600 hover:border-indigo-300 hover:text-indigo-600"
+                  className="rounded-lg border border-[var(--border)] px-3 text-xs font-medium text-gray-600 hover:border-indigo-300 hover:text-[var(--accent)]"
                 >
                   Générer
                 </button>
@@ -175,7 +174,7 @@ export default function EquipePage() {
           <div className="mt-4 flex justify-end">
             <button
               type="submit" disabled={creating}
-              className="rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-5 py-2.5 text-sm font-medium text-white shadow-md shadow-indigo-500/20 transition-opacity hover:opacity-95 disabled:opacity-50"
+              className="rounded-[8px] bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-white shadow-md shadow-indigo-500/20 transition-opacity hover:opacity-95 disabled:opacity-50"
             >
               {creating ? "Création…" : "Créer le compte"}
             </button>
@@ -183,8 +182,8 @@ export default function EquipePage() {
         </form>
 
         {/* Liste */}
-        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
-          <div className="border-b border-gray-100 px-6 py-4">
+        <div className="rounded-[10px] border border-[var(--border)] bg-white shadow-sm">
+          <div className="border-b border-[var(--border)] px-6 py-4">
             <h2 className="text-[18px] font-[650] tracking-[-0.01em] text-[var(--text)]">
               Employés ({employes.length})
             </h2>
@@ -198,7 +197,7 @@ export default function EquipePage() {
               {employes.map((emp) => (
                 <li key={emp.id} className="flex flex-wrap items-center gap-3 px-6 py-4">
                   <div className="flex-1 min-w-[220px]">
-                    <p className="text-sm font-medium text-[#1A1A2E]">
+                    <p className="text-sm font-medium text-[var(--text)]">
                       {emp.prenom} {emp.nom}
                     </p>
                     <p className="text-xs text-gray-500">{emp.email}</p>
@@ -213,13 +212,13 @@ export default function EquipePage() {
                   <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
                     emp.actif
                       ? "bg-emerald-50 text-emerald-700"
-                      : "bg-gray-100 text-gray-500"
+                      : "bg-[var(--bg-subtle)] text-gray-500"
                   }`}>
                     {emp.actif ? "Actif" : "Inactif"}
                   </span>
                   <button
                     onClick={() => handleToggleActif(emp)}
-                    className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-indigo-300 hover:text-indigo-600"
+                    className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-indigo-300 hover:text-[var(--accent)]"
                   >
                     {emp.actif ? "Désactiver" : "Réactiver"}
                   </button>
@@ -238,7 +237,7 @@ export default function EquipePage() {
                       if (!res.ok) { setErr(json?.error ?? "Mise à jour échouée."); return; }
                       await load();
                     }}
-                    className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-indigo-300 hover:text-indigo-600"
+                    className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-indigo-300 hover:text-[var(--accent)]"
                   >
                     Modifier
                   </button>
@@ -253,7 +252,6 @@ export default function EquipePage() {
             </ul>
           )}
         </div>
-      </div>
     </DashboardLayout>
   );
 }

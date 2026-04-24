@@ -24,7 +24,7 @@ function fmtDate(iso: string | null) {
 
 function roleBadge(role: Row["role"]) {
   const cfg: Record<Row["role"], string> = {
-    restaurateur: "border-indigo-200 bg-indigo-50 text-indigo-600",
+    restaurateur: "border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--accent)]",
     fournisseur:  "border-emerald-200 bg-emerald-50 text-emerald-600",
     admin:        "border-rose-200 bg-rose-50 text-rose-600",
   };
@@ -74,7 +74,7 @@ export default function UsersListPage() {
     <AdminLayout>
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-10">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-[#1A1A2E]">Utilisateurs</h1>
+          <h1 className="text-2xl font-bold text-[var(--text)]">Utilisateurs</h1>
           <p className="mt-1 text-sm text-gray-500">
             {rows.length} compte{rows.length > 1 ? "s" : ""} au total.
           </p>
@@ -86,9 +86,9 @@ export default function UsersListPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Rechercher par nom ou email…"
-            className="flex-1 min-w-48 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+            className="flex-1 min-w-48 rounded-[8px] border border-[var(--border)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent)] focus:ring-2 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
           />
-          <div className="flex gap-1 rounded-xl border border-gray-200 bg-white p-1">
+          <div className="flex gap-1 rounded-[8px] border border-[var(--border)] bg-white p-1">
             {([
               { id: "tous",         label: "Tous"          },
               { id: "restaurateur", label: "Restaurateurs" },
@@ -100,8 +100,8 @@ export default function UsersListPage() {
                 onClick={() => setRoleF(f.id)}
                 className={`min-h-[40px] rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                   roleFilter === f.id
-                    ? "bg-indigo-500 text-white"
-                    : "text-gray-500 hover:text-[#1A1A2E]"
+                    ? "bg-[var(--accent)] text-white"
+                    : "text-gray-500 hover:text-[var(--text)]"
                 }`}
               >
                 {f.label}
@@ -114,18 +114,18 @@ export default function UsersListPage() {
         {loading ? (
           <div className="space-y-2">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-16 animate-pulse rounded-2xl border border-gray-200 bg-white" />
+              <div key={i} className="h-16 animate-pulse rounded-[10px] border border-[var(--border)] bg-white" />
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-2xl border border-gray-200 bg-white py-20 text-center text-gray-500">
+          <div className="rounded-[10px] border border-[var(--border)] bg-white py-20 text-center text-gray-500">
             Aucun utilisateur ne correspond.
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="overflow-x-auto rounded-[10px] border border-[var(--border)] bg-white shadow-sm">
             <table className="w-full min-w-[720px] text-sm">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
+                <tr className="border-b border-[var(--border)] bg-[var(--bg-subtle)] text-xs font-medium uppercase tracking-wide text-gray-500">
                   <th className="px-5 py-3 text-left">Utilisateur</th>
                   <th className="px-5 py-3 text-left">Email</th>
                   <th className="px-5 py-3 text-left">Rôle</th>
@@ -139,14 +139,14 @@ export default function UsersListPage() {
                   const display = r.nom_commercial || r.nom_etablissement;
                   const active = r.actif !== false;
                   return (
-                    <tr key={r.id} className="hover:bg-gray-50">
+                    <tr key={r.id} className="hover:bg-[var(--bg-subtle)]">
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 text-xs font-bold text-white">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent)] text-xs font-bold text-white">
                             {(display || r.email).charAt(0).toUpperCase()}
                           </div>
                           <div className="min-w-0">
-                            <p className="truncate font-medium text-[#1A1A2E]">{display}</p>
+                            <p className="truncate font-medium text-[var(--text)]">{display}</p>
                             {(r.prenom || r.nom) && (
                               <p className="truncate text-[11px] text-gray-500">{[r.prenom, r.nom].filter(Boolean).join(" ")}</p>
                             )}
@@ -158,7 +158,7 @@ export default function UsersListPage() {
                       <td className="px-5 py-3 text-gray-500">{fmtDate(r.created_at)}</td>
                       <td className="px-5 py-3">
                         <span className={`flex w-fit items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium ${
-                          active ? "border-emerald-200 bg-emerald-50 text-emerald-600" : "border-gray-200 bg-gray-50 text-gray-500"
+                          active ? "border-emerald-200 bg-emerald-50 text-emerald-600" : "border-[var(--border)] bg-[var(--bg-subtle)] text-gray-500"
                         }`}>
                           <span className={`h-1.5 w-1.5 rounded-full ${active ? "bg-emerald-500" : "bg-gray-400"}`} />
                           {active ? "Actif" : "Désactivé"}
@@ -167,7 +167,7 @@ export default function UsersListPage() {
                       <td className="px-5 py-3 text-right">
                         <Link
                           href={`/admin/users/${r.id}`}
-                          className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-[#1A1A2E] hover:border-indigo-300 hover:text-indigo-600"
+                          className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--text)] hover:border-indigo-300 hover:text-[var(--accent)]"
                         >
                           Gérer →
                         </Link>

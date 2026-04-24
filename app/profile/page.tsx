@@ -204,9 +204,7 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
-          <div className="h-64 animate-pulse rounded-2xl border border-gray-200 bg-white" />
-        </div>
+        <div className="h-64 animate-[rp-shimmer_1.4s_linear_infinite] rounded-[10px] border border-[var(--border)] bg-white" />
       </DashboardLayout>
     );
   }
@@ -214,35 +212,27 @@ export default function ProfilePage() {
   if (!p) {
     return (
       <DashboardLayout>
-        <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-10 text-center">
-          <p className="text-gray-500">Session introuvable.</p>
-          <Link href="/login" className="mt-4 inline-block text-indigo-500 hover:text-indigo-600">Se reconnecter</Link>
+        <div className="text-center py-20">
+          <p className="text-[var(--text-muted)]">Session introuvable.</p>
+          <Link href="/login" className="mt-4 inline-block text-[var(--accent)] hover:underline">Se reconnecter</Link>
         </div>
       </DashboardLayout>
     );
   }
 
-  const backHref = `/dashboard/${p.role}`;
-  const isFour   = p.role === "fournisseur";
+  const isFour = p.role === "fournisseur";
   const layoutRole: "restaurateur" | "fournisseur" = isFour ? "fournisseur" : "restaurateur";
 
   return (
     <DashboardLayout role={layoutRole}>
-        <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
-        {/* Breadcrumb */}
-        <div className="mb-6 flex items-center gap-2 text-sm text-gray-400">
-          <Link href={backHref} className="hover:text-gray-600">Dashboard</Link>
-          <span>/</span>
-          <span className="text-gray-600">Mon profil</span>
-        </div>
-
+        <div className="mx-auto max-w-3xl">
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-[#1A1A2E]">Mon profil</h1>
-          <p className="mt-1 text-sm text-gray-500">
+        <header className="mb-6">
+          <h1 className="page-title">Mon profil</h1>
+          <p className="page-sub">
             Ces informations sont utilisées pour pré-remplir les factures et la facturation.
           </p>
-        </div>
+        </header>
 
         <div className="flex flex-col gap-5">
           {/* ── Identité & contact ─────────────────────────────────── */}

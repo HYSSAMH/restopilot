@@ -38,7 +38,7 @@ function margeColor(pct: number): "emerald" | "amber" | "rose" {
   return "rose";
 }
 
-const inputCls = "min-h-[40px] rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20";
+const inputCls = "min-h-[40px] rounded-[8px] border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--accent)] focus:ring-2 focus:shadow-[0_0_0_3px_var(--accent-soft)]";
 
 export default function MenuDashboardPage() {
   const { profile } = useProfile();
@@ -139,13 +139,14 @@ export default function MenuDashboardPage() {
   }, [plats, categories]);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-10 sm:px-8">
-      <p className="mb-6 text-sm text-gray-500">
-        Fiches techniques, coûts de revient et rentabilité.
-      </p>
+    <section>
+      <div className="mb-6">
+        <h2 className="text-[18px] font-[650] tracking-[-0.01em] text-[var(--text)]">Mes plats</h2>
+        <p className="text-[13px] text-[var(--text-muted)] mt-[2px]">Fiches techniques, coûts de revient et rentabilité.</p>
+      </div>
 
         {loading ? (
-          <div className="h-40 animate-pulse rounded-2xl bg-gray-100" />
+          <div className="h-40 animate-pulse rounded-[10px] bg-[var(--bg-subtle)]" />
         ) : (
           <>
             {/* KPIs */}
@@ -159,7 +160,7 @@ export default function MenuDashboardPage() {
 
             {/* Top 5 rentables / non rentables */}
             <div className="mb-6 grid gap-4 lg:grid-cols-2">
-              <section className="rounded-2xl border border-emerald-200 bg-emerald-50/30 p-5 shadow-sm">
+              <section className="rounded-[10px] border border-emerald-200 bg-emerald-50/30 p-5 shadow-sm">
                 <h3 className="mb-3 text-sm font-semibold text-emerald-700">🏆 Top 5 plats les plus rentables</h3>
                 {analyse.top5Rentables.length === 0 ? (
                   <p className="text-xs text-gray-500">Pas encore de plat avec prix renseigné.</p>
@@ -167,7 +168,7 @@ export default function MenuDashboardPage() {
                   <ul className="divide-y divide-emerald-100">
                     {analyse.top5Rentables.map(i => (
                       <li key={i.plat.id} className="flex items-center justify-between py-2">
-                        <Link href={`/dashboard/restaurateur/menu/${i.plat.id}`} className="truncate font-medium text-[#1A1A2E] hover:text-indigo-600">
+                        <Link href={`/dashboard/restaurateur/menu/${i.plat.id}`} className="truncate font-medium text-[var(--text)] hover:text-[var(--accent)]">
                           {i.plat.nom}
                         </Link>
                         <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
@@ -178,7 +179,7 @@ export default function MenuDashboardPage() {
                   </ul>
                 )}
               </section>
-              <section className="rounded-2xl border border-rose-200 bg-rose-50/30 p-5 shadow-sm">
+              <section className="rounded-[10px] border border-rose-200 bg-rose-50/30 p-5 shadow-sm">
                 <h3 className="mb-3 text-sm font-semibold text-rose-700">⚠ Top 5 plats les moins rentables</h3>
                 {analyse.top5NonRentables.length === 0 ? (
                   <p className="text-xs text-gray-500">Pas encore de données.</p>
@@ -186,7 +187,7 @@ export default function MenuDashboardPage() {
                   <ul className="divide-y divide-rose-100">
                     {analyse.top5NonRentables.map(i => (
                       <li key={i.plat.id} className="flex items-center justify-between py-2">
-                        <Link href={`/dashboard/restaurateur/menu/${i.plat.id}`} className="truncate font-medium text-[#1A1A2E] hover:text-indigo-600">
+                        <Link href={`/dashboard/restaurateur/menu/${i.plat.id}`} className="truncate font-medium text-[var(--text)] hover:text-[var(--accent)]">
                           {i.plat.nom}
                         </Link>
                         <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${
@@ -202,8 +203,8 @@ export default function MenuDashboardPage() {
             </div>
 
             {/* Création rapide */}
-            <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h3 className="mb-3 text-sm font-semibold text-[#1A1A2E]">Créer un plat</h3>
+            <section className="mb-6 rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
+              <h3 className="mb-3 text-sm font-semibold text-[var(--text)]">Créer un plat</h3>
               <div className="flex flex-wrap items-end gap-2">
                 <input value={newPlatNom} onChange={e => setNewPlatNom(e.target.value)}
                        placeholder="Nom du plat (ex : Blanquette de veau)"
@@ -213,15 +214,15 @@ export default function MenuDashboardPage() {
                   {categories.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
                 </select>
                 <button onClick={createPlat} disabled={!newPlatNom.trim()}
-                        className="rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-5 py-2 text-sm font-semibold text-white shadow-md disabled:opacity-50">
+                        className="rounded-[8px] bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white shadow-md disabled:opacity-50">
                   + Créer & composer
                 </button>
               </div>
             </section>
 
             {/* Liste par catégorie */}
-            <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h3 className="mb-4 text-sm font-semibold text-[#1A1A2E]">Mes plats ({plats.length})</h3>
+            <section className="mb-6 rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
+              <h3 className="mb-4 text-sm font-semibold text-[var(--text)]">Mes plats ({plats.length})</h3>
               {parCategorie.length === 0 ? (
                 <p className="text-sm text-gray-500">Aucun plat pour l&apos;instant.</p>
               ) : (
@@ -234,8 +235,8 @@ export default function MenuDashboardPage() {
                         </h4>
                         {g.cat && (
                           <div className="flex items-center gap-1">
-                            <button onClick={() => moveCategorie(g.cat!.id, -1)} className="rounded-md border border-gray-200 bg-white px-2 py-0.5 text-xs hover:bg-gray-50">↑</button>
-                            <button onClick={() => moveCategorie(g.cat!.id, 1)}  className="rounded-md border border-gray-200 bg-white px-2 py-0.5 text-xs hover:bg-gray-50">↓</button>
+                            <button onClick={() => moveCategorie(g.cat!.id, -1)} className="rounded-md border border-[var(--border)] bg-white px-2 py-0.5 text-xs hover:bg-[var(--bg-subtle)]">↑</button>
+                            <button onClick={() => moveCategorie(g.cat!.id, 1)}  className="rounded-md border border-[var(--border)] bg-white px-2 py-0.5 text-xs hover:bg-[var(--bg-subtle)]">↓</button>
                             <button onClick={() => deleteCategorie(g.cat!.id)}   className="rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-600 hover:bg-red-100">Suppr.</button>
                           </div>
                         )}
@@ -249,9 +250,9 @@ export default function MenuDashboardPage() {
                             : 0;
                           return (
                             <Link key={p.id} href={`/dashboard/restaurateur/menu/${p.id}`}
-                                  className="block rounded-xl border border-gray-200 bg-white p-3 hover:border-indigo-300 hover:shadow-sm">
+                                  className="block rounded-[8px] border border-[var(--border)] bg-white p-3 hover:border-indigo-300 hover:shadow-sm">
                               <div className="flex items-start justify-between gap-2">
-                                <p className="truncate font-semibold text-[#1A1A2E]">{p.nom}</p>
+                                <p className="truncate font-semibold text-[var(--text)]">{p.nom}</p>
                                 <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
                                   color === "emerald" ? "bg-emerald-50 text-emerald-700"
                                   : color === "amber" ? "bg-amber-50 text-amber-700"
@@ -279,14 +280,14 @@ export default function MenuDashboardPage() {
             </section>
 
             {/* Gestion catégories */}
-            <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h3 className="mb-3 text-sm font-semibold text-[#1A1A2E]">Catégories</h3>
+            <section className="rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
+              <h3 className="mb-3 text-sm font-semibold text-[var(--text)]">Catégories</h3>
               <div className="mb-3 flex flex-wrap items-end gap-2">
                 <input value={newCat} onChange={e => setNewCat(e.target.value)}
                        placeholder="Nouvelle catégorie (ex : Entrées)"
                        className={inputCls + " flex-1 min-w-[220px]"} />
                 <button onClick={createCategorie} disabled={!newCat.trim()}
-                        className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold hover:border-indigo-300 disabled:opacity-50">
+                        className="rounded-[8px] border border-[var(--border)] bg-white px-4 py-2 text-sm font-semibold hover:border-indigo-300 disabled:opacity-50">
                   + Ajouter
                 </button>
               </div>
@@ -295,7 +296,7 @@ export default function MenuDashboardPage() {
               ) : (
                 <ul className="flex flex-wrap gap-2">
                   {categories.map(c => (
-                    <li key={c.id} className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1 text-sm">
+                    <li key={c.id} className="flex items-center gap-2 rounded-full border border-[var(--border)] bg-white px-3 py-1 text-sm">
                       <span>{c.nom}</span>
                       <button onClick={() => deleteCategorie(c.id)} className="text-xs text-red-500 hover:text-red-700">×</button>
                     </li>
@@ -305,7 +306,7 @@ export default function MenuDashboardPage() {
             </section>
           </>
         )}
-    </div>
+    </section>
   );
 }
 
@@ -313,10 +314,10 @@ function Kpi({ label, value, sub, accent }: { label: string; value: string; sub?
   const cls = accent === "rose" ? "border-rose-200 bg-rose-50 text-rose-700"
             : accent === "amber" ? "border-amber-200 bg-amber-50 text-amber-700"
             : accent === "emerald" ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-            : "border-gray-200 bg-white text-[#1A1A2E]";
+            : "border-[var(--border)] bg-white text-[var(--text)]";
   const [b, bg, txt] = cls.split(" ");
   return (
-    <div className={`rounded-xl border ${b} ${bg} p-3 shadow-sm`}>
+    <div className={`rounded-[8px] border ${b} ${bg} p-3 shadow-sm`}>
       <p className="text-[10px] font-medium uppercase tracking-wider text-gray-500">{label}</p>
       <p className={`mt-1 text-lg font-bold ${txt}`}>{value}</p>
       {sub && <p className="mt-0.5 text-[10px] text-gray-500">{sub}</p>}

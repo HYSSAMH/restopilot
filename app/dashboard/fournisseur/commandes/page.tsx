@@ -10,7 +10,7 @@ import type { DbCommande, StatutCommande } from "@/lib/supabase/types";
 const STATUTS: { value: StatutCommande; label: string; next: StatutCommande | null; dot: string; badge: string; btn?: string }[] = [
   { value: "recue",                        label: "Reçue",                    next: "en_preparation", dot: "bg-amber-400",   badge: "border-amber-200 bg-amber-50 text-amber-700",   btn: "Démarrer la préparation →" },
   { value: "en_preparation",               label: "En préparation",           next: "en_livraison",   dot: "bg-blue-400",    badge: "border-blue-200 bg-blue-50 text-blue-700",      btn: "Marquer en livraison →" },
-  { value: "en_livraison",                 label: "En livraison",             next: "livree",         dot: "bg-violet-400",  badge: "border-indigo-200 bg-indigo-50 text-indigo-600", btn: "Confirmer la livraison →" },
+  { value: "en_livraison",                 label: "En livraison",             next: "livree",         dot: "bg-violet-400",  badge: "border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--accent)]", btn: "Confirmer la livraison →" },
   { value: "livree",                       label: "Livrée · attente récep.",  next: null,             dot: "bg-sky-400",     badge: "border-sky-200 bg-sky-50 text-sky-700" },
   { value: "receptionnee",                 label: "Réceptionnée ✓",           next: null,             dot: "bg-emerald-400", badge: "border-emerald-200 bg-emerald-50 text-emerald-700" },
   { value: "receptionnee_avec_anomalies",  label: "Récep. avec anomalies",    next: null,             dot: "bg-rose-400",    badge: "border-rose-200 bg-rose-50 text-rose-700" },
@@ -62,20 +62,20 @@ function CommandeCard({
   const f = commande.fournisseurs;
 
   return (
-    <div className={`rounded-2xl border transition-all duration-200 ${
-      commande.statut === "recue" ? "border-amber-500/30 bg-amber-500/5" : "border-gray-200 bg-white"
+    <div className={`rounded-[10px] border transition-all duration-200 ${
+      commande.statut === "recue" ? "border-amber-500/30 bg-amber-500/5" : "border-[var(--border)] bg-white"
     }`}>
       {/* Header */}
       <div className="flex items-start gap-4 p-5">
         {/* Avatar fournisseur */}
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${f.avatar} text-sm font-bold text-[#1A1A2E] shadow-md`}>
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${f.avatar} text-sm font-bold text-[var(--text)] shadow-md`}>
           {f.initiale}
         </div>
 
         {/* Info */}
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold text-[#1A1A2E]">{displayName}</span>
+            <span className="font-semibold text-[var(--text)]">{displayName}</span>
             {commande.statut === "recue" && (
               <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">NOUVEAU</span>
             )}
@@ -101,7 +101,7 @@ function CommandeCard({
 
         {/* Right: montant + statut */}
         <div className="flex shrink-0 flex-col items-end gap-2">
-          <span className="text-lg font-bold text-[#1A1A2E]">{fmt(commande.montant_total)}</span>
+          <span className="text-lg font-bold text-[var(--text)]">{fmt(commande.montant_total)}</span>
           <StatutBadge statut={commande.statut} />
         </div>
       </div>
@@ -109,7 +109,7 @@ function CommandeCard({
       {/* Toggle lignes */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between border-t border-gray-200 px-5 py-2.5 text-xs text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-600"
+        className="flex w-full items-center justify-between border-t border-[var(--border)] px-5 py-2.5 text-xs text-gray-500 transition-colors hover:bg-[var(--bg-subtle)] hover:text-gray-600"
       >
         <span>{open ? "Masquer le détail" : "Voir le détail"}</span>
         <span className={`transition-transform ${open ? "rotate-180" : ""}`}>▾</span>
@@ -117,10 +117,10 @@ function CommandeCard({
 
       {/* Lignes de commande */}
       {open && (
-        <div className="border-t border-gray-200 px-5 py-3">
+        <div className="border-t border-[var(--border)] px-5 py-3">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-xs text-gray-400">
+              <tr className="border-b border-[var(--border)] text-xs text-gray-400">
                 <th className="pb-2 text-left font-medium">Produit</th>
                 <th className="pb-2 text-right font-medium">Qté</th>
                 <th className="pb-2 text-right font-medium">P.U.</th>
@@ -133,7 +133,7 @@ function CommandeCard({
                   <td className="py-2 text-gray-700">{l.nom_snapshot}</td>
                   <td className="py-2 text-right text-gray-500">{l.quantite} {l.unite}</td>
                   <td className="py-2 text-right text-gray-500">{fmt(l.prix_snapshot)}</td>
-                  <td className="py-2 text-right font-medium text-[#1A1A2E]">{fmt(l.prix_snapshot * l.quantite)}</td>
+                  <td className="py-2 text-right font-medium text-[var(--text)]">{fmt(l.prix_snapshot * l.quantite)}</td>
                 </tr>
               ))}
             </tbody>
@@ -143,11 +143,11 @@ function CommandeCard({
 
       {/* Action bouton */}
       {cfg.next && (
-        <div className="border-t border-gray-200 px-5 py-3">
+        <div className="border-t border-[var(--border)] px-5 py-3">
           <button
             onClick={() => onStatutChange(commande.id, cfg.next!)}
             disabled={updating}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 py-2.5 text-sm font-semibold text-[#1A1A2E] shadow-md shadow-violet-500/20 transition-all hover:from-indigo-600 hover:to-violet-600 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-[8px] bg-[var(--accent)] py-2.5 text-sm font-semibold text-[var(--text)] shadow-md shadow-violet-500/20 transition-all hover:from-indigo-600 hover:to-violet-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {updating ? (
               <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -294,7 +294,7 @@ export default function FournisseurCommandesPage() {
           </div>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-[#1A1A2E]">Commandes reçues</h1>
+              <h1 className="text-2xl font-bold text-[var(--text)]">Commandes reçues</h1>
               <div className="mt-1 flex items-center gap-2 text-sm text-gray-500">
                 <span className="flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
@@ -307,9 +307,9 @@ export default function FournisseurCommandesPage() {
                 )}
               </div>
             </div>
-            <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-right">
-              <p className="text-xs text-indigo-500/70">CA aujourd'hui</p>
-              <p className="text-lg font-bold text-indigo-600">{fmt(caJour)}</p>
+            <div className="rounded-[8px] border border-[var(--accent-border)] bg-[var(--accent-soft)] px-4 py-2 text-right">
+              <p className="text-xs text-[var(--accent)]/70">CA aujourd'hui</p>
+              <p className="text-lg font-bold text-[var(--accent)]">{fmt(caJour)}</p>
             </div>
           </div>
         </div>
@@ -319,10 +319,10 @@ export default function FournisseurCommandesPage() {
           {[
             { label: "À préparer",    value: stats.recue,          color: "text-amber-400",   bg: "bg-amber-500/10",   border: "border-amber-500/20" },
             { label: "En prépa.",     value: stats.en_preparation, color: "text-blue-400",    bg: "bg-blue-500/10",    border: "border-blue-500/20" },
-            { label: "En livraison",  value: stats.en_livraison,   color: "text-indigo-500",  bg: "bg-indigo-50",  border: "border-violet-500/20" },
+            { label: "En livraison",  value: stats.en_livraison,   color: "text-[var(--accent)]",  bg: "bg-[var(--accent-soft)]",  border: "border-violet-500/20" },
             { label: "Livrées",       value: stats.livree,         color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
           ].map((s) => (
-            <div key={s.label} className={`rounded-xl border ${s.border} ${s.bg} px-4 py-3`}>
+            <div key={s.label} className={`rounded-[8px] border ${s.border} ${s.bg} px-4 py-3`}>
               <p className="text-xs text-gray-500">{s.label}</p>
               <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
             </div>
@@ -341,14 +341,14 @@ export default function FournisseurCommandesPage() {
             <button
               key={f.id}
               onClick={() => setFiltre(f.id)}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-medium transition-all ${
+              className={`flex items-center gap-1.5 rounded-[8px] px-3 py-1.5 text-sm font-medium transition-all ${
                 filtre === f.id
-                  ? "bg-indigo-500 text-[#1A1A2E] shadow-lg shadow-indigo-500/20"
-                  : "border border-gray-200 bg-white text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                  ? "bg-[var(--accent)] text-[var(--text)] shadow-lg shadow-indigo-500/20"
+                  : "border border-[var(--border)] bg-white text-gray-500 hover:bg-[var(--bg-subtle)] hover:text-gray-700"
               }`}
             >
               {f.label}
-              <span className={`rounded-full px-1.5 py-0.5 text-xs ${filtre === f.id ? "bg-white/20" : "bg-gray-100 text-gray-400"}`}>
+              <span className={`rounded-full px-1.5 py-0.5 text-xs ${filtre === f.id ? "bg-white/20" : "bg-[var(--bg-subtle)] text-gray-400"}`}>
                 {f.count}
               </span>
             </button>
@@ -359,11 +359,11 @@ export default function FournisseurCommandesPage() {
         {loading ? (
           <div className="flex flex-col gap-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-32 animate-pulse rounded-2xl border border-gray-200 bg-white" />
+              <div key={i} className="h-32 animate-pulse rounded-[10px] border border-[var(--border)] bg-white" />
             ))}
           </div>
         ) : filtrees.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-gray-200 bg-white py-20 text-center">
+          <div className="flex flex-col items-center justify-center gap-3 rounded-[10px] border border-[var(--border)] bg-white py-20 text-center">
             <span className="text-4xl">📭</span>
             <p className="text-gray-500">
               {filtre === "tous" ? "Aucune commande reçue pour l'instant." : `Aucune commande avec le statut « ${getStatut(filtre as StatutCommande)?.label} ».`}
