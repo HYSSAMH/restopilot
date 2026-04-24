@@ -1,11 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/auth/use-profile";
 import { generateAvoirPDF, type AvoirData } from "@/lib/avoir-pdf";
+import { Button } from "@/components/ui/Button";
+import { Card, KpiCard, EmptyState } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { Drawer } from "@/components/ui/Modal";
+import { Banner, pushToast } from "@/components/ui/Feedback";
+import { Input, Select } from "@/components/ui/Input";
+import { Skeleton } from "@/components/ui/Loading";
+import { Icon } from "@/components/ui/Icon";
 
 interface Line {
   id: string;
@@ -45,19 +52,41 @@ interface LineState extends Line {
 
 const MOTIFS = ["Abîmé", "Manquant", "Mauvaise qualité", "Périmé", "Erreur produit"];
 
+const SUP_GRADIENTS = [
+  "linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)",
+  "linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)",
+  "linear-gradient(135deg, #10B981 0%, #06B6D4 100%)",
+  "linear-gradient(135deg, #EC4899 0%, #F97316 100%)",
+];
+
+function supplierGradient(key: string) {
+  let h = 0; for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
+  return SUP_GRADIENTS[Math.abs(h) % SUP_GRADIENTS.length];
+}
+
 function fmt(n: number) {
   return n.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 }
 
+function dayBucket(iso: string): { key: string; label: string; sort: number } {
+  const d = new Date(iso);
+  const today = new Date();
+  const dayStart = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((dayStart(d) - dayStart(today)) / (86400 * 1000));
+  if (diff === 0) return { key: "today", label: "Aujourd'hui", sort: 0 };
+  if (diff === -1) return { key: "yesterday", label: "Hier", sort: 1 };
+  if (diff < -1 && diff >= -6) return { key: "week", label: "Cette semaine", sort: 2 };
+  return { key: "older", label: "Plus ancien", sort: 3 };
+}
+
 export default function ReceptionsPage() {
   const { profile } = useProfile();
-  const [commandes, setCommandes]   = useState<Commande[]>([]);
-  const [fournMap, setFournMap]     = useState<Record<string, FournProfile>>({});
-  const [loading, setLoading]       = useState(true);
-  const [openId, setOpenId]         = useState<string | null>(null);
-  const [lines, setLines]           = useState<Record<string, LineState>>({});
+  const [commandes, setCommandes] = useState<Commande[]>([]);
+  const [fournMap, setFournMap] = useState<Record<string, FournProfile>>({});
+  const [loading, setLoading] = useState(true);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [lines, setLines] = useState<Record<string, LineState>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [toast, setToast]           = useState<{ type: "success" | "error"; msg: string } | null>(null);
 
   const fetchCommandes = useCallback(async () => {
     const supabase = createClient();
@@ -93,21 +122,15 @@ export default function ReceptionsPage() {
 
   useEffect(() => { fetchCommandes(); }, [fetchCommandes]);
 
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 5000);
-    return () => clearTimeout(t);
-  }, [toast]);
-
   function openCommande(c: Commande) {
     setOpenId(c.id);
     const map: Record<string, LineState> = {};
     c.lignes_commande.forEach(l => {
       map[l.id] = {
         ...l,
-        editQte:     (l.quantite_recue ?? l.quantite).toString(),
+        editQte: (l.quantite_recue ?? l.quantite).toString(),
         editQualite: l.qualite ?? "conforme",
-        editMotif:   l.motif_anomalie ?? "",
+        editMotif: l.motif_anomalie ?? "",
       };
     });
     setLines(map);
@@ -117,6 +140,26 @@ export default function ReceptionsPage() {
     setLines(prev => ({ ...prev, [id]: { ...prev[id], ...patch } }));
   }
 
+  const opened = commandes.find(c => c.id === openId) ?? null;
+
+  // Calcul avoir live basé sur l'état des lignes en cours d'édition
+  const liveAvoirMontant = useMemo(() => {
+    if (!opened) return 0;
+    let total = 0;
+    for (const l of opened.lignes_commande) {
+      const ls = lines[l.id];
+      if (!ls) continue;
+      const qteRecue = parseFloat(ls.editQte);
+      if (isNaN(qteRecue)) continue;
+      if (ls.editQualite === "non_conforme") {
+        total += l.quantite * l.prix_snapshot;
+      } else if (qteRecue < l.quantite) {
+        total += (l.quantite - qteRecue) * l.prix_snapshot;
+      }
+    }
+    return Math.round(total * 100) / 100;
+  }, [opened, lines]);
+
   async function handleValidate(c: Commande) {
     setSubmitting(true);
     const supabase = createClient();
@@ -125,12 +168,12 @@ export default function ReceptionsPage() {
       let avoirMontant = 0;
       const avoirLignes: AvoirData["lignes"] = [];
 
-      // 1. Mettre à jour chaque ligne
       for (const l of c.lignes_commande) {
         const ls = lines[l.id];
+        if (!ls) continue;
         const qteRecue = parseFloat(ls.editQte);
-        const qualite  = ls.editQualite;
-        const motif    = qualite === "non_conforme" ? ls.editMotif.trim() : null;
+        const qualite = ls.editQualite;
+        const motif = qualite === "non_conforme" ? ls.editMotif.trim() : null;
 
         if (qualite === "non_conforme" && !motif) {
           throw new Error(`Motif requis pour la ligne "${l.nom_snapshot}".`);
@@ -141,17 +184,17 @@ export default function ReceptionsPage() {
           hasAnomalie = true;
           const ecart = Math.max(0, l.quantite - qteRecue);
           const montant = qualite === "non_conforme"
-            ? l.quantite * l.prix_snapshot     // remboursement total ligne
-            : ecart * l.prix_snapshot;          // juste l'écart quantitatif
+            ? l.quantite * l.prix_snapshot
+            : ecart * l.prix_snapshot;
           avoirMontant += montant;
           if (montant > 0) {
             avoirLignes.push({
-              nom:           l.nom_snapshot,
-              unite:         l.unite,
+              nom: l.nom_snapshot,
+              unite: l.unite,
               prix_unitaire: l.prix_snapshot,
               qte_commandee: l.quantite,
-              qte_recue:     qualite === "non_conforme" ? 0 : qteRecue,
-              motif:         qualite === "non_conforme" ? motif : "Manquant",
+              qte_recue: qualite === "non_conforme" ? 0 : qteRecue,
+              motif: qualite === "non_conforme" ? motif! : "Manquant",
             });
           }
         }
@@ -163,213 +206,299 @@ export default function ReceptionsPage() {
         }).eq("id", l.id);
       }
 
-      // 2. Update commande
       await supabase.from("commandes").update({
-        statut:          hasAnomalie ? "receptionnee_avec_anomalies" : "receptionnee",
+        statut: hasAnomalie ? "receptionnee_avec_anomalies" : "receptionnee",
         receptionnee_at: new Date().toISOString(),
-        avoir_montant:   Math.round(avoirMontant * 100) / 100,
-        avoir_statut:    hasAnomalie ? "en_attente" : null,
+        avoir_montant: Math.round(avoirMontant * 100) / 100,
+        avoir_statut: hasAnomalie ? "en_attente" : null,
       }).eq("id", c.id);
 
-      // 3. Si anomalies → générer l'avoir PDF
       if (hasAnomalie && avoirLignes.length > 0) {
         const f = fournMap[c.fournisseur_id];
         const ref = `AV-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.floor(Math.random() * 9000 + 1000)}`;
         await generateAvoirPDF({
-          reference:   ref,
+          reference: ref,
           commandeRef: c.id.slice(0, 8).toUpperCase(),
-          date:        new Date().toLocaleDateString("fr-FR"),
-          lignes:      avoirLignes,
+          date: new Date().toLocaleDateString("fr-FR"),
+          lignes: avoirLignes,
           buyer: {
-            nom:      profile?.nom_commercial || profile?.nom_etablissement || "Restaurateur",
-            raison:   profile?.raison_sociale ?? null,
-            siret:    profile?.siret ?? null,
-            adresse:  profile?.adresse_ligne1 ?? null,
+            nom: profile?.nom_commercial || profile?.nom_etablissement || "Restaurateur",
+            raison: profile?.raison_sociale ?? null,
+            siret: profile?.siret ?? null,
+            adresse: profile?.adresse_ligne1 ?? null,
             cp_ville: [profile?.code_postal, profile?.ville].filter(Boolean).join(" ") || null,
           },
           seller: f ? {
-            nom:      f.nom_commercial || f.nom_etablissement || "Fournisseur",
-            raison:   f.raison_sociale,
-            siret:    f.siret,
-            adresse:  f.adresse_ligne1,
+            nom: f.nom_commercial || f.nom_etablissement || "Fournisseur",
+            raison: f.raison_sociale,
+            siret: f.siret,
+            adresse: f.adresse_ligne1,
             cp_ville: [f.code_postal, f.ville].filter(Boolean).join(" ") || null,
           } : null,
         });
       }
 
       setOpenId(null);
-      setToast({
-        type: "success",
-        msg: hasAnomalie
+      pushToast(
+        hasAnomalie
           ? `Réception validée avec anomalies. Avoir de ${fmt(avoirMontant)} généré.`
-          : "Réception validée. Aucune anomalie constatée.",
-      });
+          : "Réception validée. Aucune anomalie.",
+        { tone: hasAnomalie ? "warning" : "success" },
+      );
       fetchCommandes();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Erreur inconnue";
-      setToast({ type: "error", msg });
+      pushToast(msg, { tone: "danger" });
     }
     setSubmitting(false);
   }
 
+  // Stats haut
+  const nbToday = commandes.filter(c => dayBucket(c.created_at).key === "today").length;
+  const nbWeek = commandes.filter(c => ["today", "yesterday", "week"].includes(dayBucket(c.created_at).key)).length;
+  const totalLines = commandes.reduce((s, c) => s + (c.lignes_commande?.length ?? 0), 0);
+  const totalMontant = commandes.reduce((s, c) => s + Number(c.montant_total ?? 0), 0);
+
+  // Groupement par jour
+  const grouped = useMemo(() => {
+    const map = new Map<string, { label: string; sort: number; items: Commande[] }>();
+    for (const c of commandes) {
+      const b = dayBucket(c.created_at);
+      if (!map.has(b.key)) map.set(b.key, { label: b.label, sort: b.sort, items: [] });
+      map.get(b.key)!.items.push(c);
+    }
+    return Array.from(map.values()).sort((a, b) => a.sort - b.sort);
+  }, [commandes]);
+
   return (
     <DashboardLayout role="restaurateur">
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
-        <div className="mb-6 flex items-center gap-2 text-sm text-gray-400">
-          <Link href="/dashboard/restaurateur" className="hover:text-gray-600">Dashboard</Link>
-          <span>/</span>
-          <span className="text-gray-600">À réceptionner</span>
-        </div>
-
-        <div className="mb-6">
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
           <h1 className="page-title">À réceptionner</h1>
-          <p className="page-sub">
-            Validez la réception produit par produit. En cas d&apos;anomalie, un avoir PDF est généré automatiquement.
-          </p>
+          <p className="page-sub">Pointez les livraisons, générez les avoirs automatiquement en cas d&apos;anomalie.</p>
         </div>
+      </header>
 
-        {loading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-24 animate-pulse rounded-2xl border border-gray-200 bg-white" />
-            ))}
-          </div>
-        ) : commandes.length === 0 ? (
-          <div className="rounded-2xl border border-gray-200 bg-white py-20 text-center">
-            <span className="text-5xl">📦</span>
-            <p className="mt-3 text-gray-500">Aucune livraison en attente de réception.</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {commandes.map((c) => {
-              const f = fournMap[c.fournisseur_id];
-              const display = f?.nom_commercial || f?.nom_etablissement || "Fournisseur";
-              const isOpen = openId === c.id;
+      {/* Stats row */}
+      <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        <KpiCard label="Aujourd'hui" icon="package" value={<span className="mono tabular">{nbToday}</span>} />
+        <KpiCard label="Cette semaine" icon="calendar-days" value={<span className="mono tabular">{nbWeek}</span>} />
+        <KpiCard label="Lignes à pointer" icon="clipboard-list" value={<span className="mono tabular">{totalLines}</span>} />
+        <KpiCard label="Montant total" icon="euro" value={<span className="mono tabular">{fmt(totalMontant).replace(" €", "")}</span>} unit=" €" />
+      </section>
 
-              return (
-                <div key={c.id} className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-                  <div className="flex flex-wrap items-start justify-between gap-3 p-5">
-                    <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-600">Livrée · à réceptionner</p>
-                      <p className="mt-1 text-lg font-semibold text-[#1A1A2E]">{display}</p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(c.created_at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                        {" · "}{c.lignes_commande.length} article{c.lignes_commande.length > 1 ? "s" : ""}
-                        {" · "}{fmt(c.montant_total)}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => (isOpen ? setOpenId(null) : openCommande(c))}
-                      className="min-h-[44px] rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-600"
-                    >
-                      {isOpen ? "Fermer" : "Réceptionner"}
-                    </button>
-                  </div>
-
-                  {isOpen && (
-                    <div className="border-t border-gray-200 bg-gray-50 p-5">
-                      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-                        <table className="w-full min-w-[560px] text-sm">
-                          <thead>
-                            <tr className="border-b border-gray-200 text-xs font-medium uppercase tracking-wide text-gray-500">
-                              <th className="px-3 py-2 text-left">Produit</th>
-                              <th className="px-3 py-2 text-right">Cmdé</th>
-                              <th className="px-3 py-2 text-center">Reçu</th>
-                              <th className="px-3 py-2 text-center">Qualité</th>
-                              <th className="px-3 py-2 text-left">Motif</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100">
-                            {c.lignes_commande.map((l) => {
-                              const ls = lines[l.id];
-                              if (!ls) return null;
-                              const nonConf = ls.editQualite === "non_conforme";
-                              return (
-                                <tr key={l.id}>
-                                  <td className="px-3 py-2.5">
-                                    <p className="font-medium text-[#1A1A2E]">{l.nom_snapshot}</p>
-                                    <p className="text-[11px] text-gray-500">{fmt(l.prix_snapshot)}/{l.unite}</p>
-                                  </td>
-                                  <td className="px-3 py-2.5 text-right text-gray-600">{l.quantite} {l.unite}</td>
-                                  <td className="px-3 py-2.5">
-                                    <input
-                                      type="number" min="0" step="0.01"
-                                      value={ls.editQte}
-                                      onChange={(e) => updateLine(l.id, { editQte: e.target.value })}
-                                      className="w-20 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-right text-sm outline-none focus:border-indigo-500"
-                                    />
-                                  </td>
-                                  <td className="px-3 py-2.5">
-                                    <div className="flex justify-center gap-1">
-                                      <button
-                                        onClick={() => updateLine(l.id, { editQualite: "conforme" })}
-                                        className={`rounded-lg px-2.5 py-1 text-xs font-medium ${
-                                          !nonConf
-                                            ? "bg-emerald-500 text-white"
-                                            : "border border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
-                                        }`}
-                                      >✓</button>
-                                      <button
-                                        onClick={() => updateLine(l.id, { editQualite: "non_conforme" })}
-                                        className={`rounded-lg px-2.5 py-1 text-xs font-medium ${
-                                          nonConf
-                                            ? "bg-red-500 text-white"
-                                            : "border border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
-                                        }`}
-                                      >✕</button>
-                                    </div>
-                                  </td>
-                                  <td className="px-3 py-2.5">
-                                    {nonConf ? (
-                                      <select
-                                        value={ls.editMotif}
-                                        onChange={(e) => updateLine(l.id, { editMotif: e.target.value })}
-                                        className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs outline-none focus:border-indigo-500"
-                                      >
-                                        <option value="">— Choisir —</option>
-                                        {MOTIFS.map(m => <option key={m} value={m}>{m}</option>)}
-                                      </select>
-                                    ) : (
-                                      <span className="text-xs text-gray-400">—</span>
-                                    )}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-xs text-gray-500">
-                          Les anomalies génèreront automatiquement un PDF d&apos;avoir.
-                        </p>
-                        <button
-                          onClick={() => handleValidate(c)}
-                          disabled={submitting}
-                          className="min-h-[44px] rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-600 disabled:opacity-50"
-                        >
-                          {submitting ? "Validation…" : "Valider la réception"}
-                        </button>
-                      </div>
-                    </div>
-                  )}
+      {/* Liste */}
+      {loading ? (
+        <div className="space-y-3">
+          {[0, 1, 2].map(i => (
+            <Card key={i} className="p-4 flex items-center gap-3">
+              <Skeleton width={44} height={44} rounded={8} />
+              <div className="flex-1">
+                <Skeleton width="40%" height={14} />
+                <Skeleton width="60%" height={12} className="mt-2" />
+              </div>
+              <Skeleton width={110} height={36} rounded={8} />
+            </Card>
+          ))}
+        </div>
+      ) : commandes.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon="check-circle"
+            title="Aucune livraison en attente"
+            sub="Toutes vos commandes livrées ont été réceptionnées."
+          />
+        </Card>
+      ) : (
+        <div className="space-y-6">
+          {grouped.map((g) => (
+            <section key={g.label}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-[11px] font-[650] uppercase tracking-[0.08em] text-[var(--text-subtle)]">
+                  {g.label}
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {toast && (
-        <div className={`fixed bottom-6 right-6 z-50 max-w-md rounded-2xl border px-4 py-3 shadow-2xl ${
-          toast.type === "success"
-            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-            : "border-red-200 bg-red-50 text-red-700"
-        }`}>
-          <p className="text-sm font-medium">{toast.msg}</p>
+                <div className="text-[11px] text-[var(--text-muted)]">
+                  <span className="mono tabular">{g.items.length}</span> livraison{g.items.length > 1 ? "s" : ""}
+                </div>
+              </div>
+              <div className="space-y-2">
+                {g.items.map((c) => {
+                  const f = fournMap[c.fournisseur_id];
+                  const display = f?.nom_commercial || f?.nom_etablissement || "Fournisseur";
+                  return (
+                    <Card
+                      key={c.id}
+                      className="p-4 flex flex-wrap items-center gap-3 hover:border-[var(--border-strong)] transition-colors"
+                    >
+                      <div
+                        className="flex h-10 w-10 items-center justify-center rounded-[8px] text-white text-[13px] font-[650]"
+                        style={{ background: supplierGradient(c.fournisseur_id) }}
+                      >
+                        {display.slice(0, 1).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[14px] font-[600] text-[var(--text)] truncate">{display}</span>
+                          <Badge tone="warning">Livrée · à pointer</Badge>
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-3 text-[11.5px] text-[var(--text-muted)]">
+                          <span className="mono tabular inline-flex items-center gap-1">
+                            <Icon name="clock" size={11} />
+                            {new Date(c.created_at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                          <span className="mono tabular inline-flex items-center gap-1">
+                            <Icon name="package" size={11} />
+                            {c.lignes_commande.length} ligne{c.lignes_commande.length > 1 ? "s" : ""}
+                          </span>
+                          <span className="mono tabular inline-flex items-center gap-1 font-[600] text-[var(--text)]">
+                            {fmt(c.montant_total)}
+                          </span>
+                        </div>
+                      </div>
+                      <Button variant="primary" iconLeft="check-circle" onClick={() => openCommande(c)}>
+                        Pointer
+                      </Button>
+                    </Card>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
         </div>
       )}
+
+      {/* Drawer réception */}
+      <Drawer
+        open={!!opened}
+        onClose={() => setOpenId(null)}
+        width={640}
+        title={opened ? (
+          <span>
+            BL · <span className="mono tabular">{opened.id.slice(0, 8).toUpperCase()}</span>
+          </span>
+        ) : undefined}
+        sub={opened ? (fournMap[opened.fournisseur_id]?.nom_commercial || fournMap[opened.fournisseur_id]?.nom_etablissement || "Fournisseur") : undefined}
+        actions={
+          opened ? (
+            <>
+              <div className="flex items-center justify-between text-[13px] mb-1">
+                <span className="text-[var(--text-muted)]">Avoir estimé</span>
+                <span className={`mono tabular font-[650] ${liveAvoirMontant > 0 ? "text-[var(--danger)]" : "text-[var(--text)]"}`}>
+                  {fmt(liveAvoirMontant)}
+                </span>
+              </div>
+              <Button
+                variant="primary"
+                iconLeft="check-circle"
+                onClick={() => handleValidate(opened)}
+                disabled={submitting}
+                loading={submitting}
+              >
+                Signer et clôturer
+              </Button>
+            </>
+          ) : undefined
+        }
+      >
+        {opened ? (
+          <div className="space-y-4">
+            <Banner tone="info">
+              Ajustez les quantités reçues et marquez les lignes non conformes. L&apos;avoir PDF est généré automatiquement à la validation.
+            </Banner>
+
+            <div className="bg-white border border-[var(--border)] rounded-[10px] overflow-hidden">
+              <div
+                className="grid gap-3 px-3 py-[10px] bg-[var(--bg-subtle)] border-b border-[var(--border)] text-[10.5px] font-[650] text-[var(--text-muted)] uppercase tracking-[0.04em]"
+                style={{ gridTemplateColumns: "1fr 80px 100px 100px 160px" }}
+              >
+                <div>Produit</div>
+                <div className="text-right">Attendu</div>
+                <div className="text-right">Reçu</div>
+                <div className="text-center">Qualité</div>
+                <div>Motif</div>
+              </div>
+              {opened.lignes_commande.map((l) => {
+                const ls = lines[l.id];
+                if (!ls) return null;
+                const qteRecue = parseFloat(ls.editQte);
+                const nonConf = ls.editQualite === "non_conforme";
+                const ecart = !isNaN(qteRecue) && qteRecue < l.quantite;
+                return (
+                  <div
+                    key={l.id}
+                    className="grid items-center gap-3 px-3 py-[10px] border-b border-[var(--border)] last:border-b-0"
+                    style={{ gridTemplateColumns: "1fr 80px 100px 100px 160px" }}
+                  >
+                    <div className="min-w-0">
+                      <div className="text-[13px] font-[550] text-[var(--text)] truncate">{l.nom_snapshot}</div>
+                      <div className="mono tabular text-[11px] text-[var(--text-muted)]">{fmt(l.prix_snapshot)} / {l.unite}</div>
+                    </div>
+                    <div className="mono tabular text-[12.5px] text-[var(--text-muted)] text-right">
+                      {l.quantite} {l.unite}
+                    </div>
+                    <div>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={ls.editQte}
+                        onChange={(e) => updateLine(l.id, { editQte: e.target.value })}
+                        className={[
+                          "text-right mono tabular",
+                          nonConf ? "border-[var(--danger)]" : ecart ? "border-[var(--warning)]" : "",
+                        ].join(" ")}
+                      />
+                    </div>
+                    <div className="flex justify-center gap-[2px]">
+                      <button
+                        type="button"
+                        onClick={() => updateLine(l.id, { editQualite: "conforme" })}
+                        aria-label="Conforme"
+                        className={[
+                          "flex h-8 w-8 items-center justify-center rounded-[6px] transition-colors",
+                          !nonConf
+                            ? "bg-[var(--success)] text-white"
+                            : "bg-transparent text-[var(--text-muted)] hover:bg-[var(--bg-subtle)]",
+                        ].join(" ")}
+                      >
+                        <Icon name="check" size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => updateLine(l.id, { editQualite: "non_conforme" })}
+                        aria-label="Non conforme"
+                        className={[
+                          "flex h-8 w-8 items-center justify-center rounded-[6px] transition-colors",
+                          nonConf
+                            ? "bg-[var(--danger)] text-white"
+                            : "bg-transparent text-[var(--text-muted)] hover:bg-[var(--bg-subtle)]",
+                        ].join(" ")}
+                      >
+                        <Icon name="x" size={14} />
+                      </button>
+                    </div>
+                    <div>
+                      {nonConf ? (
+                        <Select
+                          value={ls.editMotif}
+                          onChange={(e) => updateLine(l.id, { editMotif: e.target.value })}
+                        >
+                          <option value="">— Motif —</option>
+                          {MOTIFS.map(m => <option key={m} value={m}>{m}</option>)}
+                        </Select>
+                      ) : ecart ? (
+                        <span className="text-[11.5px] text-[var(--warning)] font-[550]">Écart quantité</span>
+                      ) : (
+                        <span className="text-[11.5px] text-[var(--text-subtle)]">—</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+      </Drawer>
     </DashboardLayout>
   );
 }

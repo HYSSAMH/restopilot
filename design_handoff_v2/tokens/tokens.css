@@ -1,0 +1,157 @@
+/* ============================================================
+   RestoPilot — Design Tokens v2
+   Source of truth for colors, typography, spacing, motion.
+   Copy as-is into app/globals.css OR import via @layer base.
+   ============================================================ */
+
+:root {
+  /* ---------- Neutral / Surfaces ---------- */
+  --bg:            #FAFAFA;  /* page background */
+  --bg-subtle:     #F5F5F7;  /* hover / secondary surface */
+  --surface:       #FFFFFF;  /* cards, inputs */
+  --surface-hover: #F8F9FB;
+  --border:        #E5E7EB;
+  --border-strong: #D1D5DB;
+
+  /* ---------- Text ---------- */
+  --text:         #0F172A;
+  --text-muted:   #64748B;
+  --text-subtle:  #94A3B8;
+
+  /* ---------- Brand / Accent (Indigo) ---------- */
+  --accent:         #6366F1;
+  --accent-hover:   #4F46E5;
+  --accent-active:  #4338CA;
+  --accent-soft:    #EEF2FF;
+  --accent-softer:  #F5F7FF;
+
+  /* ---------- Semantic ---------- */
+  --success:       #10B981;
+  --success-soft:  #D1FAE5;
+  --warning:       #F59E0B;
+  --warning-soft:  #FEF3C7;
+  --danger:        #EF4444;
+  --danger-soft:   #FEE2E2;
+  --info:          #0EA5E9;
+  --info-soft:     #E0F2FE;
+
+  /* ---------- Category colors (stats, badges, suppliers) ---------- */
+  --cat-blue:   #3B82F6;
+  --cat-red:    #EF4444;
+  --cat-orange: #F97316;
+  --cat-green:  #10B981;
+  --cat-cyan:   #06B6D4;
+  --cat-violet: #8B5CF6;
+  --cat-pink:   #EC4899;
+  --cat-amber:  #F59E0B;
+
+  /* ---------- Typography ---------- */
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+  --font-display: 'Playfair Display', Georgia, serif; /* Print menus only */
+
+  /* Scale — use with line-height + letter-spacing pairs below */
+  --text-xs:   11px;   /* 11/14 / +0.04em uppercase labels */
+  --text-sm:   12px;   /* 12/16   captions */
+  --text-base: 13px;   /* 13/18   body (dense) */
+  --text-md:   14px;   /* 14/20   body (default) */
+  --text-lg:   16px;   /* 16/22   emphasized body */
+  --text-xl:   18px;   /* 18/24   section titles */
+  --text-2xl:  22px;   /* 22/28   page titles */
+  --text-3xl:  28px;   /* 28/32   hero KPIs */
+  --text-4xl:  36px;   /* 36/40   hero display */
+
+  /* Weights */
+  --fw-normal:   400;
+  --fw-medium:   500;
+  --fw-emphasis: 550;  /* used on labels + small strong text */
+  --fw-semibold: 600;
+  --fw-strong:   650;  /* used on numbers + badges */
+  --fw-bold:     700;
+
+  /* Letter spacing */
+  --tracking-tight: -0.02em;  /* headlines, KPIs */
+  --tracking-snug:  -0.01em;  /* page titles */
+  --tracking-label:  0.04em;  /* uppercase labels */
+
+  /* ---------- Spacing scale (4px base) ---------- */
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-5:  20px;
+  --sp-6:  24px;
+  --sp-8:  32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+
+  /* ---------- Radius ---------- */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-2xl: 14px;
+  --radius-3xl: 20px;
+  --radius-full: 9999px;
+
+  /* ---------- Elevation ---------- */
+  --elev-0: none;
+  --elev-1: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --elev-2: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --elev-3: 0 4px 12px -2px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.04);
+  --elev-4: 0 12px 28px -8px rgba(15, 23, 42, 0.14), 0 4px 8px rgba(15, 23, 42, 0.06);
+  --elev-5: 0 24px 60px -12px rgba(15, 23, 42, 0.25);
+
+  /* Focus ring (use outline + offset) */
+  --ring: 0 0 0 3px var(--accent-soft);
+
+  /* ---------- Motion ---------- */
+  --ease-out:      cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out:   cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring:   cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-instant:   80ms;
+  --dur-fast:      150ms;   /* hover, press */
+  --dur-base:      200ms;   /* modal fades, tab switches */
+  --dur-slow:      280ms;   /* drawers, large panels */
+  --dur-slower:    420ms;   /* hero / page enters */
+
+  /* ---------- Z-index ---------- */
+  --z-dropdown:  20;
+  --z-sticky:    30;
+  --z-sidebar:   40;
+  --z-overlay:   80;
+  --z-drawer:    90;
+  --z-modal:     100;
+  --z-toast:     110;
+  --z-tooltip:   120;
+
+  /* ---------- Breakpoints (for reference — use in media queries) ---------- */
+  /*  sm ≥ 640px   md ≥ 768px   lg ≥ 1024px   xl ≥ 1280px   2xl ≥ 1536px */
+
+  /* ---------- Layout ---------- */
+  --sidebar-w: 240px;
+  --topbar-h:  56px;
+  --content-max: 1440px;
+  --container-px: 24px;
+}
+
+/* ========== Dark mode (preview / future) ========== */
+[data-theme="dark"] {
+  --bg:            #0F0F14;
+  --bg-subtle:     #17171D;
+  --surface:       #1A1A20;
+  --surface-hover: #22222A;
+  --border:        #2A2A32;
+  --border-strong: #3A3A44;
+  --text:          #F5F5F7;
+  --text-muted:    #9CA3AF;
+  --text-subtle:   #6B7280;
+  --accent-soft:   rgba(99, 102, 241, 0.15);
+  --accent-softer: rgba(99, 102, 241, 0.08);
+  --success-soft:  rgba(16, 185, 129, 0.15);
+  --warning-soft:  rgba(245, 158, 11, 0.15);
+  --danger-soft:   rgba(239, 68, 68, 0.15);
+  --info-soft:     rgba(14, 165, 233, 0.15);
+}

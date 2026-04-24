@@ -12,10 +12,9 @@ import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/auth/use-profile";
 import type { DbTarifJoined } from "@/lib/supabase/types";
 import { Icon } from "@/components/ui/Icon";
+import { Button, IconButton } from "@/components/ui/Button";
+import { Drawer } from "@/components/ui/Modal";
 
-// Convertit les tarifs Supabase vers le format Produit[] existant.
-// `liveNames` contient le nom_commercial courant de chaque fournisseur
-// (source de vérité : profiles). Prioritaire sur fournisseurs.nom.
 function tarifsToProduitsFormat(
   tarifs: DbTarifJoined[],
   liveNames: Record<string, { nom: string; initiale: string }> = {},
@@ -74,7 +73,6 @@ function CommandesPage() {
   const [produitsReels, setProduitsReels] = useState<Produit[]>([]);
   const [loadingCatalogue, setLoadingCatalogue] = useState(true);
 
-  // Charger le catalogue depuis Supabase (tarifs + overrides profils)
   useEffect(() => {
     (async () => {
       const supabase = createClient();
@@ -88,11 +86,10 @@ function CommandesPage() {
         .eq("actif", true)
         .is("archived_at", null)
         .not("fournisseur_id", "is", null)
-        .not("produit_id",     "is", null);
+        .not("produit_id", "is", null);
 
       if (error || !data) { setLoadingCatalogue(false); return; }
 
-      // Récupère le nom_commercial COURANT des fournisseurs (source de vérité)
       const typed = data as unknown as DbTarifJoined[];
       const fournIds = Array.from(new Set(typed.map(t => t.fournisseurs.id)));
       const liveNames: Record<string, { nom: string; initiale: string }> = {};
@@ -168,7 +165,6 @@ function CommandesPage() {
     if (!user) { setGeneratingPdf(false); return; }
     const restaurateurNom = profile?.nom_etablissement ?? "Mon restaurant";
 
-    // ── 1. Grouper par fournisseur ────────────────────────────
     const byFourn = new Map<string, { fournisseur: FournisseurOption; items: typeof snapshot[string][]; subtotal: number }>();
     Object.values(snapshot).forEach((entry) => {
       const fid = entry.fournisseur.id;
@@ -178,17 +174,16 @@ function CommandesPage() {
       g.subtotal += entry.fournisseur.prix * entry.qty;
     });
 
-    // ── 2. Insérer une commande par fournisseur ───────────────
     for (const [fournisseurId, { items, subtotal }] of byFourn) {
       try {
         const { data: commande, error: errCmd } = await supabase
           .from("commandes")
           .insert({
-            fournisseur_id:  fournisseurId,
+            fournisseur_id: fournisseurId,
             restaurateur_id: user.id,
             restaurateur_nom: restaurateurNom,
-            montant_total:   Math.round(subtotal * 100) / 100,
-            statut:          "recue",
+            montant_total: Math.round(subtotal * 100) / 100,
+            statut: "recue",
           })
           .select("id")
           .single();
@@ -210,59 +205,22 @@ function CommandesPage() {
       }
     }
 
-    // ── 3. Fetch frais du profil restaurateur (émetteur) ─────
-    //     On ne se fie PAS au state du hook useProfile() qui peut
-    //     être null si le hook n'a pas encore fini de charger.
-    console.group("[Facture PDF] Génération");
-    console.log("User ID connecté :", user.id);
-
-    const { data: freshBuyer, error: errBuyer } = await supabase
+    const { data: freshBuyer } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", user.id)
       .maybeSingle();
 
-    console.log("Profil restaurateur (fresh fetch) :", freshBuyer);
-    if (errBuyer) console.error("Erreur fetch buyer :", errBuyer);
-    if (!freshBuyer) {
-      console.warn("⚠ Aucun profil restaurateur trouvé en base. Rendez-vous sur /profile pour remplir les infos (SIRET, adresse, logo…).");
-    } else {
-      const filled = Object.entries(freshBuyer)
-        .filter(([, v]) => v !== null && v !== "" && !(Array.isArray(v) && v.length === 0))
-        .map(([k]) => k);
-      console.log(`Champs remplis (${filled.length}) :`, filled.join(", "));
-    }
-
-    // ── 4. Fetch des profils fournisseurs ────────────────────
     const fournisseurIds = Array.from(byFourn.keys());
-    console.log("Fournisseur IDs à fetcher :", fournisseurIds);
-
-    const { data: sellerProfiles, error: errSellers } = await supabase
+    const { data: sellerProfiles } = await supabase
       .from("profiles")
       .select("id, role, nom_commercial, nom_etablissement, raison_sociale, siret, adresse_ligne1, adresse_ligne2, code_postal, ville, telephone, email_contact, logo_url, iban, bic, horaires_livraison, jours_livraison")
       .in("id", fournisseurIds)
       .eq("role", "fournisseur");
 
-    console.log("Profils fournisseurs reçus :", sellerProfiles);
-    if (errSellers) console.error("Erreur fetch sellers :", errSellers);
-    if (!sellerProfiles || sellerProfiles.length === 0) {
-      console.warn(
-        "⚠ Aucun profil fournisseur récupéré. Causes possibles :\n" +
-        "  1) RLS : exécutez supabase/migration_invoice_access.sql dans Supabase SQL Editor\n" +
-        "  2) Les fournisseurs n'ont pas de profil rempli (pas de row dans profiles)\n" +
-        `  3) Les IDs demandés ne correspondent à aucun profil role='fournisseur' : ${fournisseurIds.join(", ")}`
-      );
-    } else if (sellerProfiles.length < fournisseurIds.length) {
-      const missing = fournisseurIds.filter(id => !sellerProfiles.find(s => s.id === id));
-      console.warn("⚠ Profils fournisseurs manquants pour les IDs :", missing);
-    }
-
     const sellersMap: Record<string, NonNullable<typeof sellerProfiles>[number]> = {};
     (sellerProfiles ?? []).forEach((s) => { sellersMap[s.id] = s; });
-    console.log("Map sellers passée au PDF :", sellersMap);
-    console.groupEnd();
 
-    // ── 5. Générer le PDF ─────────────────────────────────────
     try {
       const { generateFacturePDF } = await import("@/lib/pdf");
       await generateFacturePDF(snapshot, {
@@ -299,11 +257,6 @@ function CommandesPage() {
       const sellersMap: Record<string, NonNullable<typeof sellerProfiles>[number]> = {};
       (sellerProfiles ?? []).forEach((s) => { sellersMap[s.id] = s; });
 
-      console.group("[Facture PDF] Re-download");
-      console.log("Buyer :",   freshBuyer);
-      console.log("Sellers :", sellersMap);
-      console.groupEnd();
-
       const { generateFacturePDF } = await import("@/lib/pdf");
       await generateFacturePDF(lastCartMap, {
         buyer: freshBuyer ?? profile,
@@ -328,66 +281,50 @@ function CommandesPage() {
 
     return (
       <DashboardLayout role="restaurateur">
-        <div className="pointer-events-none fixed inset-0 overflow-hidden">
-          <div className="absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-emerald-700/15 blur-3xl" />
-        </div>
-        <div className="relative flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center gap-8 px-4 text-center">
-          {/* Icon */}
-          <div className="flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-br from-emerald-600 to-teal-400 text-5xl shadow-2xl shadow-emerald-500/30 animate-fade-in-up">
-            ✓
+        <div className="min-h-[calc(100vh-14rem)] flex flex-col items-center justify-center text-center">
+          <div
+            className="flex h-[72px] w-[72px] items-center justify-center rounded-[18px] text-white mb-6 shadow-[0_8px_24px_rgba(16,185,129,0.35)]"
+            style={{ background: "linear-gradient(135deg, #10B981 0%, #06B6D4 100%)" }}
+          >
+            <Icon name="check" size={32} strokeWidth={2.5} />
           </div>
+          <h1 className="page-title">Commande validée</h1>
+          <p className="page-sub mt-1">
+            Dispatchée vers {suppliers.length} fournisseur{suppliers.length > 1 ? "s" : ""} · La facture PDF a été téléchargée.
+          </p>
 
-          {/* Title */}
-          <div className="animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
-            <h1 className="text-3xl font-bold text-[#1A1A2E]">Commande validée !</h1>
-            <p className="mt-2 text-gray-500">
-              Dispatché vers {suppliers.length} fournisseur{suppliers.length > 1 ? "s" : ""} · La facture PDF a été téléchargée.
-            </p>
-          </div>
-
-          {/* Summary cards */}
-          <div className="flex flex-wrap justify-center gap-3 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
-            <div className="rounded-2xl border border-gray-200 bg-white px-5 py-4 text-center">
-              <p className="text-xs text-gray-500">Total commande</p>
-              <p className="mt-1 text-xl font-bold text-[#1A1A2E]">
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <div className="rounded-[10px] border border-[var(--border)] bg-white px-5 py-4 min-w-[160px]">
+              <p className="label-upper">Total commande</p>
+              <p className="mono tabular mt-1 text-[22px] font-[650] tracking-[-0.02em]">
                 {total.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} €
               </p>
             </div>
-            <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-5 py-4 text-center">
-              <p className="text-xs text-emerald-400/70">Économies réalisées</p>
-              <p className="mt-1 text-xl font-bold text-emerald-400">
+            <div className="rounded-[10px] border border-[var(--success-soft)] bg-[var(--success-soft)] px-5 py-4 min-w-[160px]">
+              <p className="label-upper text-[var(--success)]">Économies</p>
+              <p className="mono tabular mt-1 text-[22px] font-[650] tracking-[-0.02em] text-[var(--success)]">
                 −{economies.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} €
               </p>
             </div>
-            <div className="rounded-2xl border border-gray-200 bg-white px-5 py-4 text-center">
-              <p className="text-xs text-gray-500">Fournisseurs</p>
-              <div className="mt-1 flex flex-col gap-0.5">
+            <div className="rounded-[10px] border border-[var(--border)] bg-white px-5 py-4 min-w-[200px] text-left">
+              <p className="label-upper">Fournisseurs</p>
+              <div className="mt-2 flex flex-col gap-[3px]">
                 {suppliers.map((s) => (
-                  <p key={s} className="text-xs font-medium text-gray-700">{s}</p>
+                  <p key={s} className="text-[12px] font-[550] text-[var(--text)]">{s}</p>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex flex-wrap justify-center gap-3 animate-fade-in-up" style={{ animationDelay: "0.3s" }}>
-            <button
-              onClick={handleRedownload}
-              className="flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-500/20 px-5 py-3 text-sm font-medium text-indigo-600 transition-all hover:bg-indigo-500 hover:text-[#1A1A2E]"
-            >
-              <span>⬇</span> Re-télécharger la facture
-            </button>
-            <button
-              onClick={() => setValidated(false)}
-              className="rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-6 py-3 text-sm font-semibold text-[#1A1A2E] shadow-lg shadow-indigo-500/20 hover:from-indigo-600 hover:to-violet-600"
-            >
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            <Button variant="secondary" iconLeft="download" onClick={handleRedownload}>
+              Re-télécharger la facture
+            </Button>
+            <Button variant="primary" iconLeft="plus" onClick={() => setValidated(false)}>
               Nouvelle commande
-            </button>
-            <Link
-              href="/dashboard/restaurateur"
-              className="rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-medium text-gray-600 hover:bg-white/10 hover:text-[#1A1A2E]"
-            >
-              Retour au dashboard
+            </Button>
+            <Link href="/dashboard/restaurateur">
+              <Button variant="ghost" iconLeft="home">Retour au dashboard</Button>
             </Link>
           </div>
         </div>
@@ -399,24 +336,15 @@ function CommandesPage() {
     <DashboardLayout role="restaurateur">
       <Banniere cartMap={cartMap} />
 
-      <div className="relative mx-auto flex max-w-[1600px] gap-0">
-        {/* ── Catalogue (left, scrollable) ───────────────────────────── */}
-        <div className="min-w-0 flex-1 px-6 pb-32 pt-6 lg:pb-6">
-          {/* Breadcrumb */}
-          <div className="mb-5 flex items-center gap-2 text-sm text-gray-400">
-            <Link href="/dashboard/restaurateur" className="hover:text-gray-600 transition-colors">
-              Dashboard
-            </Link>
-            <span>/</span>
-            <span className="text-gray-600">Passer une commande</span>
-          </div>
-
-          <div className="mb-5">
-            <h1 className="text-xl font-bold text-[#1A1A2E]">Catalogue fournisseurs</h1>
-            <p className="mt-0.5 text-sm text-gray-500">
+      <div className="relative -mx-6 flex max-w-none gap-0 md:-mx-7">
+        {/* Catalogue */}
+        <div className="min-w-0 flex-1 px-6 md:px-7 pb-32 lg:pb-6">
+          <header className="mb-5">
+            <h1 className="page-title">Catalogue fournisseurs</h1>
+            <p className="page-sub">
               Comparez les prix et choisissez le meilleur fournisseur pour chaque produit.
             </p>
-          </div>
+          </header>
 
           <Catalogue
             cartMap={cartMap}
@@ -430,9 +358,9 @@ function CommandesPage() {
           />
         </div>
 
-        {/* ── Panier (right, sticky desktop) ─────────────────────────── */}
-        <aside className="hidden w-96 shrink-0 border-l border-gray-200 lg:block">
-          <div className="sticky top-[calc(4rem+var(--banniere-h,0px))] h-[calc(100vh-4rem)] overflow-y-auto">
+        {/* Panier sticky (desktop) */}
+        <aside className="hidden w-[380px] shrink-0 border-l border-[var(--border)] lg:block bg-white">
+          <div className="sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto">
             <Panier
               cartMap={cartMap}
               onRemove={handleRemove}
@@ -444,49 +372,38 @@ function CommandesPage() {
         </aside>
       </div>
 
-      {/* ── Floating cart button (mobile) ─────────────────────────────── */}
-      {cartCount > 0 && (
-        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 lg:hidden">
+      {/* Bouton panier flottant (mobile) */}
+      {cartCount > 0 ? (
+        <div className="fixed bottom-6 left-1/2 z-[100] -translate-x-1/2 lg:hidden">
           <button
+            type="button"
             onClick={() => setCartOpen(true)}
-            className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-indigo-500 to-violet-500 px-5 py-3.5 text-sm font-semibold text-[#1A1A2E] shadow-2xl shadow-violet-500/40"
+            className="flex items-center gap-3 rounded-full bg-[var(--accent)] px-5 py-3 text-[13px] font-[600] text-white shadow-[0_8px_24px_rgba(99,102,241,0.35)]"
           >
             <Icon name="shopping-cart" size={16} />
-            <span>{cartCount} article{cartCount > 1 ? "s" : ""} dans le panier</span>
-            <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
-              Voir →
+            <span>{cartCount} article{cartCount > 1 ? "s" : ""}</span>
+            <span className="rounded-full bg-white/20 px-2 py-[1px] text-[11px] mono tabular">
+              Voir
             </span>
           </button>
         </div>
-      )}
+      ) : null}
 
-      {/* ── Mobile cart drawer ─────────────────────────────────────────── */}
-      {cartOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setCartOpen(false)}
-          />
-          <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto rounded-t-3xl border-t border-gray-200 bg-[#F8F9FA]">
-            <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
-              <span className="font-semibold text-[#1A1A2E]">Mon panier</span>
-              <button
-                onClick={() => setCartOpen(false)}
-                className="text-gray-500 hover:text-[#1A1A2E]"
-              >
-                ✕
-              </button>
-            </div>
-            <Panier
-              cartMap={cartMap}
-              onRemove={(id) => { handleRemove(id); if (Object.keys(cartMap).length <= 1) setCartOpen(false); }}
-              onQtyChange={handleQtyChange}
-              onValidate={() => { handleValidate(); setCartOpen(false); }}
-              generatingPdf={generatingPdf}
-            />
-          </div>
-        </div>
-      )}
+      {/* Panier mobile en drawer */}
+      <Drawer
+        open={cartOpen}
+        onClose={() => setCartOpen(false)}
+        width={420}
+        title="Mon panier"
+      >
+        <Panier
+          cartMap={cartMap}
+          onRemove={(id) => { handleRemove(id); if (Object.keys(cartMap).length <= 1) setCartOpen(false); }}
+          onQtyChange={handleQtyChange}
+          onValidate={() => { handleValidate(); setCartOpen(false); }}
+          generatingPdf={generatingPdf}
+        />
+      </Drawer>
     </DashboardLayout>
   );
 }

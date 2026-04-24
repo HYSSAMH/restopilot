@@ -7,8 +7,16 @@ import { createClient } from "@/lib/supabase/client";
 import type { StatutCommande } from "@/lib/supabase/types";
 import { regenerateAvoirPDF } from "@/lib/avoir-from-db";
 import { Pagination, paginate, PAGE_SIZE_DEFAULT } from "@/components/ui/Pagination";
+import { Button } from "@/components/ui/Button";
+import { Card, EmptyState, KpiCard } from "@/components/ui/Card";
+import { Input, SearchInput, Select, Field } from "@/components/ui/Input";
+import { Table, TableHead, TableRow, TableFooter } from "@/components/ui/Table";
+import { Badge, Dot } from "@/components/ui/Badge";
+import { Drawer } from "@/components/ui/Modal";
+import { Banner } from "@/components/ui/Feedback";
+import { Skeleton } from "@/components/ui/Loading";
+import { Icon } from "@/components/ui/Icon";
 
-// ── Types locaux tolérants (tous les champs fournisseur/avoir sont optionnels) ──
 interface Ligne {
   id: string;
   nom_snapshot: string;
@@ -34,57 +42,71 @@ interface Commande {
   lignes_commande: Ligne[];
 }
 
-const STATUTS: Record<StatutCommande, { label: string; dot: string; badge: string }> = {
-  recue:                       { label: "Reçue",            dot: "bg-amber-400",   badge: "border-amber-200 bg-amber-50 text-amber-700"    },
-  en_preparation:              { label: "En préparation",   dot: "bg-blue-400",    badge: "border-blue-200 bg-blue-50 text-blue-700"       },
-  en_livraison:                { label: "En livraison",     dot: "bg-violet-400",  badge: "border-indigo-200 bg-indigo-50 text-indigo-600" },
-  livree:                      { label: "Livrée",           dot: "bg-sky-400",     badge: "border-sky-200 bg-sky-50 text-sky-700"          },
-  receptionnee:                { label: "Réceptionnée",     dot: "bg-emerald-400", badge: "border-emerald-200 bg-emerald-50 text-emerald-700" },
-  receptionnee_avec_anomalies: { label: "Avec anomalies",   dot: "bg-rose-400",    badge: "border-rose-200 bg-rose-50 text-rose-700"        },
-  annulee:                     { label: "Annulée",          dot: "bg-red-400",     badge: "border-red-200 bg-red-50 text-red-700"          },
+type StatutTone = "neutral" | "accent" | "success" | "warning" | "danger" | "info";
+
+const STATUT_META: Record<StatutCommande, { label: string; tone: StatutTone; active: boolean }> = {
+  recue: { label: "Reçue", tone: "warning", active: true },
+  en_preparation: { label: "En préparation", tone: "info", active: true },
+  en_livraison: { label: "En livraison", tone: "accent", active: true },
+  livree: { label: "Livrée", tone: "info", active: false },
+  receptionnee: { label: "Réceptionnée", tone: "success", active: false },
+  receptionnee_avec_anomalies: { label: "Avec anomalies", tone: "danger", active: false },
+  annulee: { label: "Annulée", tone: "neutral", active: false },
 };
 
-function StatutBadge({ statut }: { statut: StatutCommande }) {
-  const cfg = STATUTS[statut] ?? STATUTS.recue;
-  const isActive = statut !== "livree" && statut !== "annulee" && statut !== "receptionnee";
-  return (
-    <span className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${cfg.badge}`}>
-      <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot} ${isActive ? "animate-pulse" : ""}`} />
-      {cfg.label}
-    </span>
-  );
+const AVATAR_GRADIENTS = [
+  "linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)",
+  "linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)",
+  "linear-gradient(135deg, #10B981 0%, #06B6D4 100%)",
+  "linear-gradient(135deg, #EC4899 0%, #F97316 100%)",
+  "linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%)",
+];
+
+function supplierGradient(key: string | null | undefined) {
+  if (!key) return AVATAR_GRADIENTS[0];
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) | 0;
+  return AVATAR_GRADIENTS[Math.abs(hash) % AVATAR_GRADIENTS.length];
 }
 
 function fmt(n: number | null | undefined) {
   const v = Number(n ?? 0);
   return v.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 }
-function formatDate(iso: string | null | undefined) {
+function formatDateShort(iso: string | null | undefined) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
+  } catch { return "—"; }
+}
+function formatDateLong(iso: string | null | undefined) {
   if (!iso) return "—";
   try {
     return new Date(iso).toLocaleString("fr-FR", {
-      day: "numeric", month: "short", year: "numeric",
+      day: "numeric", month: "long", year: "numeric",
       hour: "2-digit", minute: "2-digit",
     });
   } catch { return "—"; }
 }
 
-export default function HistoriquePage() {
-  const [commandes, setCommandes]   = useState<Commande[]>([]);
-  const [supplierNames, setNames]   = useState<Record<string, string>>({});
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState<string | null>(null);
-  const [filtre, setFiltre]         = useState<StatutCommande | "tous">("tous");
-  const [openId, setOpenId]         = useState<string | null>(null);
+const TABLE_COLUMNS = "36px 92px 120px 1fr 60px 120px 130px 28px";
 
-  // Nouveaux filtres
-  const [search, setSearch]         = useState("");
+export default function HistoriquePage() {
+  const [commandes, setCommandes] = useState<Commande[]>([]);
+  const [supplierNames, setNames] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filtre, setFiltre] = useState<StatutCommande | "tous">("tous");
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  const [search, setSearch] = useState("");
   const [fournFilter, setFournFilter] = useState<string>("");
-  const [dateFrom, setDateFrom]     = useState<string>("");
-  const [dateTo, setDateTo]         = useState<string>("");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
   const [montantMin, setMontantMin] = useState<string>("");
   const [montantMax, setMontantMax] = useState<string>("");
-  const [page, setPage]             = useState(1);
+  const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const fetchCommandes = useCallback(async () => {
     setError(null);
@@ -112,7 +134,6 @@ export default function HistoriquePage() {
       const typed = (data ?? []) as unknown as Commande[];
       setCommandes(typed);
 
-      // Noms des fournisseurs : profils internes + fournisseurs_externes
       const internalIds = Array.from(new Set(typed.map(c => c.fournisseur_id).filter((x): x is string => !!x)));
       const externalIds = Array.from(new Set(typed.map(c => c.fournisseur_externe_id).filter((x): x is string => !!x)));
       const map: Record<string, string> = {};
@@ -155,12 +176,9 @@ export default function HistoriquePage() {
     if (c.fournisseurs?.initiale) return c.fournisseurs.initiale;
     return (getFournName(c) || "?").charAt(0).toUpperCase();
   };
-  const getFournAvatar = (c: Commande) =>
-    c.fournisseurs?.avatar || "from-indigo-500 to-violet-500";
 
   useEffect(() => { fetchCommandes(); }, [fetchCommandes]);
 
-  // Realtime — silencieux en cas d'erreur, la page reste fonctionnelle
   useEffect(() => {
     let supabase: ReturnType<typeof createClient>;
     let channel: ReturnType<ReturnType<typeof createClient>["channel"]> | null = null;
@@ -196,10 +214,10 @@ export default function HistoriquePage() {
 
   const filtrees = useMemo(() => {
     let arr = commandes;
-    if (filtre !== "tous")   arr = arr.filter(c => c.statut === filtre);
-    if (fournFilter)         arr = arr.filter(c => (c.fournisseur_id ?? c.fournisseur_externe_id) === fournFilter);
-    if (dateFrom)            arr = arr.filter(c => c.created_at.slice(0, 10) >= dateFrom);
-    if (dateTo)              arr = arr.filter(c => c.created_at.slice(0, 10) <= dateTo);
+    if (filtre !== "tous") arr = arr.filter(c => c.statut === filtre);
+    if (fournFilter) arr = arr.filter(c => (c.fournisseur_id ?? c.fournisseur_externe_id) === fournFilter);
+    if (dateFrom) arr = arr.filter(c => c.created_at.slice(0, 10) >= dateFrom);
+    if (dateTo) arr = arr.filter(c => c.created_at.slice(0, 10) <= dateTo);
     const mMin = parseFloat(montantMin);
     if (!isNaN(mMin) && mMin > 0) arr = arr.filter(c => Number(c.montant_total) >= mMin);
     const mMax = parseFloat(montantMax);
@@ -211,7 +229,7 @@ export default function HistoriquePage() {
         const num = (c.numero_facture_externe ?? "").toLowerCase();
         const idShort = c.id.toLowerCase();
         return nom.includes(s) || num.includes(s) || idShort.includes(s)
-               || c.lignes_commande?.some(l => (l.nom_snapshot ?? "").toLowerCase().includes(s));
+          || c.lignes_commande?.some(l => (l.nom_snapshot ?? "").toLowerCase().includes(s));
       });
     }
     return arr;
@@ -237,235 +255,457 @@ export default function HistoriquePage() {
   const nbEnCours = commandes.filter((c) =>
     c.statut === "recue" || c.statut === "en_preparation" || c.statut === "en_livraison",
   ).length;
+  const nbLitiges = commandes.filter((c) =>
+    c.avoir_statut === "en_attente" || c.avoir_statut === "conteste"
+    || c.statut === "receptionnee_avec_anomalies",
+  ).length;
+
+  const hasFilters = !!(search || fournFilter || dateFrom || dateTo || montantMin || montantMax || filtre !== "tous");
+  const allOnPageSelected = pageRows.length > 0 && pageRows.every(c => selected.has(c.id));
+
+  const openCommande = pageRows.find(c => c.id === openId) ?? commandes.find(c => c.id === openId) ?? null;
+
+  const statutFilters: { id: StatutCommande | "tous"; label: string; count?: number }[] = [
+    { id: "tous", label: "Toutes", count: commandes.length },
+    { id: "recue", label: "Reçues" },
+    { id: "en_preparation", label: "En préparation" },
+    { id: "en_livraison", label: "En livraison" },
+    { id: "livree", label: "Livrées" },
+    { id: "receptionnee", label: "Réceptionnées" },
+    { id: "annulee", label: "Annulées" },
+  ];
 
   return (
     <DashboardLayout role="restaurateur">
-      <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
-        <div className="mb-6 flex items-center gap-2 text-sm text-gray-400">
-          <Link href="/dashboard/restaurateur" className="hover:text-gray-600">Dashboard</Link>
-          <span>/</span>
-          <span className="text-gray-600">Mes commandes</span>
+      {/* Header */}
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="page-title">Mes commandes</h1>
+          <p className="page-sub">Suivez le statut de vos commandes en temps réel.</p>
         </div>
+        <Link href="/dashboard/restaurateur/commandes">
+          <Button variant="primary" iconLeft="plus">Nouvelle commande</Button>
+        </Link>
+      </header>
 
-        <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="page-title">Mes commandes</h1>
-            <p className="page-sub">Suivez le statut de vos commandes en temps réel.</p>
+      {/* KPI row */}
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-4">
+        <KpiCard label="Commandes totales" icon="shopping-cart" value={<span className="mono tabular">{commandes.length}</span>} />
+        <KpiCard label="En cours" icon="clock" value={<span className="mono tabular">{nbEnCours}</span>} />
+        <KpiCard label="Litiges actifs" icon="alert-triangle" value={<span className="mono tabular">{nbLitiges}</span>} delta={nbLitiges > 0 ? { value: "à suivre", trend: "down" } : undefined} />
+        <KpiCard label="Total dépensé" icon="euro" value={<span className="mono tabular">{fmt(totalDepense).replace(" €", "")}</span>} unit=" €" />
+      </section>
+
+      {/* Filters bar */}
+      <section className="mb-3 rounded-[10px] border border-[var(--border)] bg-white">
+        <div className="flex flex-wrap items-center gap-2 p-3">
+          <div className="flex-1 min-w-[260px]">
+            <SearchInput
+              value={search}
+              onValueChange={setSearch}
+              placeholder="Rechercher : fournisseur, n° facture, produit…"
+            />
           </div>
-          <Link
-            href="/dashboard/restaurateur/commandes"
-            className="flex items-center gap-2 rounded-[8px] bg-[var(--accent)] px-3.5 py-[7px] text-[13px] font-[550] text-white transition-colors hover:bg-[var(--accent-hover)]"
-          >
-            <span>+</span> Nouvelle commande
-          </Link>
-        </div>
-
-        {/* Stats */}
-        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <Kpi label="Total commandes" value={String(commandes.length)} />
-          <Kpi label="En cours"        value={String(nbEnCours)} accent="amber" />
-          <Kpi label="Total dépensé"   value={fmt(totalDepense)} wide />
-        </div>
-
-        {/* Recherche globale + filtres avancés */}
-        <div className="mb-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="🔍 Rechercher : fournisseur, n° facture, id de commande, produit…"
-            className="mb-3 w-full min-h-[40px] rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-          />
-          <div className="flex flex-wrap items-end gap-2">
-            <select
-              value={fournFilter}
-              onChange={(e) => setFournFilter(e.target.value)}
-              className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm"
+          <Select value={fournFilter} onChange={(e) => setFournFilter(e.target.value)}>
+            <option value="">Tous fournisseurs</option>
+            {fournUniques.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
+          </Select>
+          <Field label="Du">
+            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} max={dateTo || undefined} className="w-[150px]" />
+          </Field>
+          <Field label="Au">
+            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} min={dateFrom || undefined} className="w-[150px]" />
+          </Field>
+          <Field label="Min €">
+            <Input type="number" min="0" step="0.01" value={montantMin} onChange={(e) => setMontantMin(e.target.value)} placeholder="0" className="w-[90px]" />
+          </Field>
+          <Field label="Max €">
+            <Input type="number" min="0" step="0.01" value={montantMax} onChange={(e) => setMontantMax(e.target.value)} placeholder="∞" className="w-[90px]" />
+          </Field>
+          {hasFilters ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              iconLeft="x"
+              onClick={() => {
+                setSearch(""); setFournFilter(""); setDateFrom(""); setDateTo("");
+                setMontantMin(""); setMontantMax(""); setFiltre("tous");
+              }}
             >
-              <option value="">Tous fournisseurs</option>
-              {fournUniques.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
-            </select>
-            <label className="flex flex-col gap-0.5">
-              <span className="text-[10px] font-medium text-gray-500">Du</span>
-              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} max={dateTo || undefined}
-                     className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-2 py-1.5 text-sm" />
-            </label>
-            <label className="flex flex-col gap-0.5">
-              <span className="text-[10px] font-medium text-gray-500">Au</span>
-              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} min={dateFrom || undefined}
-                     className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-2 py-1.5 text-sm" />
-            </label>
-            <label className="flex flex-col gap-0.5">
-              <span className="text-[10px] font-medium text-gray-500">Min €</span>
-              <input type="number" min="0" step="0.01" value={montantMin} onChange={(e) => setMontantMin(e.target.value)} placeholder="0"
-                     className="min-h-[40px] w-24 rounded-xl border border-gray-200 bg-white px-2 py-1.5 text-sm" />
-            </label>
-            <label className="flex flex-col gap-0.5">
-              <span className="text-[10px] font-medium text-gray-500">Max €</span>
-              <input type="number" min="0" step="0.01" value={montantMax} onChange={(e) => setMontantMax(e.target.value)} placeholder="∞"
-                     className="min-h-[40px] w-24 rounded-xl border border-gray-200 bg-white px-2 py-1.5 text-sm" />
-            </label>
-            {(search || fournFilter || dateFrom || dateTo || montantMin || montantMax || filtre !== "tous") && (
-              <button
-                onClick={() => { setSearch(""); setFournFilter(""); setDateFrom(""); setDateTo(""); setMontantMin(""); setMontantMax(""); setFiltre("tous"); }}
-                className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-3 text-xs text-gray-600 hover:border-indigo-300"
-              >
-                Réinitialiser
-              </button>
-            )}
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
-            {([
-              { id: "tous",           label: "Toutes"         },
-              { id: "recue",          label: "Reçues"         },
-              { id: "en_preparation", label: "En préparation" },
-              { id: "en_livraison",   label: "En livraison"   },
-              { id: "livree",         label: "Livrées"        },
-              { id: "receptionnee",   label: "Réceptionnées"  },
-              { id: "annulee",        label: "Annulées"       },
-            ] as const).map((f) => (
+              Réinitialiser
+            </Button>
+          ) : null}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-[2px] border-t border-[var(--border)] p-2">
+          {statutFilters.map((f) => {
+            const active = filtre === f.id;
+            return (
               <button
                 key={f.id}
-                onClick={() => setFiltre(f.id as StatutCommande | "tous")}
-                className={`min-h-[34px] rounded-full px-3 py-1 text-xs font-medium transition-all ${
-                  filtre === f.id
-                    ? "bg-indigo-500 text-white shadow"
-                    : "border border-gray-200 bg-white text-gray-500 hover:text-[#1A1A2E]"
-                }`}
+                onClick={() => setFiltre(f.id)}
+                className={[
+                  "inline-flex items-center gap-[6px] px-3 py-[6px] rounded-[6px] text-[12.5px] font-semibold transition-colors",
+                  active
+                    ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+                    : "text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text)]",
+                ].join(" ")}
               >
                 {f.label}
+                {typeof f.count === "number" ? (
+                  <span className="mono tabular text-[10.5px] px-[5px] py-[1px] rounded-full bg-[var(--bg-subtle)] text-[var(--text-muted)]">
+                    {f.count}
+                  </span>
+                ) : null}
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
+      </section>
 
-        {error && (
-          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            Erreur : {error}. Rechargez la page. Si ça persiste, vérifiez que la migration
-            <code className="mx-1 rounded bg-white px-1">migration_factures_import.sql</code>
-            a bien été exécutée.
-          </div>
-        )}
+      {error ? (
+        <div className="mb-4">
+          <Banner tone="danger">
+            {error}. Rechargez la page. Si ça persiste, vérifiez que la migration <code className="mono">migration_factures_import.sql</code> a bien été exécutée.
+          </Banner>
+        </div>
+      ) : null}
 
-        {/* Liste */}
-        {loading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-24 animate-pulse rounded-2xl border border-gray-200 bg-white" />
+      {/* Table */}
+      {loading ? (
+        <Card>
+          <div className="p-4 space-y-3">
+            {[0, 1, 2, 3, 4].map(i => (
+              <div key={i} className="flex items-center gap-3">
+                <Skeleton width={92} height={14} />
+                <Skeleton width={120} height={14} />
+                <Skeleton width={220} height={14} />
+                <Skeleton width={80} height={14} className="ml-auto" />
+                <Skeleton width={120} height={22} rounded={20} />
+              </div>
             ))}
           </div>
-        ) : filtrees.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-gray-200 bg-white py-20 text-center">
-            <span className="text-5xl">{commandes.length === 0 ? "🛒" : "🔍"}</span>
-            <p className="text-gray-500">
-              {commandes.length === 0
-                ? "Vous n'avez pas encore passé de commande."
-                : "Aucune commande pour ce filtre."}
-            </p>
-            {commandes.length === 0 && (
-              <Link
-                href="/dashboard/restaurateur/commandes"
-                className="mt-1 rounded-xl bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-500 hover:text-white"
-              >
-                Passer votre première commande
+        </Card>
+      ) : filtrees.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={commandes.length === 0 ? "shopping-cart" : "search"}
+            title={commandes.length === 0 ? "Pas encore de commande" : "Aucun résultat"}
+            sub={commandes.length === 0 ? "Passez votre première commande pour la retrouver ici." : "Ajustez vos filtres pour élargir la recherche."}
+            action={commandes.length === 0 ? (
+              <Link href="/dashboard/restaurateur/commandes">
+                <Button variant="primary" iconLeft="plus">Passer une commande</Button>
               </Link>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {pageRows.map((c) => {
-              const open = openId === c.id;
-              return (
-                <div key={c.id} className="overflow-hidden rounded-[12px] border border-[var(--border)] bg-white">
-                  <div className="flex items-start gap-4 p-4">
-                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-gradient-to-br ${getFournAvatar(c)} text-[12px] font-[600] text-white`}>
-                      {getFournInitiale(c)}
-                    </div>
-                    <div className="flex min-w-0 flex-1 flex-col gap-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[14px] font-[600] text-[var(--text)]">{getFournName(c)}</span>
-                        <span className="mono text-[11.5px] text-[var(--text-subtle)]">CMD-{c.id.slice(0, 6).toUpperCase()}</span>
-                        {c.source === "import" && (
-                          <span className="rp-badge neutral">Importée</span>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2 text-[11.5px] text-[var(--text-muted)]">
-                        <span className="mono">{formatDate(c.created_at)}</span>
-                        <span>·</span>
-                        <span><span className="mono">{c.lignes_commande?.length ?? 0}</span> article{(c.lignes_commande?.length ?? 0) > 1 ? "s" : ""}</span>
-                        {c.numero_facture_externe && (<><span>·</span><span className="mono">N° {c.numero_facture_externe}</span></>)}
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 flex-col items-end gap-1.5">
-                      <span className="mono text-[16px] font-[650] tracking-[-0.01em] text-[var(--text)]">{fmt(c.montant_total)}</span>
-                      <StatutBadge statut={c.statut} />
-                    </div>
-                  </div>
-
-                  {c.avoir_statut && (
-                    <AvoirPanel commande={c} onChange={fetchCommandes} />
-                  )}
-
-                  <button
-                    onClick={() => setOpenId(open ? null : c.id)}
-                    className="flex w-full items-center justify-between border-t border-gray-200 px-5 py-2.5 text-xs text-gray-500 transition-colors hover:bg-gray-50"
-                  >
-                    <span>{open ? "Masquer le détail" : "Voir le détail"}</span>
-                    <span className={`transition-transform ${open ? "rotate-180" : ""}`}>▾</span>
-                  </button>
-
-                  {open && (
-                    <div className="overflow-x-auto border-t border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-3">
-                      <table className="w-full min-w-[520px] text-[13px]">
-                        <thead>
-                          <tr className="border-b border-[var(--border)]">
-                            <th className="pb-2 text-left label-upper">Produit</th>
-                            <th className="pb-2 text-right label-upper">Qté</th>
-                            <th className="pb-2 text-right label-upper">P.U.</th>
-                            <th className="pb-2 text-right label-upper">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(c.lignes_commande ?? []).map((l) => (
-                            <tr key={l.id} className="border-b border-[var(--border)] last:border-b-0">
-                              <td className="py-2 text-[var(--text)]">{l.nom_snapshot}</td>
-                              <td className="mono py-2 text-right text-[var(--text-muted)]">{l.quantite} {l.unite}</td>
-                              <td className="mono py-2 text-right text-[var(--text-muted)]">{fmt(l.prix_snapshot)}</td>
-                              <td className="py-2 text-right font-medium text-[#1A1A2E]">{fmt(Number(l.prix_snapshot ?? 0) * Number(l.quantite ?? 0))}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-            <div className="rounded-2xl border border-gray-200 bg-white">
-              <Pagination page={page} total={filtrees.length} onChange={setPage} />
+            ) : undefined}
+          />
+        </Card>
+      ) : (
+        <Table>
+          <TableHead columns={TABLE_COLUMNS}>
+            <div>
+              <input
+                type="checkbox"
+                className="w-[15px] h-[15px] accent-[var(--accent)] cursor-pointer"
+                aria-label="Tout sélectionner sur cette page"
+                checked={allOnPageSelected}
+                onChange={(e) => {
+                  setSelected(prev => {
+                    const next = new Set(prev);
+                    if (e.target.checked) pageRows.forEach(c => next.add(c.id));
+                    else pageRows.forEach(c => next.delete(c.id));
+                    return next;
+                  });
+                }}
+              />
             </div>
-          </div>
-        )}
-      </div>
+            <div>Date</div>
+            <div>N°</div>
+            <div>Fournisseur</div>
+            <div className="text-right">Lignes</div>
+            <div className="text-right">TTC</div>
+            <div>Statut</div>
+            <div></div>
+          </TableHead>
+          {pageRows.map((c) => {
+            const meta = STATUT_META[c.statut] ?? { label: c.statut, tone: "neutral" as StatutTone, active: false };
+            const hasLitige = c.avoir_statut === "en_attente" || c.avoir_statut === "conteste" || c.statut === "receptionnee_avec_anomalies";
+            const isSelected = selected.has(c.id);
+            return (
+              <TableRow
+                key={c.id}
+                columns={TABLE_COLUMNS}
+                clickable
+                onClick={() => setOpenId(c.id)}
+                active={openId === c.id}
+              >
+                <div onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    className="w-[15px] h-[15px] accent-[var(--accent)] cursor-pointer"
+                    aria-label={`Sélectionner ${c.id}`}
+                    checked={isSelected}
+                    onChange={(e) => {
+                      setSelected(prev => {
+                        const next = new Set(prev);
+                        if (e.target.checked) next.add(c.id);
+                        else next.delete(c.id);
+                        return next;
+                      });
+                    }}
+                  />
+                </div>
+                <div className="mono tabular text-[12.5px] text-[var(--text-muted)]">{formatDateShort(c.created_at)}</div>
+                <div className="mono tabular text-[12.5px] font-[600] text-[var(--text)]">
+                  {c.source === "import" ? "IMPORT" : `CMD-${c.id.slice(0, 6).toUpperCase()}`}
+                </div>
+                <div className="flex items-center gap-2 min-w-0">
+                  <div
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-white text-[11px] font-[650]"
+                    style={{ background: supplierGradient(c.fournisseur_id ?? c.fournisseur_externe_id ?? c.id) }}
+                  >
+                    {getFournInitiale(c)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[13px] font-[550] text-[var(--text)] truncate">{getFournName(c)}</div>
+                    {hasLitige ? (
+                      <div className="text-[11px] text-[var(--danger)] font-[550] inline-flex items-center gap-1">
+                        <Icon name="alert-triangle" size={10} /> Litige
+                      </div>
+                    ) : c.numero_facture_externe ? (
+                      <div className="mono text-[10.5px] text-[var(--text-subtle)] truncate">{c.numero_facture_externe}</div>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="mono tabular text-[12.5px] text-[var(--text-muted)] text-right">{c.lignes_commande?.length ?? 0}</div>
+                <div className="mono tabular text-[13px] font-[600] text-[var(--text)] text-right">{fmt(c.montant_total)}</div>
+                <div>
+                  <Badge tone={meta.tone}>
+                    <Dot pulse={meta.active} />
+                    {meta.label}
+                  </Badge>
+                </div>
+                <div className="text-[var(--text-subtle)]">
+                  <Icon name="chevron-right" size={14} />
+                </div>
+              </TableRow>
+            );
+          })}
+          <TableFooter
+            left={<>{Math.min((page - 1) * PAGE_SIZE_DEFAULT + 1, filtrees.length)}–{Math.min(page * PAGE_SIZE_DEFAULT, filtrees.length)} sur {filtrees.length}</>}
+            right={<Pagination page={page} total={filtrees.length} onChange={setPage} />}
+          />
+        </Table>
+      )}
+
+      {/* Drawer détail */}
+      <Drawer
+        open={!!openCommande}
+        onClose={() => setOpenId(null)}
+        width={560}
+        title={
+          openCommande ? (
+            <span className="flex items-center gap-2">
+              <span className="mono tabular">
+                {openCommande.source === "import" ? "Facture importée" : `CMD-${openCommande.id.slice(0, 6).toUpperCase()}`}
+              </span>
+              <Badge tone={(STATUT_META[openCommande.statut] ?? { tone: "neutral" as StatutTone }).tone}>
+                <Dot pulse={STATUT_META[openCommande.statut]?.active} />
+                {STATUT_META[openCommande.statut]?.label ?? openCommande.statut}
+              </Badge>
+            </span>
+          ) : undefined
+        }
+        sub={openCommande ? getFournName(openCommande) : undefined}
+        actions={
+          openCommande ? (
+            <>
+              <Button variant="secondary" iconLeft="download">Télécharger le bon de commande</Button>
+              {openCommande.numero_facture_externe ? (
+                <Button variant="secondary" iconLeft="file-text">Voir la facture</Button>
+              ) : null}
+              {(openCommande.avoir_statut === "en_attente" || openCommande.avoir_statut === "accepte") ? (
+                <Button variant="secondary" iconLeft="alert-circle" onClick={async () => {
+                  try { await regenerateAvoirPDF(openCommande.id); }
+                  catch (e) { console.error(e); alert("Erreur génération PDF"); }
+                }}>
+                  Télécharger l&apos;avoir
+                </Button>
+              ) : null}
+            </>
+          ) : undefined
+        }
+      >
+        {openCommande ? <DrawerContent c={openCommande} refresh={fetchCommandes} /> : null}
+      </Drawer>
     </DashboardLayout>
   );
 }
 
-function Kpi({ label, value, accent, wide }: { label: string; value: string; accent?: "amber"; wide?: boolean }) {
-  const ring = accent === "amber" ? "border-[var(--warning-soft)] bg-[var(--warning-soft)]" : "border-[var(--border)] bg-white";
+// ─── Drawer content ──────────────────────────────────────────────
+
+function DrawerContent({ c, refresh }: { c: Commande; refresh: () => void }) {
+  const hasLitige = c.avoir_statut === "en_attente" || c.avoir_statut === "conteste" || c.statut === "receptionnee_avec_anomalies";
+  const totalHT = (c.lignes_commande ?? []).reduce((s, l) => s + Number(l.prix_snapshot ?? 0) * Number(l.quantite ?? 0), 0);
+
   return (
-    <div className={`rounded-[12px] border ${ring} px-4 py-3.5 ${wide ? "col-span-2 sm:col-span-1" : ""}`}>
-      <p className="label-upper">{label}</p>
-      <p className="mono mt-1.5 text-[22px] font-[650] tracking-[-0.02em] leading-[1.1] text-[var(--text)]">{value}</p>
+    <div className="space-y-4">
+      {hasLitige ? (
+        <Banner tone="danger" icon="alert-triangle">
+          <div className="font-[550]">Litige en cours</div>
+          {c.avoir_motif_contestation ? (
+            <div className="text-[11.5px] mt-[2px]">Motif fournisseur : {c.avoir_motif_contestation}</div>
+          ) : null}
+        </Banner>
+      ) : null}
+
+      {/* 4 meta cards */}
+      <div className="grid grid-cols-2 gap-[10px]">
+        <MetaCard label="Date" value={formatDateLong(c.created_at)} />
+        <MetaCard label="Lignes" value={<span className="mono tabular">{c.lignes_commande?.length ?? 0}</span>} />
+        <MetaCard label="Montant TTC" value={<span className="mono tabular font-[650]">{fmt(c.montant_total)}</span>} />
+        <MetaCard label="Source" value={c.source === "import" ? "Facture importée" : "Commande RestoPilot"} />
+      </div>
+
+      {/* Aperçu lignes */}
+      <section>
+        <div className="text-[11px] text-[var(--text-muted)] uppercase tracking-[0.05em] font-[650] mb-2">Détail des lignes</div>
+        <div className="bg-white border border-[var(--border)] rounded-[8px] overflow-hidden">
+          {(c.lignes_commande ?? []).slice(0, 6).map((l, i) => (
+            <div
+              key={l.id}
+              className={[
+                "flex items-center justify-between gap-3 px-3 py-[10px]",
+                i > 0 ? "border-t border-[var(--border)]" : "",
+              ].join(" ")}
+            >
+              <div className="min-w-0 flex-1">
+                <div className="text-[13px] text-[var(--text)] truncate">{l.nom_snapshot}</div>
+                <div className="mono tabular text-[11px] text-[var(--text-muted)]">
+                  {l.quantite} {l.unite} × {fmt(l.prix_snapshot)}
+                </div>
+              </div>
+              <div className="mono tabular text-[13px] font-[600] text-[var(--text)]">
+                {fmt(Number(l.prix_snapshot ?? 0) * Number(l.quantite ?? 0))}
+              </div>
+            </div>
+          ))}
+          {(c.lignes_commande?.length ?? 0) > 6 ? (
+            <div className="px-3 py-[9px] text-[11.5px] text-[var(--text-muted)] text-center bg-[var(--bg-subtle)] border-t border-[var(--border)]">
+              + {c.lignes_commande.length - 6} autre{c.lignes_commande.length - 6 > 1 ? "s" : ""} ligne{c.lignes_commande.length - 6 > 1 ? "s" : ""}
+            </div>
+          ) : null}
+        </div>
+      </section>
+
+      {/* Totaux */}
+      <section className="bg-white border border-[var(--border)] rounded-[8px] px-[14px] py-[10px]">
+        <div className="flex items-center justify-between py-[6px] text-[12.5px] text-[var(--text-muted)]">
+          <span>Total HT (calculé)</span>
+          <span className="mono tabular text-[var(--text)] font-[550]">{fmt(totalHT)}</span>
+        </div>
+        <div className="flex items-center justify-between border-t border-[var(--border)] pt-[10px] mt-[4px] text-[14px] font-[650] text-[var(--text)]">
+          <span>Total TTC</span>
+          <span className="mono tabular">{fmt(c.montant_total)}</span>
+        </div>
+      </section>
+
+      {/* Timeline */}
+      <section>
+        <div className="text-[11px] text-[var(--text-muted)] uppercase tracking-[0.05em] font-[650] mb-2">Cycle de vie</div>
+        <Timeline statut={c.statut} createdAt={c.created_at} updatedAt={c.updated_at} />
+      </section>
+
+      {/* Avoir panel */}
+      {c.avoir_statut ? <AvoirPanelInline c={c} refresh={refresh} /> : null}
     </div>
   );
 }
 
-// ── Panneau avoir ─────────────────────────────────────────────────────────
-function AvoirPanel({ commande, onChange }: { commande: Commande; onChange: () => void }) {
+function MetaCard({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="bg-white border border-[var(--border)] rounded-[8px] px-3 py-[10px]">
+      <div className="text-[10.5px] text-[var(--text-muted)] uppercase tracking-[0.04em] font-[650] mb-[3px]">{label}</div>
+      <div className="text-[12.5px] font-[550] text-[var(--text)]">{value}</div>
+    </div>
+  );
+}
+
+// ─── Timeline horizontale ─────────────────────────────────────────
+
+const TIMELINE_STEPS: { id: StatutCommande; label: string }[] = [
+  { id: "recue", label: "Reçue" },
+  { id: "en_preparation", label: "Préparation" },
+  { id: "en_livraison", label: "En livraison" },
+  { id: "livree", label: "Livrée" },
+  { id: "receptionnee", label: "Réceptionnée" },
+];
+
+function Timeline({ statut, createdAt, updatedAt }: { statut: StatutCommande; createdAt: string; updatedAt: string | null }) {
+  const currentIdx = TIMELINE_STEPS.findIndex(s => s.id === statut);
+  const lastIdx = currentIdx >= 0 ? currentIdx : TIMELINE_STEPS.length - 1;
+  return (
+    <div className="flex items-start gap-0">
+      {TIMELINE_STEPS.map((s, i) => {
+        const done = i < lastIdx;
+        const current = i === lastIdx;
+        const upcoming = i > lastIdx;
+        return (
+          <div key={s.id} className="flex-1 flex flex-col items-center">
+            <div className="flex items-center w-full">
+              {i > 0 ? (
+                <div
+                  className={[
+                    "flex-1 h-[2px]",
+                    done || current ? "bg-[var(--accent)]" : "bg-[var(--border)]",
+                  ].join(" ")}
+                />
+              ) : <div className="flex-1" />}
+              <div
+                className={[
+                  "flex h-6 w-6 items-center justify-center rounded-full text-white text-[11px]",
+                  done
+                    ? "bg-[var(--success)]"
+                    : current
+                      ? "bg-[var(--accent)]"
+                      : "bg-[var(--bg-subtle)] text-[var(--text-subtle)]",
+                ].join(" ")}
+              >
+                {done ? <Icon name="check" size={12} /> : i + 1}
+              </div>
+              {i < TIMELINE_STEPS.length - 1 ? (
+                <div
+                  className={[
+                    "flex-1 h-[2px]",
+                    done ? "bg-[var(--accent)]" : "bg-[var(--border)]",
+                  ].join(" ")}
+                />
+              ) : <div className="flex-1" />}
+            </div>
+            <div
+              className={[
+                "text-[10.5px] mt-2 text-center",
+                current ? "font-[650] text-[var(--text)]" : upcoming ? "text-[var(--text-subtle)]" : "text-[var(--text-muted)]",
+              ].join(" ")}
+            >
+              {s.label}
+            </div>
+            {current && updatedAt ? (
+              <div className="mono tabular text-[10px] text-[var(--text-muted)]">{formatDateShort(updatedAt || createdAt)}</div>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Avoir inline dans le drawer ──────────────────────────────────
+
+function AvoirPanelInline({ c, refresh }: { c: Commande; refresh: () => void }) {
   const [busy, setBusy] = useState(false);
-  const statut = commande.avoir_statut;
+  const statut = c.avoir_statut;
   if (!statut) return null;
-  const montant = Number(commande.avoir_montant ?? 0);
+  const montant = Number(c.avoir_montant ?? 0);
 
   async function forceAction(newStatut: "accepte" | "annule") {
     setBusy(true);
@@ -473,53 +713,46 @@ function AvoirPanel({ commande, onChange }: { commande: Commande; onChange: () =
       const supabase = createClient();
       const patch: Record<string, unknown> = { avoir_statut: newStatut };
       if (newStatut === "accepte") patch.avoir_accepte_at = new Date().toISOString();
-      if (newStatut === "annule")  patch.avoir_annule_at  = new Date().toISOString();
-      await supabase.from("commandes").update(patch).eq("id", commande.id);
-      onChange();
+      if (newStatut === "annule") patch.avoir_annule_at = new Date().toISOString();
+      await supabase.from("commandes").update(patch).eq("id", c.id);
+      refresh();
     } catch (e) {
       console.error("[avoir] action :", e);
       alert(e instanceof Error ? e.message : "Erreur");
     }
     setBusy(false);
   }
-  async function download() {
-    try { await regenerateAvoirPDF(commande.id); }
-    catch (e) { console.error(e); alert("Erreur génération PDF"); }
-  }
 
-  const cfg =
-    statut === "en_attente" ? { bg: "border-amber-200 bg-amber-50",     text: "text-amber-800",   btn: "border-amber-300 text-amber-800 hover:bg-amber-100",     label: `Avoir de ${montant.toFixed(2)} € en attente de réponse du fournisseur.` }
-  : statut === "accepte"    ? { bg: "border-emerald-200 bg-emerald-50", text: "text-emerald-800", btn: "border-emerald-300 text-emerald-800 hover:bg-emerald-100", label: `✓ Avoir confirmé par le fournisseur (${montant.toFixed(2)} €)` }
-  : statut === "conteste"   ? { bg: "border-rose-200 bg-rose-50",       text: "text-rose-800",    btn: "border-rose-300 text-rose-800 hover:bg-rose-100",           label: "Avoir contesté par le fournisseur" }
-  :                           { bg: "border-gray-200 bg-gray-50",       text: "text-gray-600",    btn: "border-gray-300 text-gray-700 hover:bg-gray-100",           label: "Avoir annulé." };
+  const tone =
+    statut === "en_attente" ? "warning"
+    : statut === "accepte" ? "success"
+    : statut === "conteste" ? "danger"
+    : "muted";
+  const label =
+    statut === "en_attente" ? `Avoir de ${fmt(montant)} en attente de réponse du fournisseur.`
+    : statut === "accepte" ? `Avoir confirmé par le fournisseur (${fmt(montant)}).`
+    : statut === "conteste" ? "Avoir contesté par le fournisseur."
+    : "Avoir annulé.";
 
   return (
-    <div className={`border-t ${cfg.bg} px-5 py-3`}>
-      <p className={`text-sm ${cfg.text} font-medium`}>{cfg.label}</p>
-      {statut === "conteste" && commande.avoir_motif_contestation && (
-        <p className="mt-1 text-xs text-rose-700">
-          <span className="font-semibold">Motif :</span> {commande.avoir_motif_contestation}
-        </p>
-      )}
-      <div className="mt-2 flex flex-wrap justify-end gap-2">
-        {(statut === "en_attente" || statut === "accepte") && (
-          <button onClick={download} className={`min-h-[40px] rounded-lg border bg-white px-3 py-1.5 text-xs font-medium ${cfg.btn}`}>
-            ↓ Télécharger l&apos;avoir
-          </button>
-        )}
-        {statut === "conteste" && (
-          <>
-            <button onClick={() => forceAction("annule")} disabled={busy}
-                    className="min-h-[40px] rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-[#1A1A2E] hover:bg-gray-100 disabled:opacity-50">
-              Annuler l&apos;avoir
-            </button>
-            <button onClick={() => forceAction("accepte")} disabled={busy}
-                    className="min-h-[40px] rounded-lg bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-600 disabled:opacity-50">
-              Maintenir l&apos;avoir
-            </button>
-          </>
-        )}
-      </div>
-    </div>
+    <section>
+      <div className="text-[11px] text-[var(--text-muted)] uppercase tracking-[0.05em] font-[650] mb-2">Avoir</div>
+      <Banner tone={tone}>
+        <div className="font-[550]">{label}</div>
+        {statut === "conteste" && c.avoir_motif_contestation ? (
+          <div className="text-[11.5px] mt-[2px]">Motif : {c.avoir_motif_contestation}</div>
+        ) : null}
+      </Banner>
+      {statut === "conteste" ? (
+        <div className="flex flex-col gap-[6px] mt-[10px]">
+          <Button variant="secondary" onClick={() => forceAction("annule")} disabled={busy}>
+            Annuler l&apos;avoir
+          </Button>
+          <Button variant="primary" onClick={() => forceAction("accepte")} disabled={busy}>
+            Maintenir l&apos;avoir
+          </Button>
+        </div>
+      ) : null}
+    </section>
   );
 }

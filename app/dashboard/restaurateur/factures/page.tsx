@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { createClient } from "@/lib/supabase/client";
 import type { StatutCommande } from "@/lib/supabase/types";
@@ -9,6 +8,14 @@ import { regenerateFacturePDF } from "@/lib/facture-from-db";
 import FactureImportModal from "@/components/factures/FactureImportModal";
 import { Pagination, paginate, PAGE_SIZE_DEFAULT } from "@/components/ui/Pagination";
 import { Icon } from "@/components/ui/Icon";
+import { Button } from "@/components/ui/Button";
+import { Card, EmptyState, KpiCard } from "@/components/ui/Card";
+import { Input, SearchInput, Select, Field } from "@/components/ui/Input";
+import { Tabs } from "@/components/ui/Tabs";
+import { Table, TableHead, TableRow, TableFooter } from "@/components/ui/Table";
+import { Badge } from "@/components/ui/Badge";
+import { Banner, pushToast } from "@/components/ui/Feedback";
+import { Skeleton } from "@/components/ui/Loading";
 
 interface Commande {
   id: string;
@@ -41,34 +48,37 @@ function fmt(n: number) {
   return n.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 }
 
-const STATUT_CHIP: Record<StatutCommande, { label: string; cls: string }> = {
-  recue:                       { label: "Reçue",             cls: "border-amber-200 bg-amber-50 text-amber-700" },
-  en_preparation:              { label: "En préparation",    cls: "border-blue-200 bg-blue-50 text-blue-700" },
-  en_livraison:                { label: "En livraison",      cls: "border-violet-200 bg-violet-50 text-violet-700" },
-  livree:                      { label: "Livrée",            cls: "border-sky-200 bg-sky-50 text-sky-700" },
-  receptionnee:                { label: "Réceptionnée",      cls: "border-emerald-200 bg-emerald-50 text-emerald-700" },
-  receptionnee_avec_anomalies: { label: "Récep. anomalies",  cls: "border-rose-200 bg-rose-50 text-rose-700" },
-  annulee:                     { label: "Annulée",           cls: "border-red-200 bg-red-50 text-red-700" },
+type StatutTone = "neutral" | "accent" | "success" | "warning" | "danger" | "info";
+
+const STATUT_META: Record<StatutCommande, { label: string; tone: StatutTone }> = {
+  recue: { label: "Reçue", tone: "warning" },
+  en_preparation: { label: "En préparation", tone: "info" },
+  en_livraison: { label: "En livraison", tone: "accent" },
+  livree: { label: "Livrée", tone: "info" },
+  receptionnee: { label: "Réceptionnée", tone: "success" },
+  receptionnee_avec_anomalies: { label: "Anomalies", tone: "danger" },
+  annulee: { label: "Annulée", tone: "neutral" },
 };
+
+const TABLE_COLS = "100px 1fr 90px 160px 120px 120px 220px";
 
 export default function FacturesPage() {
   const [tab, setTab] = useState<"factures" | "produits">("factures");
-  const [commandes, setCommandes]   = useState<Commande[]>([]);
+  const [commandes, setCommandes] = useState<Commande[]>([]);
   const [fournNames, setFournNames] = useState<Record<string, string>>({});
   const [cheaperAlerts, setCheaperAlerts] = useState<Record<string, { fournNom: string; prix: number }>>({});
-  const [loading, setLoading]       = useState(true);
-  const [downloading, setDL]        = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [downloading, setDL] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
-  const [reloadKey, setReloadKey]   = useState(0);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  // Filtres factures
   const [search, setSearch] = useState("");
   const [fournFilter, setFournFilter] = useState<"tous" | string>("tous");
-  const [dateFrom, setDateFrom]       = useState<string>("");
-  const [dateTo, setDateTo]           = useState<string>("");
-  const [montantMin, setMontantMin]   = useState<string>("");
-  const [montantMax, setMontantMax]   = useState<string>("");
-  const [page, setPage]               = useState(1);
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
+  const [montantMin, setMontantMin] = useState<string>("");
+  const [montantMax, setMontantMax] = useState<string>("");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     (async () => {
@@ -88,7 +98,6 @@ export default function FacturesPage() {
       const typed = (data ?? []) as unknown as Commande[];
       setCommandes(typed);
 
-      // Fournisseurs internes (profiles) + externes → noms affichés
       const fIds = Array.from(new Set(typed.map(c => c.fournisseur_id).filter((x): x is string => !!x)));
       const fExtIds = Array.from(new Set(typed.map(c => c.fournisseur_externe_id).filter((x): x is string => !!x)));
       const map: Record<string, string> = {};
@@ -104,8 +113,6 @@ export default function FacturesPage() {
       }
       setFournNames(map);
 
-      // Alertes "disponible moins cher" : compare chaque nom de produit acheté
-      // avec les tarifs actifs du catalogue RestoPilot et le dernier prix payé.
       const nomProduits = Array.from(new Set(
         typed.flatMap(c => c.lignes_commande.map(l => l.nom_snapshot.toLowerCase().trim())),
       ));
@@ -114,17 +121,13 @@ export default function FacturesPage() {
           .from("tarifs")
           .select("prix, unite, fournisseur_id, produits!inner ( nom )")
           .eq("actif", true).is("archived_at", null);
-        type TarifRow = {
-          prix: number; unite: string; fournisseur_id: string;
-          produits: { nom: string };
-        };
+        type TarifRow = { prix: number; unite: string; fournisseur_id: string; produits: { nom: string } };
         const tarifsMap = new Map<string, { fournId: string; prix: number }[]>();
         ((tarifs ?? []) as unknown as TarifRow[]).forEach(t => {
           const key = t.produits.nom.toLowerCase().trim();
           if (!tarifsMap.has(key)) tarifsMap.set(key, []);
           tarifsMap.get(key)!.push({ fournId: t.fournisseur_id, prix: Number(t.prix) });
         });
-        // Dernier prix payé par produit
         const dernierPrixPaye = new Map<string, number>();
         typed.slice().reverse().forEach(c => {
           c.lignes_commande.forEach(l => {
@@ -151,7 +154,7 @@ export default function FacturesPage() {
     let arr = commandes;
     if (fournFilter !== "tous") arr = arr.filter(c => (c.fournisseur_id ?? c.fournisseur_externe_id) === fournFilter);
     if (dateFrom) arr = arr.filter(c => c.created_at.slice(0, 10) >= dateFrom);
-    if (dateTo)   arr = arr.filter(c => c.created_at.slice(0, 10) <= dateTo);
+    if (dateTo) arr = arr.filter(c => c.created_at.slice(0, 10) <= dateTo);
     const min = parseFloat(montantMin);
     if (!isNaN(min) && min > 0) arr = arr.filter(c => Number(c.montant_total) >= min);
     const max = parseFloat(montantMax);
@@ -167,12 +170,13 @@ export default function FacturesPage() {
     return arr;
   }, [commandes, fournFilter, dateFrom, dateTo, montantMin, montantMax, search, fournNames]);
 
-  useEffect(() => { setPage(1); }, [fournFilter, dateFrom, dateTo, montantMin, montantMax, search]);
+  useEffect(() => { setPage(1); }, [fournFilter, dateFrom, dateTo, montantMin, montantMax, search, tab]);
 
   const fournUniques = Array.from(new Set(commandes.map(c => c.fournisseur_id ?? c.fournisseur_externe_id).filter((x): x is string => !!x)));
   const totalFiltre = filtered.filter(c => c.statut !== "annulee").reduce((s, c) => s + Number(c.montant_total), 0);
+  const nbAvoirs = commandes.filter(c => Number(c.avoir_montant) > 0).length;
+  const nbImport = commandes.filter(c => c.source === "import").length;
 
-  // Vue par produit
   const parProduit: LignesByProduit[] = useMemo(() => {
     const map = new Map<string, LignesByProduit>();
     filtered.forEach(c => {
@@ -183,42 +187,40 @@ export default function FacturesPage() {
           map.set(key, { nom: l.nom_snapshot, totalQte: 0, totalValeur: 0, occurrences: [] });
         }
         const p = map.get(key)!;
-        p.totalQte    += Number(l.quantite);
+        p.totalQte += Number(l.quantite);
         p.totalValeur += Number(l.quantite) * Number(l.prix_snapshot);
         p.occurrences.push({
-          fournisseurId:  c.fournisseur_id ?? c.fournisseur_externe_id ?? "",
+          fournisseurId: c.fournisseur_id ?? c.fournisseur_externe_id ?? "",
           fournisseurNom: fournNom,
-          prix:           Number(l.prix_snapshot),
-          qte:            Number(l.quantite),
-          date:           c.created_at,
+          prix: Number(l.prix_snapshot),
+          qte: Number(l.quantite),
+          date: c.created_at,
         });
       });
     });
     return Array.from(map.values()).sort((a, b) => b.totalValeur - a.totalValeur);
   }, [filtered, fournNames]);
 
+  const hasFilters = !!(search || fournFilter !== "tous" || dateFrom || dateTo || montantMin || montantMax);
+
   async function download(id: string) {
     setDL(id);
     try { await regenerateFacturePDF(id); }
-    catch (e) { console.error(e); alert("Erreur lors de la génération du PDF."); }
+    catch (e) { console.error(e); pushToast("Erreur lors de la génération du PDF", { tone: "danger" }); }
     setDL(null);
   }
 
-  /** Ouvre le PDF original d'une facture importée dans un nouvel onglet. */
   async function viewOriginal(pdfPath: string) {
     const supa = createClient();
-    const { data, error } = await supa.storage.from("factures-externes")
-      .createSignedUrl(pdfPath, 300);
-    if (error || !data) { alert("Impossible d'ouvrir le PDF : " + (error?.message ?? "inconnu")); return; }
+    const { data, error } = await supa.storage.from("factures-externes").createSignedUrl(pdfPath, 300);
+    if (error || !data) { pushToast("Impossible d'ouvrir le PDF", { tone: "danger" }); return; }
     window.open(data.signedUrl, "_blank");
   }
 
-  /** Télécharge le PDF original d'une facture importée. */
   async function downloadOriginal(pdfPath: string) {
     const supa = createClient();
-    const { data, error } = await supa.storage.from("factures-externes")
-      .createSignedUrl(pdfPath, 300, { download: true });
-    if (error || !data) { alert("Impossible de télécharger : " + (error?.message ?? "inconnu")); return; }
+    const { data, error } = await supa.storage.from("factures-externes").createSignedUrl(pdfPath, 300, { download: true });
+    if (error || !data) { pushToast("Impossible de télécharger", { tone: "danger" }); return; }
     const a = document.createElement("a");
     a.href = data.signedUrl;
     a.click();
@@ -226,246 +228,241 @@ export default function FacturesPage() {
 
   return (
     <DashboardLayout role="restaurateur">
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-10">
-        <div className="mb-6 flex items-center gap-2 text-sm text-gray-400">
-          <Link href="/dashboard/restaurateur" className="hover:text-gray-600">Dashboard</Link>
-          <span>/</span>
-          <span className="text-gray-600">Factures</span>
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="page-title">Factures &amp; historique</h1>
+          <p className="page-sub">
+            <span className="mono tabular">{commandes.length}</span> facture{commandes.length > 1 ? "s" : ""} · import IA disponible.
+          </p>
         </div>
+        <Button variant="primary" iconLeft="upload" onClick={() => setImportOpen(true)}>
+          Importer une facture
+        </Button>
+      </header>
 
-        <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="page-title">Factures &amp; historique</h1>
-            <p className="page-sub">
-              <span className="mono">{commandes.length}</span> facture{commandes.length > 1 ? "s" : ""} au total.
-            </p>
+      {/* KPI row */}
+      <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <KpiCard label="Total factures" icon="file-text" value={<span className="mono tabular">{commandes.length}</span>} />
+        <KpiCard label="Importées IA" icon="sparkles" value={<span className="mono tabular">{nbImport}</span>} />
+        <KpiCard label="Avoirs actifs" icon="alert-triangle" value={<span className="mono tabular">{nbAvoirs}</span>} delta={nbAvoirs > 0 ? { value: "à suivre", trend: "down" } : undefined} />
+        <KpiCard label="Total filtré" icon="euro" value={<span className="mono tabular">{fmt(totalFiltre).replace(" €", "")}</span>} unit=" €" />
+      </section>
+
+      {/* Tabs + filters */}
+      <div className="mb-3">
+        <Tabs
+          items={[
+            { id: "factures", label: "Factures", count: commandes.length },
+            { id: "produits", label: "Par produit", count: parProduit.length },
+          ]}
+          value={tab}
+          onChange={(id) => setTab(id as "factures" | "produits")}
+        />
+      </div>
+
+      <section className="mb-4 rounded-[10px] border border-[var(--border)] bg-white p-3">
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="flex-1 min-w-[220px]">
+            <SearchInput value={search} onValueChange={setSearch} placeholder="N° facture, fournisseur, id…" />
           </div>
-          <button
-            onClick={() => setImportOpen(true)}
-            className="flex items-center gap-2 rounded-[8px] bg-[var(--accent)] px-3.5 py-[7px] text-[13px] font-[550] text-white transition-colors hover:bg-[var(--accent-hover)]"
-          >
-            <span>+</span>
-            <span>Importer une facture</span>
-          </button>
-        </div>
-
-        {/* Tabs */}
-        <div className="mb-5 flex gap-1 rounded-xl border border-gray-200 bg-white p-1 w-fit">
-          {([
-            { id: "factures", label: "Factures" },
-            { id: "produits", label: "Par produit" },
-          ] as const).map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`min-h-[40px] rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
-                tab === t.id ? "bg-indigo-500 text-white" : "text-gray-500 hover:text-[#1A1A2E]"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Filtres (communs aux 2 onglets) */}
-        <div className="mb-4 flex flex-wrap items-end gap-2">
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="🔍 N° facture, fournisseur, id…"
-            className="flex-1 min-w-48 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-          />
-          <select value={fournFilter} onChange={e => setFournFilter(e.target.value)}
-                  className="min-h-[44px] rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm outline-none focus:border-indigo-500">
+          <Select value={fournFilter} onChange={e => setFournFilter(e.target.value)}>
             <option value="tous">Tous fournisseurs</option>
             {fournUniques.map(id => (
               <option key={id} value={id}>{fournNames[id] ?? id.slice(0, 6)}</option>
             ))}
-          </select>
-          <label className="flex flex-col gap-0.5">
-            <span className="text-[10px] font-medium text-gray-500">Du</span>
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} max={dateTo || undefined}
-                   className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-2 py-1.5 text-sm" />
-          </label>
-          <label className="flex flex-col gap-0.5">
-            <span className="text-[10px] font-medium text-gray-500">Au</span>
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} min={dateFrom || undefined}
-                   className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-2 py-1.5 text-sm" />
-          </label>
-          <label className="flex flex-col gap-0.5">
-            <span className="text-[10px] font-medium text-gray-500">Min €</span>
-            <input type="number" min="0" step="0.01" value={montantMin} onChange={e => setMontantMin(e.target.value)} placeholder="0"
-                   className="min-h-[40px] w-24 rounded-xl border border-gray-200 bg-white px-2 py-1.5 text-sm" />
-          </label>
-          <label className="flex flex-col gap-0.5">
-            <span className="text-[10px] font-medium text-gray-500">Max €</span>
-            <input type="number" min="0" step="0.01" value={montantMax} onChange={e => setMontantMax(e.target.value)} placeholder="∞"
-                   className="min-h-[40px] w-24 rounded-xl border border-gray-200 bg-white px-2 py-1.5 text-sm" />
-          </label>
-          {(search || fournFilter !== "tous" || dateFrom || dateTo || montantMin || montantMax) && (
-            <button onClick={() => { setSearch(""); setFournFilter("tous"); setDateFrom(""); setDateTo(""); setMontantMin(""); setMontantMax(""); }}
-                    className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-3 text-xs text-gray-600 hover:border-indigo-300">
+          </Select>
+          <Field label="Du">
+            <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} max={dateTo || undefined} className="w-[150px]" />
+          </Field>
+          <Field label="Au">
+            <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} min={dateFrom || undefined} className="w-[150px]" />
+          </Field>
+          <Field label="Min €">
+            <Input type="number" min="0" step="0.01" value={montantMin} onChange={e => setMontantMin(e.target.value)} placeholder="0" className="w-[90px]" />
+          </Field>
+          <Field label="Max €">
+            <Input type="number" min="0" step="0.01" value={montantMax} onChange={e => setMontantMax(e.target.value)} placeholder="∞" className="w-[90px]" />
+          </Field>
+          {hasFilters ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              iconLeft="x"
+              onClick={() => {
+                setSearch(""); setFournFilter("tous"); setDateFrom(""); setDateTo("");
+                setMontantMin(""); setMontantMax("");
+              }}
+            >
               Réinitialiser
-            </button>
-          )}
+            </Button>
+          ) : null}
         </div>
+      </section>
 
-        <div className="mb-4 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-600">
-          Total affiché (hors annulées) : <span className="font-semibold text-[#1A1A2E]">{fmt(totalFiltre)}</span>
-        </div>
-
-        {/* Contenu */}
-        {loading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-14 animate-pulse rounded-2xl border border-gray-200 bg-white" />
+      {/* Content */}
+      {loading ? (
+        <Card>
+          <div className="p-4 space-y-3">
+            {[0, 1, 2, 3, 4].map(i => (
+              <div key={i} className="flex items-center gap-3">
+                <Skeleton width={92} height={14} />
+                <Skeleton width="30%" height={14} />
+                <Skeleton width={120} height={22} rounded={20} />
+                <Skeleton width={80} height={14} className="ml-auto" />
+                <Skeleton width={180} height={28} rounded={7} />
+              </div>
             ))}
           </div>
-        ) : tab === "factures" ? (
-          filtered.length === 0 ? (
-            <div className="rounded-2xl border border-gray-200 bg-white py-20 text-center text-gray-500">
-              Aucune facture ne correspond.
-            </div>
-          ) : (
-            <div className="overflow-x-auto rounded-[12px] border border-[var(--border)] bg-white">
-              <table className="w-full min-w-[700px] text-[13px]">
-                <thead>
-                  <tr className="border-b border-[var(--border)] bg-[var(--bg-subtle)]">
-                    <th className="px-4 py-[9px] text-left label-upper">Date</th>
-                    <th className="px-4 py-[9px] text-left label-upper">Fournisseur</th>
-                    <th className="px-4 py-[9px] text-left label-upper">Statut</th>
-                    <th className="px-4 py-[9px] text-right label-upper">Montant HT</th>
-                    <th className="px-4 py-[9px] text-right label-upper">TTC</th>
-                    <th className="px-4 py-[9px] text-right label-upper">PDF</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginate(filtered, page, PAGE_SIZE_DEFAULT).map((c) => {
-                    const ttc = Number(c.montant_total) * 1.10;
-                    const chip = STATUT_CHIP[c.statut];
-                    return (
-                      <tr key={c.id} className="border-b border-[var(--border)] transition-colors hover:bg-[var(--bg-subtle)] last:border-b-0">
-                        <td className="mono px-4 py-[10px] text-[12.5px] text-[var(--text-muted)]">
-                          {new Date(c.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "2-digit" })}
-                        </td>
-                        <td className="px-4 py-[10px] font-[550] text-[var(--text)]">{fournNames[c.fournisseur_id ?? c.fournisseur_externe_id ?? ""] ?? "—"}</td>
-                        <td className="px-4 py-[10px]">
-                          <span className={`rounded-full border px-2 py-0.5 text-[11px] font-[550] ${chip.cls}`}>
-                            {chip.label}
-                          </span>
-                          {Number(c.avoir_montant) > 0 && (
-                            <span className="ml-1.5 rp-badge danger">
-                              Avoir <span className="mono">{fmt(Number(c.avoir_montant))}</span>
-                            </span>
-                          )}
-                        </td>
-                        <td className="mono px-4 py-[10px] text-right font-[600] text-[var(--text)]">{fmt(c.montant_total)}</td>
-                        <td className="mono px-4 py-[10px] text-right text-[var(--text-muted)]">{fmt(ttc)}</td>
-                        <td className="px-5 py-3 text-right">
-                          <div className="flex justify-end gap-1">
-                            {c.source === "import" && c.pdf_path ? (
-                              <>
-                                <button
-                                  onClick={() => viewOriginal(c.pdf_path!)}
-                                  className="inline-flex items-center gap-1.5 rounded-[7px] border border-[var(--border-strong)] bg-white px-2.5 py-1 text-[12px] font-[550] text-[var(--text)] transition-colors hover:bg-[var(--bg-subtle)]"
-                                  title="Consulter le PDF original"
-                                >
-                                  <Icon name="eye" size={13} />
-                                  <span>Consulter</span>
-                                </button>
-                                <button
-                                  onClick={() => downloadOriginal(c.pdf_path!)}
-                                  className="inline-flex items-center gap-1.5 rounded-[7px] border border-[var(--border-strong)] bg-white px-2.5 py-1 text-[12px] font-[550] text-[var(--text)] transition-colors hover:bg-[var(--bg-subtle)]"
-                                  title="Télécharger le PDF original"
-                                >
-                                  <Icon name="download" size={13} />
-                                  <span>Télécharger</span>
-                                </button>
-                              </>
-                            ) : (
-                              <button
-                                onClick={() => download(c.id)}
-                                disabled={downloading === c.id}
-                                className="inline-flex items-center gap-1.5 rounded-[7px] border border-[var(--border-strong)] bg-white px-2.5 py-1 text-[12px] font-[550] text-[var(--text)] transition-colors hover:bg-[var(--bg-subtle)] disabled:opacity-50"
-                              >
-                                {downloading === c.id ? "…" : (<><Icon name="download" size={13} /><span>Générer PDF</span></>)}
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              <Pagination page={page} total={filtered.length} onChange={setPage} />
-            </div>
-          )
+        </Card>
+      ) : tab === "factures" ? (
+        filtered.length === 0 ? (
+          <Card>
+            <EmptyState
+              icon={commandes.length === 0 ? "file-text" : "search"}
+              title={commandes.length === 0 ? "Aucune facture encore" : "Aucun résultat"}
+              sub={commandes.length === 0 ? "Importez une première facture PDF — la lecture IA extrait automatiquement les lignes." : "Ajustez vos filtres."}
+              action={commandes.length === 0 ? (
+                <Button variant="primary" iconLeft="upload" onClick={() => setImportOpen(true)}>
+                  Importer ma première facture
+                </Button>
+              ) : undefined}
+            />
+          </Card>
         ) : (
-          parProduit.length === 0 ? (
-            <div className="rounded-2xl border border-gray-200 bg-white py-20 text-center text-gray-500">
-              Aucune ligne d&apos;achat dans la période.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {parProduit.map((p) => {
-                const alert = cheaperAlerts[p.nom.toLowerCase().trim()];
-                const dernierPrix = p.occurrences[p.occurrences.length - 1]?.prix ?? 0;
-                const economie = alert ? (dernierPrix - alert.prix) : 0;
-                return (
-                <details key={p.nom} className="group overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-                  <summary className="flex cursor-pointer items-center justify-between p-4 list-none">
+          <Table>
+            <TableHead columns={TABLE_COLS}>
+              <div>Date</div>
+              <div>Fournisseur</div>
+              <div>N°</div>
+              <div>Statut</div>
+              <div className="text-right">HT</div>
+              <div className="text-right">TTC</div>
+              <div className="text-right">Actions</div>
+            </TableHead>
+            {paginate(filtered, page, PAGE_SIZE_DEFAULT).map((c) => {
+              const ttc = Number(c.montant_total) * 1.10;
+              const meta = STATUT_META[c.statut] ?? { label: c.statut, tone: "neutral" as StatutTone };
+              const hasAvoir = Number(c.avoir_montant) > 0;
+              return (
+                <TableRow key={c.id} columns={TABLE_COLS}>
+                  <div className="mono tabular text-[12.5px] text-[var(--text-muted)]">
+                    {new Date(c.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "2-digit" })}
+                  </div>
+                  <div className="text-[13px] font-[550] text-[var(--text)] truncate">
+                    {fournNames[c.fournisseur_id ?? c.fournisseur_externe_id ?? ""] ?? "—"}
+                  </div>
+                  <div className="mono tabular text-[11.5px] text-[var(--text-subtle)] truncate">
+                    {c.numero_facture_externe ?? `#${c.id.slice(0, 6).toUpperCase()}`}
+                  </div>
+                  <div className="flex items-center gap-[4px] flex-wrap">
+                    <Badge tone={meta.tone}>{meta.label}</Badge>
+                    {hasAvoir ? (
+                      <Badge tone="danger" icon="alert-triangle">
+                        <span className="mono tabular">{fmt(Number(c.avoir_montant))}</span>
+                      </Badge>
+                    ) : null}
+                    {c.source === "import" ? <Badge tone="accent" icon="sparkles">IA</Badge> : null}
+                  </div>
+                  <div className="mono tabular text-[13px] font-[600] text-[var(--text)] text-right">
+                    {fmt(c.montant_total)}
+                  </div>
+                  <div className="mono tabular text-[12.5px] text-[var(--text-muted)] text-right">
+                    {fmt(ttc)}
+                  </div>
+                  <div className="flex justify-end gap-1">
+                    {c.source === "import" && c.pdf_path ? (
+                      <>
+                        <Button size="sm" variant="secondary" iconLeft="eye" onClick={() => viewOriginal(c.pdf_path!)}>Consulter</Button>
+                        <Button size="sm" variant="secondary" iconLeft="download" onClick={() => downloadOriginal(c.pdf_path!)}>PDF</Button>
+                      </>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        iconLeft="download"
+                        loading={downloading === c.id}
+                        onClick={() => download(c.id)}
+                      >
+                        Générer PDF
+                      </Button>
+                    )}
+                  </div>
+                </TableRow>
+              );
+            })}
+            <TableFooter
+              left={<>{Math.min((page - 1) * PAGE_SIZE_DEFAULT + 1, filtered.length)}–{Math.min(page * PAGE_SIZE_DEFAULT, filtered.length)} sur {filtered.length}</>}
+              right={<Pagination page={page} total={filtered.length} onChange={setPage} />}
+            />
+          </Table>
+        )
+      ) : (
+        parProduit.length === 0 ? (
+          <Card>
+            <EmptyState icon="package" title="Aucune ligne d'achat" sub="Ajustez la période ou les filtres." />
+          </Card>
+        ) : (
+          <div className="space-y-2">
+            {parProduit.map((p) => {
+              const alert = cheaperAlerts[p.nom.toLowerCase().trim()];
+              const dernierPrix = p.occurrences[p.occurrences.length - 1]?.prix ?? 0;
+              const economie = alert ? (dernierPrix - alert.prix) : 0;
+              return (
+                <details key={p.nom} className="group overflow-hidden rounded-[10px] border border-[var(--border)] bg-white">
+                  <summary className="flex cursor-pointer items-center gap-3 p-4 list-none">
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate font-semibold text-[#1A1A2E]">{p.nom}</p>
-                        {alert && (
-                          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                            🏷 Disponible à {fmt(alert.prix)} chez {alert.fournNom} · économie {fmt(economie)}/u
-                          </span>
-                        )}
+                        <p className="truncate text-[14px] font-[600] text-[var(--text)]">{p.nom}</p>
+                        {alert ? (
+                          <Badge tone="success" icon="tag">
+                            {fmt(alert.prix)} chez {alert.fournNom} · −{fmt(economie)}/u
+                          </Badge>
+                        ) : null}
                       </div>
-                      <p className="text-xs text-gray-500">
-                        {p.occurrences.length} achat{p.occurrences.length > 1 ? "s" : ""} · {p.totalQte} unités · {fmt(p.totalValeur)}
+                      <p className="text-[11.5px] text-[var(--text-muted)] mt-[2px]">
+                        <span className="mono tabular">{p.occurrences.length}</span> achat{p.occurrences.length > 1 ? "s" : ""} ·{" "}
+                        <span className="mono tabular">{p.totalQte}</span> unités · <span className="mono tabular font-[600] text-[var(--text)]">{fmt(p.totalValeur)}</span>
                       </p>
                     </div>
-                    <span className="text-gray-400 group-open:rotate-180 transition-transform">▾</span>
+                    <Icon name="chevron-down" size={14} className="text-[var(--text-subtle)] group-open:rotate-180 transition-transform" />
                   </summary>
-                  <div className="border-t border-gray-200 bg-gray-50 p-3">
-                    <div className="overflow-x-auto">
-                      <table className="w-full min-w-[560px] text-sm">
-                        <thead>
-                          <tr className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                            <th className="px-3 py-2 text-left">Date</th>
-                            <th className="px-3 py-2 text-left">Fournisseur</th>
-                            <th className="px-3 py-2 text-right">Qté</th>
-                            <th className="px-3 py-2 text-right">Prix unit.</th>
-                            <th className="px-3 py-2 text-right">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200">
-                          {p.occurrences.map((o, i) => (
-                            <tr key={i} className="text-[#1A1A2E]">
-                              <td className="px-3 py-2 text-gray-500">
-                                {new Date(o.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
-                              </td>
-                              <td className="px-3 py-2">{o.fournisseurNom}</td>
-                              <td className="px-3 py-2 text-right">{o.qte}</td>
-                              <td className="px-3 py-2 text-right">{fmt(o.prix)}</td>
-                              <td className="px-3 py-2 text-right font-medium">{fmt(o.prix * o.qte)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                  <div className="border-t border-[var(--border)] bg-[var(--bg-subtle)] p-3">
+                    <div className="overflow-x-auto bg-white border border-[var(--border)] rounded-[8px]">
+                      <div
+                        className="grid gap-3 px-3 py-[9px] border-b border-[var(--border)] text-[10.5px] font-[650] text-[var(--text-muted)] uppercase tracking-[0.04em]"
+                        style={{ gridTemplateColumns: "120px 1fr 80px 110px 110px" }}
+                      >
+                        <div>Date</div>
+                        <div>Fournisseur</div>
+                        <div className="text-right">Qté</div>
+                        <div className="text-right">P.U.</div>
+                        <div className="text-right">Total</div>
+                      </div>
+                      {p.occurrences.map((o, i) => (
+                        <div
+                          key={i}
+                          className="grid gap-3 px-3 py-[9px] text-[13px] border-b border-[var(--border)] last:border-b-0"
+                          style={{ gridTemplateColumns: "120px 1fr 80px 110px 110px" }}
+                        >
+                          <div className="mono tabular text-[12.5px] text-[var(--text-muted)]">
+                            {new Date(o.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+                          </div>
+                          <div className="truncate text-[var(--text)]">{o.fournisseurNom}</div>
+                          <div className="mono tabular text-right text-[var(--text-muted)]">{o.qte}</div>
+                          <div className="mono tabular text-right text-[var(--text-muted)]">{fmt(o.prix)}</div>
+                          <div className="mono tabular text-right font-[600] text-[var(--text)]">{fmt(o.prix * o.qte)}</div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </details>
               );
-              })}
-            </div>
-          )
-        )}
-      </div>
+            })}
+          </div>
+        )
+      )}
 
+      {/* Import modal */}
       {importOpen && (
         <FactureImportModal
           onClose={() => setImportOpen(false)}
