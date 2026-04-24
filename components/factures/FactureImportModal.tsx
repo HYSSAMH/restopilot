@@ -335,6 +335,20 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Session expirée");
 
+      // Récupère le nom du restaurateur depuis son profil (évite un 400
+      // sur commandes.restaurateur_nom qui est NOT NULL côté DB).
+      const { data: myProfile } = await supabase
+        .from("profiles")
+        .select("nom_commercial, nom_etablissement, prenom, nom")
+        .eq("id", user.id)
+        .maybeSingle();
+      const restaurateurNom =
+        myProfile?.nom_commercial?.trim()
+        || myProfile?.nom_etablissement?.trim()
+        || [myProfile?.prenom, myProfile?.nom].filter(Boolean).join(" ").trim()
+        || user.email
+        || "Mon restaurant";
+
       // 1. Chercher si ce fournisseur existe déjà (sur profiles inscrits ou
       //    dans fournisseurs_externes du restaurateur)
       let fournisseurId: string | null = null;
@@ -399,7 +413,7 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
         restaurateur_id:         user.id,
         fournisseur_id:          fournisseurId,
         fournisseur_externe_id:  fournisseurExterneId,
-        restaurateur_nom:        "",
+        restaurateur_nom:        restaurateurNom,
         montant_total:           Math.round(montant * 100) / 100,
         statut:                  "livree",
         source:                  "import",
