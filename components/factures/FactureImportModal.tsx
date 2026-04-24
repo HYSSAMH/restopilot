@@ -51,17 +51,72 @@ function readBase64(file: File): Promise<string> {
   });
 }
 
+/**
+ * OCR d'un PDF scanné côté client.
+ * Rend chaque page en canvas via pdfjs-dist puis passe à tesseract.js.
+ * Cette approche évite tout timeout serverless côté Netlify.
+ */
+async function ocrPdfClient(file: File, onProgress: (s: string) => void): Promise<string> {
+  // Imports dynamiques pour éviter SSR + alléger le bundle initial
+  const [{ getDocument, GlobalWorkerOptions }, tesseract] = await Promise.all([
+    import("pdfjs-dist"),
+    import("tesseract.js"),
+  ]);
+  // Worker pdfjs servi depuis un CDN (évite la config webpack)
+  // Version alignée avec la dépendance dans package.json.
+  const pdfjsVersion = "5.6.205";
+  GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
+
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await getDocument({ data: arrayBuffer }).promise;
+
+  const worker = await tesseract.createWorker("fra");
+  let fullText = "";
+  try {
+    for (let p = 1; p <= pdf.numPages; p++) {
+      onProgress(`OCR page ${p}/${pdf.numPages}…`);
+      const page = await pdf.getPage(p);
+      const viewport = page.getViewport({ scale: 2 });
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas non supporté");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      await page.render({ canvasContext: ctx, viewport, canvas }).promise;
+      const { data } = await worker.recognize(canvas);
+      fullText += "\n" + data.text;
+    }
+  } finally {
+    await worker.terminate();
+  }
+  return fullText;
+}
+
+/**
+ * OCR d'une image (JPG/PNG/WebP) directement.
+ */
+async function ocrImageClient(file: File, onProgress: (s: string) => void): Promise<string> {
+  const tesseract = await import("tesseract.js");
+  onProgress("OCR de l'image…");
+  const worker = await tesseract.createWorker("fra");
+  try {
+    const { data } = await worker.recognize(file);
+    return data.text;
+  } finally {
+    await worker.terminate();
+  }
+}
+
 const inputCls = "w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-[#1A1A2E] outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20";
 
 export default function FactureImportModal({ onClose, onSaved }: Props) {
-  const fileRef           = useRef<HTMLInputElement>(null);
-  const [step, setStep]   = useState<Step>("pick");
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [step, setStep] = useState<Step>("pick");
   const [error, setError] = useState<string | null>(null);
   const [filename, setFilename] = useState("");
-  const [facture, setFacture]   = useState<ParsedFacture | null>(null);
-  // Base64 du PDF original — réutilisé pour l'upload vers storage
-  // factures-externes après la création de la commande.
-  const [fileBase64, setFileBase64]   = useState<string | null>(null);
+  const [progress, setProgress] = useState<string>("");
+  const [facture, setFacture] = useState<ParsedFacture | null>(null);
+  const [fileBase64, setFileBase64] = useState<string | null>(null);
   const [fileMediaType, setFileMediaType] = useState<string | null>(null);
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -75,27 +130,62 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
     setError(null);
     setFilename(file.name);
     setStep("parsing");
+    setProgress("Extraction du texte…");
+
     try {
       const b64 = await readBase64(file);
       const mt = file.type === "image/jpg" ? "image/jpeg" : file.type;
       setFileBase64(b64);
       setFileMediaType(mt);
-      const res = await fetch("/api/facture-import", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ fileBase64: b64, mediaType: mt }),
-      });
-      if (!res.ok) {
+
+      let parsed: ParsedFacture | null = null;
+
+      if (mt === "application/pdf") {
+        // Étape 1 — tentative serveur (texte natif) via unpdf
+        const res = await fetch("/api/facture-import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fileBase64: b64, mediaType: mt }),
+        });
         const j = await res.json().catch(() => ({}));
-        throw new Error((j as { error?: string }).error ?? `HTTP ${res.status}`);
+
+        if (res.ok && (j as { needsOcr?: boolean }).needsOcr !== true) {
+          parsed = (j as { facture: ParsedFacture }).facture;
+        } else if (j?.needsOcr === true) {
+          // Étape 2 — PDF scanné : OCR client puis parsing serveur
+          setProgress("PDF scanné détecté. OCR en cours dans votre navigateur…");
+          const rawText = await ocrPdfClient(file, setProgress);
+          parsed = await parseRawTextOnServer(rawText);
+        } else {
+          throw new Error((j as { error?: string }).error ?? `HTTP ${res.status}`);
+        }
+      } else {
+        // Image directe : OCR client sans passer par /api/facture-import
+        setProgress("OCR en cours dans votre navigateur…");
+        const rawText = await ocrImageClient(file, setProgress);
+        parsed = await parseRawTextOnServer(rawText);
       }
-      const j = await res.json();
-      setFacture(j.facture as ParsedFacture);
+
+      if (!parsed) throw new Error("Aucune facture extraite.");
+      setFacture(parsed);
       setStep("review");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur");
       setStep("pick");
+    } finally {
+      setProgress("");
     }
+  }
+
+  async function parseRawTextOnServer(rawText: string): Promise<ParsedFacture> {
+    const res = await fetch("/api/facture-parse-text", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rawText }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error((j as { error?: string }).error ?? `HTTP ${res.status}`);
+    return (j as { facture: ParsedFacture }).facture;
   }
 
   function updateFournisseur<K extends keyof ParsedFacture["fournisseur"]>(key: K, value: ParsedFacture["fournisseur"][K]) {
@@ -261,7 +351,7 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
             <h2 className="text-lg font-bold text-[#1A1A2E]">Importer une facture</h2>
             <p className="mt-0.5 text-xs text-gray-500">
               {step === "pick"    && "Choisissez un PDF ou une photo de votre facture fournisseur."}
-              {step === "parsing" && "Claude analyse votre facture…"}
+              {step === "parsing" && (progress || "Analyse de la facture…")}
               {step === "review"  && "Vérifiez les infos extraites avant enregistrement."}
               {step === "saving"  && "Enregistrement en cours…"}
             </p>
@@ -308,7 +398,7 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
               </svg>
-              <p className="text-sm text-gray-700">Analyse IA en cours…</p>
+              <p className="text-sm text-gray-700">{progress || "Analyse en cours…"}</p>
               <p className="text-xs text-gray-500">{filename}</p>
             </div>
           )}

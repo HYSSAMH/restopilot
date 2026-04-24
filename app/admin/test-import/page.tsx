@@ -65,7 +65,7 @@ export default function TestImportPage() {
     }
 
     // Étape 2 : analyse Claude via /api/facture-import (le serveur fait lui-même
-    // le pdf-parse si nécessaire, ou route vers le prompt image)
+    // unpdf si nécessaire, ou route vers le prompt image)
     setEtape("analyzing");
     try {
       const res = await fetch("/api/facture-import", {
@@ -92,7 +92,7 @@ export default function TestImportPage() {
       <div className="mx-auto max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
         <h1 className="text-2xl font-bold text-[var(--text)]">Tester l&apos;extraction facture</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Page de diagnostic : upload un PDF ou une image, vois le texte brut extrait par pdf-parse
+          Page de diagnostic : upload un PDF ou une image, vois le texte brut extrait par unpdf
           puis le JSON retourné par Claude. Aucune commande n&apos;est créée dans la DB.
         </p>
 
@@ -132,7 +132,7 @@ export default function TestImportPage() {
           <section className="mt-4 rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-sm font-semibold text-[var(--text)]">
-                Étape 1 — Texte brut extrait (pdf-parse)
+                Étape 1 — Texte brut extrait (unpdf)
               </h2>
               <p className="text-xs text-gray-500">
                 {extract.pages} page{extract.pages > 1 ? "s" : ""} · {extract.char_count} caractères · {extract.duration_ms} ms
