@@ -5,6 +5,7 @@ import { ImportProvider } from "@/lib/import-context";
 import { ProfileProvider } from "@/lib/auth/profile-provider";
 import ImportToast from "@/components/ImportToast";
 import ImportPreviewModal from "@/components/ImportPreviewModal";
+import { Toaster } from "@/components/ui/Feedback";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
             <ImportToast />
             <ImportPreviewModal />
+            <Toaster />
           </ImportProvider>
         </ProfileProvider>
       </body>
