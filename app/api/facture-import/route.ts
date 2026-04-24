@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { extractText, getDocumentProxy } from "unpdf";
 import { parseFactureText } from "@/lib/parse-facture";
 
 export const runtime = "nodejs";
@@ -80,11 +79,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Extraction texte via unpdf (pur Node, pas de DOMMatrix)
+    // Extraction texte via unpdf — import dynamique pour éviter un
+    // crash au cold-start si le module tarde à charger côté serverless.
     let text = "";
     let totalPages = 0;
     try {
       const t0 = Date.now();
+      const { extractText, getDocumentProxy } = await import("unpdf");
       const buffer = Buffer.from(fileBase64, "base64");
       const pdf = await getDocumentProxy(new Uint8Array(buffer));
       const res = await extractText(pdf, { mergePages: true });

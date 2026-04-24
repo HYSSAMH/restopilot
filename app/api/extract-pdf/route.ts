@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { extractText, getDocumentProxy } from "unpdf";
 
 export const runtime = "nodejs";
 export const maxDuration = 26;
@@ -51,6 +50,7 @@ export async function POST(req: NextRequest) {
     }
 
     const t0 = Date.now();
+    const { extractText, getDocumentProxy } = await import("unpdf");
     const buffer = Buffer.from(fileBase64, "base64");
     const pdf = await getDocumentProxy(new Uint8Array(buffer));
     const res = await extractText(pdf, { mergePages: true });

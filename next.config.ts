@@ -1,9 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // unpdf embarque pdfjs en interne ; on l'exclut du bundling Next
-  // pour qu'il soit résolu en tant que package Node côté serverless.
-  serverExternalPackages: ["unpdf"],
+  /* unpdf est ESM-compatible, Next le bundle sans souci — pas
+   * besoin de serverExternalPackages (ça casse le runtime Netlify
+   * avec @netlify/plugin-nextjs qui ne trace pas toujours les deps
+   * externalisées côté ESM → 502 Cannot find module). */
 };
 
 export default nextConfig;
