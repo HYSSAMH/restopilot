@@ -1,9 +1,10 @@
 import { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { extractText, getDocumentProxy } from "unpdf";
 
-export const runtime     = "nodejs";
-export const maxDuration = 60;
+export const runtime = "nodejs";
+export const maxDuration = 26;
 
 async function requireUser() {
   const cookieStore = await cookies();
@@ -17,11 +18,8 @@ async function requireUser() {
 }
 
 /**
- * Extrait le texte brut d'un PDF via pdf-parse (pas d'appel Anthropic ici).
- * Accepte un body JSON `{ fileBase64 }` ; retourne `{ text, pages, info }`.
- *
- * But : remplacer l'envoi base64 direct à Claude — le texte nettoyé améliore
- * drastiquement la précision d'extraction (factures, mercuriales, relevés).
+ * Extraction texte brut d'un PDF via unpdf (pur Node, pas de
+ * dépendance browser/DOMMatrix). Endpoint diag admin.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -40,52 +38,30 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Vérif magic bytes + taille
     const headBytes = Buffer.from(fileBase64.slice(0, 12), "base64").subarray(0, 4).toString("ascii");
     if (headBytes !== "%PDF") {
       return Response.json({ error: "Le fichier fourni n'est pas un PDF valide." }, { status: 415 });
     }
     const approxBytes = Math.ceil(fileBase64.length * 0.75);
-    if (approxBytes > 25 * 1024 * 1024) {
+    if (approxBytes > 10 * 1024 * 1024) {
       return Response.json(
-        { error: `PDF trop volumineux (${(approxBytes / 1024 / 1024).toFixed(1)} Mo). Max 25 Mo.` },
+        { error: `PDF trop volumineux (${(approxBytes / 1024 / 1024).toFixed(1)} Mo). Max 10 Mo.` },
         { status: 413 },
       );
     }
 
-    // pdf2json (pur Node, pas de dépendance browser/DOMMatrix)
-    const mod = await import("pdf2json");
-    const PDFParser = (mod.default ?? mod) as unknown as new (ctx: null, needRawText?: boolean) => {
-      on(ev: string, cb: (data: unknown) => void): void;
-      parseBuffer(buf: Buffer): void;
-      getRawTextContent(): string;
-    };
-
     const t0 = Date.now();
     const buffer = Buffer.from(fileBase64, "base64");
-    const { text, pages } = await new Promise<{ text: string; pages: number }>((resolve, reject) => {
-      const parser = new PDFParser(null, true);
-      const timer = setTimeout(() => reject(new Error("pdf2json timeout (60s)")), 60_000);
-      parser.on("pdfParser_dataError", (errData) => {
-        clearTimeout(timer);
-        const e = errData as { parserError?: Error };
-        reject(e.parserError ?? new Error("pdf2json error"));
-      });
-      parser.on("pdfParser_dataReady", () => {
-        clearTimeout(timer);
-        const t = parser.getRawTextContent();
-        const pm = t.match(/Page \(\d+\) Break/g);
-        resolve({ text: t, pages: pm ? pm.length : 1 });
-      });
-      parser.parseBuffer(buffer);
-    });
+    const pdf = await getDocumentProxy(new Uint8Array(buffer));
+    const res = await extractText(pdf, { mergePages: true });
+    const text = (res.text as string).trim();
     const ms = Date.now() - t0;
-    console.log(`[extract-pdf] ${pages} page(s), ${text.length} chars, ${ms}ms`);
+    console.log(`[extract-pdf] ${res.totalPages} page(s), ${text.length} chars, ${ms}ms`);
 
     return Response.json({
       ok: true,
       text,
-      pages,
+      pages: res.totalPages,
       char_count: text.length,
       duration_ms: ms,
     });
