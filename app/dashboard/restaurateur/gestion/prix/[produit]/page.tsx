@@ -187,7 +187,7 @@ export default function PrixProduitPage({ params }: { params: Promise<{ produit:
               <div style={{ width: "100%", height: 320 }}>
                 <ResponsiveContainer>
                   <LineChart data={achats.map((a, i) => ({ ...a, idx: i }))} margin={{ top: 10, right: 20, bottom: 5, left: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E8E8EC" />
                     <XAxis dataKey="dateStr" tick={{ fontSize: 11, fill: "#6B7280" }} />
                     <YAxis tick={{ fontSize: 11, fill: "#6B7280" }}
                            tickFormatter={(v) => `${v} €`} />

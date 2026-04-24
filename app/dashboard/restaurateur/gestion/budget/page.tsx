@@ -515,13 +515,13 @@ export default function BudgetPage() {
               ) : (
                 <ResponsiveContainer>
                   <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E8E8EC" />
                     <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#6B7280" }} />
                     <YAxis tick={{ fontSize: 11, fill: "#6B7280" }} />
                     <Tooltip formatter={(v: unknown) => fmt(Number(v))} contentStyle={{ borderRadius: 8, border: "1px solid #E5E7EB" }} />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Bar dataKey="ca"       name="CA"       fill="#10B981" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="depenses" name="Dépenses" fill="#EF4444" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="ca"       name="CA"       fill="#6366F1" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="depenses" name="Dépenses" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -536,7 +536,7 @@ export default function BudgetPage() {
               ) : (
                 <ResponsiveContainer>
                   <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E8E8EC" />
                     <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#6B7280" }} />
                     <YAxis tick={{ fontSize: 11, fill: "#6B7280" }} />
                     <Tooltip formatter={(v: unknown) => fmt(Number(v))} contentStyle={{ borderRadius: 8, border: "1px solid #E5E7EB" }} />

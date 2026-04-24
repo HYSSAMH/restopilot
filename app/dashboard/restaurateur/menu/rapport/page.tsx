@@ -247,7 +247,7 @@ export default function RapportMargePage() {
         <div className="h-64 animate-pulse rounded-2xl bg-gray-100" />
       ) : analyse.infos.length === 0 ? (
         <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center">
-          <p className="text-lg font-semibold text-[#1A1A2E]">Aucun plat à analyser</p>
+          <p className="text-[18px] font-[650] tracking-[-0.01em] text-[var(--text)]">Aucun plat à analyser</p>
           <p className="mt-1 text-sm text-gray-500">
             Créez au moins une fiche technique avec un prix de vente pour voir apparaître la matrice.
           </p>
@@ -266,7 +266,7 @@ export default function RapportMargePage() {
             <div style={{ width: "100%", height: 380 }}>
               <ResponsiveContainer>
                 <ScatterChart margin={{ top: 10, right: 20, bottom: 30, left: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E8E8EC" />
                   <XAxis type="number" dataKey="x" name="Ventes / semaine"
                          tick={{ fontSize: 11, fill: "#6B7280" }}
                          label={{ value: "Ventes / semaine →", position: "insideBottom", offset: -10, fontSize: 11, fill: "#6B7280" }} />

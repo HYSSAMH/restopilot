@@ -181,7 +181,7 @@ function SaisieCaInner() {
         </Link>
       </div>
 
-      <h2 className="text-lg font-semibold text-[#1A1A2E]">
+      <h2 className="text-[18px] font-[650] tracking-[-0.01em] text-[var(--text)]">
         {editId ? "Modifier la saisie" : "Saisir mon CA"}
       </h2>
 

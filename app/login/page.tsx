@@ -52,12 +52,18 @@ function LoginInner() {
 
         <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
           <div className="mb-8 flex flex-col items-center gap-4 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 shadow-md shadow-indigo-500/20">
-              <span className="text-2xl">🔐</span>
+            <div
+              className="flex h-12 w-12 items-center justify-center rounded-[10px] text-white"
+              style={{
+                background: "linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)",
+                boxShadow: "0 1px 2px rgba(99,102,241,0.25), inset 0 1px 0 rgba(255,255,255,0.15)",
+              }}
+            >
+              <span className="text-[15px] font-[700] tracking-[-0.02em]">RP</span>
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-[#1A1A2E]">Connexion</h1>
-              <p className="mt-1 text-sm text-gray-500">Accédez à votre espace RestoPilot</p>
+              <h1 className="page-title">Connexion</h1>
+              <p className="page-sub">Accédez à votre espace RestoPilot</p>
             </div>
           </div>
 

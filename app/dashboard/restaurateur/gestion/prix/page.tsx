@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { createClient } from "@/lib/supabase/client";
 import { loadRestaurateurData, montantNet, fmt, fournIdOf, type Commande } from "@/lib/gestion-data";
+import { Icon } from "@/components/ui/Icon";
 
 function detailHref(produit: string) {
   return `/dashboard/restaurateur/gestion/prix/${encodeURIComponent(produit)}`;
@@ -127,7 +128,7 @@ export default function PrixPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <h2 className="text-lg font-semibold text-[#1A1A2E]">Analyse des prix</h2>
+      <h2 className="text-[18px] font-[650] tracking-[-0.01em] text-[var(--text)]">Analyse des prix</h2>
 
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -144,7 +145,7 @@ export default function PrixPage() {
           {/* Alertes */}
           {alertes.length > 0 && (
             <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5">
-              <h3 className="text-sm font-semibold text-rose-800">⚠ Hausses de prix détectées</h3>
+              <h3 className="flex items-center gap-1.5 text-sm font-[650] text-[var(--danger)]"><Icon name="alert-triangle" size={14} /> Hausses de prix détectées</h3>
               <p className="mt-1 text-xs text-rose-700">
                 Ces produits ont augmenté de plus de 10% par rapport à votre dernière commande.
               </p>
@@ -184,7 +185,7 @@ export default function PrixPage() {
                       date: new Date(d.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }),
                       prix: Math.round(d.prix * 100) / 100,
                     }))}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E8E8EC" />
                       <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#6B7280" }} />
                       <YAxis tick={{ fontSize: 11, fill: "#6B7280" }} />
                       <Tooltip formatter={(v: unknown) => fmt(Number(v))} contentStyle={{ borderRadius: 8, border: "1px solid #E5E7EB" }} />

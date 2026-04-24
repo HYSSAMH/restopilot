@@ -109,7 +109,7 @@ export default function EquipePage() {
     <DashboardLayout role="restaurateur">
       <div className="mx-auto max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[#1A1A2E]">Mon équipe</h1>
+          <h1 className="page-title">Mon équipe</h1>
           <p className="mt-1.5 text-sm text-gray-500">
             Créez des comptes pour vos salariés — ils accèdent uniquement à la saisie du chiffre d&apos;affaires.
           </p>
@@ -120,7 +120,7 @@ export default function EquipePage() {
           onSubmit={handleCreate}
           className="mb-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
         >
-          <h2 className="text-lg font-semibold text-[#1A1A2E]">Nouvel employé</h2>
+          <h2 className="text-[18px] font-[650] tracking-[-0.01em] text-[var(--text)]">Nouvel employé</h2>
           <p className="mt-1 text-xs text-gray-500">
             Un email unique et un mot de passe temporaire — le salarié pourra le changer après connexion.
           </p>
@@ -185,7 +185,7 @@ export default function EquipePage() {
         {/* Liste */}
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
           <div className="border-b border-gray-100 px-6 py-4">
-            <h2 className="text-lg font-semibold text-[#1A1A2E]">
+            <h2 className="text-[18px] font-[650] tracking-[-0.01em] text-[var(--text)]">
               Employés ({employes.length})
             </h2>
           </div>

@@ -8,6 +8,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { loadRestaurateurData, montantNet, fmt, type Commande } from "@/lib/gestion-data";
 import { useProfile } from "@/lib/auth/use-profile";
+import { Icon } from "@/components/ui/Icon";
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -314,13 +315,13 @@ function DashboardTab({ ctx }: { ctx: Ctx }) {
           ) : (
             <ResponsiveContainer>
               <BarChart data={hebdo}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E8E8EC" />
                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#6B7280" }} />
                 <YAxis tick={{ fontSize: 11, fill: "#6B7280" }} />
                 <Tooltip formatter={(v: unknown) => fmt(Number(v))} contentStyle={{ borderRadius: 8, border: "1px solid #E5E7EB" }} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="credit" name="Entrées" fill="#10B981" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="debit"  name="Sorties" fill="#EF4444" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="credit" name="Entrées" fill="#6366F1" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="debit"  name="Sorties" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -758,7 +759,7 @@ function LinkPointageModal({
               <span className="font-semibold">{fmt(targetMontant)}</span>
             </p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700">✕</button>
+          <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-[6px] text-[var(--text-subtle)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text)]" aria-label="Fermer"><Icon name="x" size={14} /></button>
         </div>
 
         <input type="text" value={query} onChange={e => setQuery(e.target.value)}

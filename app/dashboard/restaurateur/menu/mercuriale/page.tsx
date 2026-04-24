@@ -7,6 +7,7 @@ import { useProfile } from "@/lib/auth/use-profile";
 import { fmt, CAT_LABELS } from "@/lib/gestion-data";
 import { loadProduitSources, type ProduitSource, type ProduitSourceKind } from "@/lib/mercuriale-sources";
 import { Pagination, paginate, PAGE_SIZE_DEFAULT } from "@/components/ui/Pagination";
+import { Icon } from "@/components/ui/Icon";
 
 type Source = ProduitSourceKind;
 
@@ -486,7 +487,7 @@ function ConditionnementModal({
             <h2 className="text-lg font-bold text-[#1A1A2E]">Configurer le conditionnement</h2>
             <p className="mt-0.5 text-sm text-gray-500">{produit.produit_nom}</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700">✕</button>
+          <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-[6px] text-[var(--text-subtle)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text)]" aria-label="Fermer"><Icon name="x" size={14} /></button>
         </div>
 
         {/* Base facture (non modifiable) */}

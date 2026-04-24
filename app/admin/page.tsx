@@ -54,8 +54,8 @@ export default function AdminDashboard() {
     <AdminLayout>
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-10">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[#1A1A2E]">Vue d&apos;ensemble</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="page-title">Vue d&apos;ensemble</h1>
+          <p className="page-sub">
             État général de la plateforme en temps réel.
           </p>
         </div>
@@ -103,12 +103,12 @@ function Kpi({
   label, value, loading, wide,
 }: { label: string; value?: number | string; loading?: boolean; wide?: boolean }) {
   return (
-    <div className={`rounded-2xl border border-gray-200 bg-white p-5 shadow-sm ${wide ? "" : ""}`}>
-      <p className="text-xs font-medium uppercase tracking-wider text-gray-500">{label}</p>
+    <div className={`rounded-[12px] border border-[var(--border)] bg-white p-4 ${wide ? "" : ""}`}>
+      <p className="label-upper">{label}</p>
       {loading ? (
-        <div className="mt-3 h-8 w-20 animate-pulse rounded bg-gray-100" />
+        <div className="mt-2 h-7 w-20 animate-pulse rounded bg-[var(--bg-subtle)]" />
       ) : (
-        <p className="mt-1.5 text-2xl font-bold text-[#1A1A2E]">{value ?? "—"}</p>
+        <p className="mono mt-1.5 text-[22px] font-[650] tracking-[-0.02em] leading-[1.1] text-[var(--text)]">{value ?? "—"}</p>
       )}
     </div>
   );

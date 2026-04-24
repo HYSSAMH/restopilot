@@ -99,7 +99,7 @@ export default function FournisseursPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <h2 className="text-lg font-semibold text-[#1A1A2E]">Tableau de bord fournisseurs</h2>
+      <h2 className="text-[18px] font-[650] tracking-[-0.01em] text-[var(--text)]">Tableau de bord fournisseurs</h2>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="Fournisseurs"       value={String(rows.length)} />

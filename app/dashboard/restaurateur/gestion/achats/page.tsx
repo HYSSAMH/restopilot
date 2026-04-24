@@ -171,7 +171,7 @@ export default function AchatsPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <h2 className="text-lg font-semibold text-[#1A1A2E]">Historique d&apos;achats</h2>
+      <h2 className="text-[18px] font-[650] tracking-[-0.01em] text-[var(--text)]">Historique d&apos;achats</h2>
 
       {/* Filtres */}
       <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -252,7 +252,7 @@ export default function AchatsPage() {
               <div style={{ width: "100%", height: 240 }}>
                 <ResponsiveContainer>
                   <LineChart data={evolution}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E8E8EC" />
                     <XAxis dataKey="periode" tick={{ fontSize: 11, fill: "#6B7280" }} />
                     <YAxis tick={{ fontSize: 11, fill: "#6B7280" }} />
                     <Tooltip formatter={(v: unknown) => fmt(Number(v))} contentStyle={{ borderRadius: 8, border: "1px solid #E5E7EB" }} />
@@ -342,7 +342,7 @@ function TopChart({ title, items, dataKey, isEuro }: { title: string; items: { n
         <div style={{ width: "100%", height: 260 }}>
           <ResponsiveContainer>
             <BarChart data={data} layout="vertical" margin={{ top: 5, right: 20, bottom: 5, left: 80 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" horizontal={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#E8E8EC" horizontal={false} />
               <XAxis type="number" tick={{ fontSize: 11, fill: "#6B7280" }} />
               <YAxis type="category" dataKey="nom" tick={{ fontSize: 11, fill: "#6B7280" }} width={75} />
               <Tooltip formatter={(v: unknown) => isEuro ? fmt(Number(v)) : String(Math.round(Number(v)))} contentStyle={{ borderRadius: 8, border: "1px solid #E5E7EB" }} />

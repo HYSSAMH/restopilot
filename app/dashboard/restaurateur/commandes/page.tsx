@@ -11,6 +11,7 @@ import { type CartMap, type Produit, type FournisseurOption } from "@/components
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/auth/use-profile";
 import type { DbTarifJoined } from "@/lib/supabase/types";
+import { Icon } from "@/components/ui/Icon";
 
 // Convertit les tarifs Supabase vers le format Produit[] existant.
 // `liveNames` contient le nom_commercial courant de chaque fournisseur
@@ -450,7 +451,7 @@ function CommandesPage() {
             onClick={() => setCartOpen(true)}
             className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-indigo-500 to-violet-500 px-5 py-3.5 text-sm font-semibold text-[#1A1A2E] shadow-2xl shadow-violet-500/40"
           >
-            <span>🛒</span>
+            <Icon name="shopping-cart" size={16} />
             <span>{cartCount} article{cartCount > 1 ? "s" : ""} dans le panier</span>
             <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
               Voir →

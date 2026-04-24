@@ -195,9 +195,9 @@ export default function RapportsPage() {
 
         <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-[#1A1A2E]">Rapports d&apos;achats</h1>
-            <p className="mt-1 text-sm text-gray-500">
-              Basé sur {filtered.length} ligne{filtered.length > 1 ? "s" : ""} de commandes.
+            <h1 className="page-title">Rapports d&apos;achats</h1>
+            <p className="page-sub">
+              Basé sur <span className="mono">{filtered.length}</span> ligne{filtered.length > 1 ? "s" : ""} de commandes.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
