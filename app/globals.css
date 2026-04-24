@@ -1,70 +1,286 @@
 @import "tailwindcss";
 
 :root {
-  /* Palette claire — tokens RestoPilot (design handoff v3.2) */
-  --background:    #FAFAFA;  /* fond app */
+  /* ═══════════════════════════════════════════════════════════════
+     RestoPilot — Design Tokens v2
+     Source of truth : design_handoff_v2/src/styles.css (prototype)
+     + design_handoff_v2/tokens/tokens.css (additions typographie/motion)
+     ═══════════════════════════════════════════════════════════════ */
+
+  /* ─── Surfaces & neutrals ───────────────────────────────────── */
+  --background:    #FAFAFA;
   --bg:            #FAFAFA;
-  --bg-subtle:     #F5F5F7;  /* fond input, zones secondaires */
-  --surface:       #FFFFFF;  /* cards, sidebar */
-  --surface-alt:   #F5F5F7;  /* lignes alternées */
+  --bg-subtle:     #F5F5F7;
+  --surface:       #FFFFFF;
+  --surface-alt:   #F5F5F7;
   --surface-hover: #F8F9FB;
   --border:        #E8E8EC;
   --border-strong: #D4D4D8;
-  --text:          #0F172A;  /* texte principal */
-  --text-muted:    #64748B;  /* texte secondaire */
-  --text-subtle:   #94A3B8;  /* texte tertiaire */
-  --accent:        #6366F1;
-  --accent-hover:  #4F46E5;
-  --accent-soft:   #EEF2FF;
-  --accent-strong: #4338CA;
-  --accent-border: #C7D2FE;
 
-  /* Sémantiques */
-  --success:       #10B981;
-  --success-soft:  #ECFDF5;
-  --warning:       #F59E0B;
-  --warning-soft:  #FFFBEB;
-  --danger:        #EF4444;
-  --danger-soft:   #FEF2F2;
-  --info:          #0EA5E9;
-  --info-soft:     #F0F9FF;
+  /* ─── Text ──────────────────────────────────────────────────── */
+  --text:         #0F172A;
+  --text-muted:   #64748B;
+  --text-subtle:  #94A3B8;
 
-  /* Radius */
-  --radius-sm: 6px;
-  --radius:    8px;
-  --radius-md: 10px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  /* ─── Brand / Accent (Indigo) ───────────────────────────────── */
+  --accent:         #6366F1;
+  --accent-hover:   #4F46E5;
+  --accent-active:  #4338CA;
+  --accent-strong:  #4338CA; /* alias */
+  --accent-soft:    #EEF2FF;
+  --accent-softer:  #F5F7FF;
+  --accent-border:  #C7D2FE;
 
-  /* Ombres (discrètes — conformes design) */
-  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.04);
-  --shadow:    0 2px 4px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.05);
-  --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.04);
+  /* ─── Semantic ──────────────────────────────────────────────── */
+  --success:      #10B981;
+  --success-soft: #ECFDF5;
+  --warning:      #F59E0B;
+  --warning-soft: #FFFBEB;
+  --danger:       #EF4444;
+  --danger-soft:  #FEF2F2;
+  --info:         #0EA5E9;
+  --info-soft:    #F0F9FF;
+
+  /* ─── Category colors (charts, tags, suppliers) ─────────────── */
+  --cat-blue:   #3B82F6;
+  --cat-red:    #EF4444;
+  --cat-orange: #F97316;
+  --cat-green:  #10B981;
+  --cat-cyan:   #06B6D4;
+  --cat-violet: #8B5CF6;
+  --cat-pink:   #EC4899;
+  --cat-amber:  #F59E0B;
+
+  /* ─── Typography ────────────────────────────────────────────── */
+  --font-sans:    var(--font-geist-sans), 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono:    var(--font-geist-mono), 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+  --font-display: 'Playfair Display', Georgia, serif;
+
+  /* Type scale — ratios stricts */
+  --text-xs:   11px;
+  --text-sm:   12px;
+  --text-base: 13px;
+  --text-md:   14px;
+  --text-lg:   16px;
+  --text-xl:   18px;
+  --text-2xl:  22px;
+  --text-3xl:  28px;
+  --text-4xl:  36px;
+
+  --fw-normal:   400;
+  --fw-medium:   500;
+  --fw-emphasis: 550;
+  --fw-semibold: 600;
+  --fw-strong:   650;
+  --fw-bold:     700;
+
+  --tracking-tight: -0.02em;
+  --tracking-snug:  -0.01em;
+  --tracking-label:  0.04em;
+
+  /* ─── Spacing scale (4px base) ──────────────────────────────── */
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-5:  20px;
+  --sp-6:  24px;
+  --sp-8:  32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+
+  /* ─── Radius ────────────────────────────────────────────────── */
+  --radius-xs:  4px;
+  --radius-sm:  6px;
+  --radius:     8px;
+  --radius-md:  10px;
+  --radius-lg:  12px;
+  --radius-xl:  12px;   /* alias pour compat v1 */
+  --radius-2xl: 14px;
+  --radius-3xl: 20px;
+  --radius-full: 9999px;
+
+  /* ─── Elevation ─────────────────────────────────────────────── */
+  --elev-0: none;
+  --elev-1: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --elev-2: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --elev-3: 0 4px 12px -2px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.04);
+  --elev-4: 0 12px 28px -8px rgba(15, 23, 42, 0.14), 0 4px 8px rgba(15, 23, 42, 0.06);
+  --elev-5: 0 24px 60px -12px rgba(15, 23, 42, 0.25);
+
+  /* Alias shadow tokens (compat v1) */
+  --shadow-xs: var(--elev-1);
+  --shadow-sm: var(--elev-2);
+  --shadow:    var(--elev-3);
+  --shadow-lg: var(--elev-4);
+
+  /* Focus ring */
+  --ring: 0 0 0 3px var(--accent-soft);
+
+  /* ─── Motion ────────────────────────────────────────────────── */
+  --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-instant: 80ms;
+  --dur-fast:    150ms;
+  --dur-base:    200ms;
+  --dur-slow:    280ms;
+  --dur-slower:  420ms;
+
+  /* ─── Z-index scale ─────────────────────────────────────────── */
+  --z-dropdown: 20;
+  --z-sticky:   30;
+  --z-sidebar:  40;
+  --z-overlay:  80;
+  --z-drawer:   90;
+  --z-modal:    100;
+  --z-toast:    110;
+  --z-tooltip:  120;
+
+  /* ─── Layout ────────────────────────────────────────────────── */
+  --sidebar-w:    240px;
+  --topbar-h:     56px;
+  --content-max:  1440px;
+  --container-px: 24px;
+}
+
+/* ═══ Dark mode (preview / future) ══════════════════════════════ */
+[data-theme="dark"] {
+  --bg:            #0F0F14;
+  --background:    #0F0F14;
+  --bg-subtle:     #17171D;
+  --surface:       #1A1A20;
+  --surface-alt:   #17171D;
+  --surface-hover: #22222A;
+  --border:        #2A2A32;
+  --border-strong: #3A3A44;
+  --text:          #F5F5F7;
+  --text-muted:    #9CA3AF;
+  --text-subtle:   #6B7280;
+  --accent-soft:   rgba(99, 102, 241, 0.15);
+  --accent-softer: rgba(99, 102, 241, 0.08);
+  --success-soft:  rgba(16, 185, 129, 0.15);
+  --warning-soft:  rgba(245, 158, 11, 0.15);
+  --danger-soft:   rgba(239, 68, 68, 0.15);
+  --info-soft:     rgba(14, 165, 233, 0.15);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--text);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Core surfaces & text */
+  --color-background:   var(--background);
+  --color-foreground:   var(--text);
+  --color-bg:           var(--bg);
+  --color-bg-subtle:    var(--bg-subtle);
+  --color-surface:      var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-border:       var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text:         var(--text);
+  --color-text-muted:   var(--text-muted);
+  --color-text-subtle:  var(--text-subtle);
+
+  /* Brand */
+  --color-accent:         var(--accent);
+  --color-accent-hover:   var(--accent-hover);
+  --color-accent-active:  var(--accent-active);
+  --color-accent-soft:    var(--accent-soft);
+  --color-accent-softer:  var(--accent-softer);
+  --color-accent-border:  var(--accent-border);
+
+  /* Semantic */
+  --color-success:      var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning:      var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger:       var(--danger);
+  --color-danger-soft:  var(--danger-soft);
+  --color-info:         var(--info);
+  --color-info-soft:    var(--info-soft);
+
+  /* Category */
+  --color-cat-blue:   var(--cat-blue);
+  --color-cat-red:    var(--cat-red);
+  --color-cat-orange: var(--cat-orange);
+  --color-cat-green:  var(--cat-green);
+  --color-cat-cyan:   var(--cat-cyan);
+  --color-cat-violet: var(--cat-violet);
+  --color-cat-pink:   var(--cat-pink);
+  --color-cat-amber:  var(--cat-amber);
+
+  /* Fonts */
+  --font-sans:    var(--font-geist-sans), 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono:    var(--font-geist-mono), 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+  --font-display: 'Playfair Display', Georgia, serif;
+
+  /* Type scale */
+  --text-xs:   11px;
+  --text-sm:   12px;
+  --text-base: 13px;
+  --text-md:   14px;
+  --text-lg:   16px;
+  --text-xl:   18px;
+  --text-2xl:  22px;
+  --text-3xl:  28px;
+  --text-4xl:  36px;
+
+  /* Radius */
+  --radius-xs:   4px;
+  --radius-sm:   6px;
+  --radius-md:   8px;
+  --radius-lg:   10px;
+  --radius-xl:   12px;
+  --radius-2xl:  14px;
+  --radius-3xl:  20px;
+  --radius-full: 9999px;
+
+  /* Elevation (shadow) */
+  --shadow-elev-1: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-elev-2: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-elev-3: 0 4px 12px -2px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.04);
+  --shadow-elev-4: 0 12px 28px -8px rgba(15, 23, 42, 0.14), 0 4px 8px rgba(15, 23, 42, 0.06);
+  --shadow-elev-5: 0 24px 60px -12px rgba(15, 23, 42, 0.25);
+  --shadow-ring:   0 0 0 3px var(--accent-soft);
+
+  /* Easings & durations */
+  --ease-out:     cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out:  cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring:  cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Z-index */
+  --z-dropdown: 20;
+  --z-sticky:   30;
+  --z-sidebar:  40;
+  --z-overlay:  80;
+  --z-drawer:   90;
+  --z-modal:    100;
+  --z-toast:    110;
+  --z-tooltip:  120;
+
+  /* Keyframes referenced by utilities */
+  --animate-fade-in:   rp-fade-in 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-slide-up:  rp-slide-up 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-drawer-in: rp-drawer-in 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-pulse-dot: rp-pulse-dot 1.5s ease-in-out infinite;
 }
+
+* { box-sizing: border-box; }
 
 html, body {
   background: var(--background);
   color: var(--text);
-  font-family: var(--font-sans), "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Scrollbar clair */
+/* Scrollbar discret */
 ::-webkit-scrollbar       { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: var(--surface-alt); }
 ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 6px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-subtle); }
 
-/* Animations */
+/* ─── Keyframes globaux ─────────────────────────────────────── */
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
   50%      { transform: translateY(-8px); }
@@ -73,20 +289,65 @@ html, body {
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+@keyframes rp-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes rp-slide-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes rp-drawer-in {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+@keyframes rp-pulse {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%      { opacity: 0.5; transform: scale(1.2); }
+}
+@keyframes rp-pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+@keyframes rp-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@keyframes rp-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Animations utilitaires legacy + v2 */
 .animate-float       { animation: float 3s ease-in-out infinite; }
 .animate-fade-in-up  { animation: fade-in-up 0.6s ease-out forwards; }
+.animate-page-enter  { animation: rp-slide-up 280ms var(--ease-out) both; }
+.animate-fade-in     { animation: rp-fade-in 200ms var(--ease-out) both; }
+.animate-drawer-in   { animation: rp-drawer-in 280ms var(--ease-out); }
+.animate-pulse-dot   { animation: rp-pulse-dot 1.5s ease-in-out infinite; }
 
-/* ── Classes réutilisables ────────────────────────────────────────── */
+/* ─── Respect prefers-reduced-motion ────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
-/* Card standard : blanc, ombre douce, coins 12px */
+/* ═══════════════════════════════════════════════════════════════
+   Classes réutilisables — utilitaires design system
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── Cards ─────────────────────────────────────────────────── */
 .rp-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.04);
+  box-shadow: var(--elev-2);
 }
 
-/* Bouton primaire */
+/* ─── Boutons (v1 — gardés pour compat, remplacés par primitives phase 2) */
 .rp-btn-primary {
   background: var(--accent);
   color: #FFFFFF;
@@ -94,7 +355,6 @@ html, body {
 }
 .rp-btn-primary:hover { background: var(--accent-hover); }
 
-/* Bouton secondaire */
 .rp-btn-secondary {
   background: var(--surface);
   color: var(--text);
@@ -103,7 +363,7 @@ html, body {
 }
 .rp-btn-secondary:hover { background: var(--surface-alt); }
 
-/* Input générique */
+/* ─── Input ─────────────────────────────────────────────────── */
 .rp-input {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -117,25 +377,20 @@ html, body {
 .rp-input::placeholder { color: var(--text-subtle); }
 .rp-input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  box-shadow: var(--ring);
 }
 
-/* Lignes alternées tableau */
 .rp-row-alt:nth-child(even) { background: var(--surface-alt); }
 
-/* ── Utilitaires design handoff — typographie & chiffres ──────────── */
-
-/** Police monospace (JetBrains Mono) pour TOUS les chiffres structurés :
- *  prix, IDs (CMD-XXXX, FA-XXXX), pourcentages, dates courtes, quantités.
- *  Usage : <span className="mono">{amount}</span>
- */
+/* ─── Typographie ───────────────────────────────────────────── */
 .mono {
-  font-family: var(--font-geist-mono), 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+  font-family: var(--font-mono);
   font-feature-settings: 'tnum' 1;
 }
-.tabular  { font-variant-numeric: tabular-nums; }
+.tabular { font-variant-numeric: tabular-nums; }
 
-/* Titre de page : 22px, weight 650, tracking -0.02em */
+.font-display { font-family: var(--font-display); }
+
 .page-title {
   font-size: 22px;
   font-weight: 650;
@@ -149,7 +404,6 @@ html, body {
   margin-top: 3px;
 }
 
-/* Labels de colonnes uppercase : 10.5px, weight 650, tracking 0.04em */
 .label-upper {
   font-size: 10.5px;
   font-weight: 650;
@@ -158,8 +412,7 @@ html, body {
   color: var(--text-muted);
 }
 
-/* ── Badges & pills de statut ─────────────────────────────────────── */
-
+/* ─── Badges / status ───────────────────────────────────────── */
 .rp-badge {
   display: inline-flex;
   align-items: center;
@@ -178,7 +431,6 @@ html, body {
 .rp-badge.danger  { background: var(--danger-soft);   color: var(--danger); }
 .rp-badge.info    { background: var(--info-soft);     color: #0369A1; }
 
-/* Dot de statut (pulse sur statuts en cours) */
 .rp-status-dot {
   display: inline-block;
   width: 6px; height: 6px;
@@ -186,13 +438,8 @@ html, body {
   background: currentColor;
 }
 .rp-status-dot.pulse { animation: rp-pulse 1.5s ease-in-out infinite; }
-@keyframes rp-pulse {
-  0%, 100% { opacity: 1;   transform: scale(1); }
-  50%      { opacity: 0.5; transform: scale(1.2); }
-}
 
-/* ── KPI cards (dashboard) ─────────────────────────────────────────── */
-
+/* ─── KPI cards ─────────────────────────────────────────────── */
 .kpi-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -210,7 +457,7 @@ html, body {
   margin-bottom: 10px;
 }
 .kpi-value {
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: 26px;
   font-weight: 650;
@@ -236,3 +483,10 @@ html, body {
 .kpi-delta.up   { color: var(--success);    background: var(--success-soft); }
 .kpi-delta.down { color: var(--danger);     background: var(--danger-soft); }
 .kpi-delta.flat { color: var(--text-muted); background: var(--bg-subtle); }
+
+/* ─── Focus visible global (contrôles interactifs) ──────────── */
+:where(button, a, input, select, textarea, [role="button"], [role="tab"], [role="switch"]):focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+  border-radius: var(--radius-sm);
+}
