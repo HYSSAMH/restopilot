@@ -409,7 +409,10 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
       const montant = facture.montant_ht ?? facture.lignes.reduce((s, l) => s + l.total, 0);
       const createdAt = facture.date ? new Date(facture.date).toISOString() : new Date().toISOString();
 
-      const { data: cmd, error: errCmd } = await supabase.from("commandes").insert({
+      // Insert commande — avec tentative "rich" (tva_recap) puis
+      // fallback "sans tva_recap" si la migration DB n'a pas été
+      // exécutée (PGRST204 "column not found").
+      const basePayload = {
         restaurateur_id:         user.id,
         fournisseur_id:          fournisseurId,
         fournisseur_externe_id:  fournisseurExterneId,
@@ -419,8 +422,27 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
         source:                  "import",
         numero_facture_externe:  facture.numero_facture,
         created_at:              createdAt,
-        tva_recap:               facture.tva_recap ?? [],
-      }).select("id").single();
+      } as Record<string, unknown>;
+
+      type SupaErr = { message: string; code?: string } | null;
+      let cmd: { id: string } | null = null;
+      let errCmd: SupaErr = null;
+      {
+        const res = await supabase.from("commandes")
+          .insert({ ...basePayload, tva_recap: facture.tva_recap ?? [] })
+          .select("id").single();
+        cmd = (res.data ?? null) as { id: string } | null;
+        errCmd = (res.error ?? null) as SupaErr;
+      }
+      // PGRST204 ou message "column ... does not exist" : retry sans tva_recap
+      if (errCmd && (errCmd.code === "PGRST204" || /column .* does not exist/i.test(errCmd.message))) {
+        console.warn("[facture-import] tva_recap absent côté DB, retry sans. Exécuter migration_tva_par_ligne.sql pour bénéficier du récap TVA.");
+        const res = await supabase.from("commandes")
+          .insert(basePayload)
+          .select("id").single();
+        cmd = (res.data ?? null) as { id: string } | null;
+        errCmd = (res.error ?? null) as SupaErr;
+      }
       if (errCmd || !cmd) throw new Error("Création commande échouée : " + (errCmd?.message ?? ""));
 
       // 2.b Upload du PDF/image original dans le bucket factures-externes
@@ -445,18 +467,29 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
         }
       }
 
-      // 3. Lignes — on persiste aussi le taux TVA capté ligne par ligne
-      const { error: errLignes } = await supabase.from("lignes_commande").insert(
-        facture.lignes.map(l => ({
-          commande_id:   cmd.id,
-          produit_id:    null,
-          nom_snapshot:  l.nom,
-          prix_snapshot: l.prix_unitaire,
-          unite:         l.unite,
-          quantite:      l.quantite,
-          tva_taux:      l.tva_taux ?? null,
-        })),
-      );
+      // 3. Lignes — tentative avec tva_taux puis fallback sans si la
+      // migration DB n'a pas été exécutée.
+      const baseLignes = facture.lignes.map(l => ({
+        commande_id:   cmd.id,
+        produit_id:    null,
+        nom_snapshot:  l.nom,
+        prix_snapshot: l.prix_unitaire,
+        unite:         l.unite,
+        quantite:      l.quantite,
+      }));
+      type SupaErrL = { message: string; code?: string } | null;
+      let errLignes: SupaErrL = null;
+      {
+        const res = await supabase.from("lignes_commande").insert(
+          baseLignes.map((b, i) => ({ ...b, tva_taux: facture.lignes[i].tva_taux ?? null })),
+        );
+        errLignes = (res.error ?? null) as SupaErrL;
+      }
+      if (errLignes && (errLignes.code === "PGRST204" || /column .* does not exist/i.test(errLignes.message))) {
+        console.warn("[facture-import] tva_taux absent côté DB, retry sans.");
+        const res = await supabase.from("lignes_commande").insert(baseLignes);
+        errLignes = (res.error ?? null) as SupaErrL;
+      }
       if (errLignes) throw new Error("Ajout lignes échoué : " + errLignes.message);
 
       onSaved();
