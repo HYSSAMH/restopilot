@@ -51,21 +51,56 @@ function readBase64(file: File): Promise<string> {
   });
 }
 
+const PDFJS_VERSION = "5.6.205";
+
+/**
+ * Charge pdfjs-dist en client et configure le worker CDN.
+ * Singleton pour éviter de recharger à chaque appel.
+ */
+let _pdfjsLoaded: typeof import("pdfjs-dist") | null = null;
+async function loadPdfjs() {
+  if (_pdfjsLoaded) return _pdfjsLoaded;
+  const mod = await import("pdfjs-dist");
+  mod.GlobalWorkerOptions.workerSrc =
+    `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.min.mjs`;
+  _pdfjsLoaded = mod;
+  return mod;
+}
+
+/**
+ * Extraction texte native d'un PDF côté client.
+ * Utilise pdfjs-dist (qui tourne dans le navigateur, pas de DOMMatrix
+ * sur le serveur, pas de 502). Retourne null si le PDF est scanné
+ * (texte trop court) — déclenche alors le fallback OCR.
+ */
+async function extractPdfTextClient(file: File): Promise<{ text: string; numPages: number }> {
+  const { getDocument } = await loadPdfjs();
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await getDocument({ data: arrayBuffer }).promise;
+  let text = "";
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    const pageText = content.items
+      .map((it: unknown) => {
+        const item = it as { str?: string };
+        return item.str ?? "";
+      })
+      .join(" ");
+    text += pageText + "\n";
+  }
+  return { text: text.trim(), numPages: pdf.numPages };
+}
+
 /**
  * OCR d'un PDF scanné côté client.
  * Rend chaque page en canvas via pdfjs-dist puis passe à tesseract.js.
- * Cette approche évite tout timeout serverless côté Netlify.
  */
 async function ocrPdfClient(file: File, onProgress: (s: string) => void): Promise<string> {
-  // Imports dynamiques pour éviter SSR + alléger le bundle initial
-  const [{ getDocument, GlobalWorkerOptions }, tesseract] = await Promise.all([
-    import("pdfjs-dist"),
+  const [{ getDocument }, tesseract] = await Promise.all([
+    loadPdfjs(),
     import("tesseract.js"),
   ]);
-  // Worker pdfjs servi depuis un CDN (évite la config webpack)
-  // Version alignée avec la dépendance dans package.json.
-  const pdfjsVersion = "5.6.205";
-  GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
 
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await getDocument({ data: arrayBuffer }).promise;
@@ -139,32 +174,32 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
       setFileMediaType(mt);
 
       let parsed: ParsedFacture | null = null;
+      let rawText = "";
 
       if (mt === "application/pdf") {
-        // Étape 1 — tentative serveur (texte natif) via unpdf
-        const res = await fetch("/api/facture-import", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fileBase64: b64, mediaType: mt }),
-        });
-        const j = await res.json().catch(() => ({}));
+        // Étape 1 — extraction texte native côté client (pdfjs-dist)
+        // Rapide (< 2s pour un PDF texte classique), aucun appel serveur
+        // pour la partie PDF → zéro risque de 502/timeout.
+        setProgress("Extraction du texte…");
+        const { text, numPages } = await extractPdfTextClient(file);
+        console.log(`[facture] pdf texte natif : ${numPages}p, ${text.length} chars`);
 
-        if (res.ok && (j as { needsOcr?: boolean }).needsOcr !== true) {
-          parsed = (j as { facture: ParsedFacture }).facture;
-        } else if (j?.needsOcr === true) {
-          // Étape 2 — PDF scanné : OCR client puis parsing serveur
-          setProgress("PDF scanné détecté. OCR en cours dans votre navigateur…");
-          const rawText = await ocrPdfClient(file, setProgress);
-          parsed = await parseRawTextOnServer(rawText);
+        if (text.length >= 50) {
+          rawText = text;
         } else {
-          throw new Error((j as { error?: string }).error ?? `HTTP ${res.status}`);
+          // PDF scanné : OCR côté client
+          setProgress("PDF scanné détecté. OCR en cours dans votre navigateur…");
+          rawText = await ocrPdfClient(file, setProgress);
         }
       } else {
-        // Image directe : OCR client sans passer par /api/facture-import
+        // Image directe : OCR client
         setProgress("OCR en cours dans votre navigateur…");
-        const rawText = await ocrImageClient(file, setProgress);
-        parsed = await parseRawTextOnServer(rawText);
+        rawText = await ocrImageClient(file, setProgress);
       }
+
+      // Parsing serveur : texte → ParsedFacture (léger, rapide, pas de PDF)
+      setProgress("Analyse des données extraites…");
+      parsed = await parseRawTextOnServer(rawText);
 
       if (!parsed) throw new Error("Aucune facture extraite.");
       setFacture(parsed);
