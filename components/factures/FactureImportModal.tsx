@@ -69,26 +69,69 @@ async function loadPdfjs() {
 
 /**
  * Extraction texte native d'un PDF côté client.
- * Utilise pdfjs-dist (qui tourne dans le navigateur, pas de DOMMatrix
- * sur le serveur, pas de 502). Retourne null si le PDF est scanné
- * (texte trop court) — déclenche alors le fallback OCR.
+ *
+ * Point clé : pdfjs-dist.getTextContent() ne garde pas les sauts de
+ * ligne. Les items sont retournés dans un ordre lu mais sans \n. Pour
+ * que les regex de parse-facture.ts (qui cherchent des patterns
+ * ligne-par-ligne) fonctionnent, on reconstruit les lignes en
+ * groupant les items par coordonnée Y (même Y ≈ même ligne dans
+ * l'espace PDF).
  */
 async function extractPdfTextClient(file: File): Promise<{ text: string; numPages: number }> {
   const { getDocument } = await loadPdfjs();
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await getDocument({ data: arrayBuffer }).promise;
+
   let text = "";
   for (let p = 1; p <= pdf.numPages; p++) {
     const page = await pdf.getPage(p);
     const content = await page.getTextContent();
-    const pageText = content.items
-      .map((it: unknown) => {
-        const item = it as { str?: string };
-        return item.str ?? "";
-      })
-      .join(" ");
-    text += pageText + "\n";
+
+    type PdfItem = { str: string; transform: number[]; hasEOL?: boolean; width?: number };
+    const items = content.items as PdfItem[];
+
+    // Reconstruction des lignes par coordonnée Y (arrondie à 1px).
+    // transform = [scaleX, skewY, skewX, scaleY, x, y] — on prend y.
+    // Tolérance de 2px pour absorber les petits écarts de baseline.
+    const lineMap = new Map<number, { y: number; items: { x: number; str: string }[] }>();
+    for (const it of items) {
+      const str = it.str ?? "";
+      if (!str) continue;
+      const x = it.transform[4];
+      const y = it.transform[5];
+      // Clé = y arrondi à l'entier le plus proche, avec regroupement à ±2px
+      let groupKey: number | null = null;
+      for (const key of lineMap.keys()) {
+        if (Math.abs(key - y) <= 2) { groupKey = key; break; }
+      }
+      if (groupKey === null) {
+        groupKey = Math.round(y);
+        lineMap.set(groupKey, { y, items: [] });
+      }
+      lineMap.get(groupKey)!.items.push({ x, str });
+    }
+
+    // Tri des lignes par Y décroissant (PDF : origine en bas-gauche,
+    // donc Y grand = haut de page) ; items dans une ligne par X croissant
+    const sortedLines = Array.from(lineMap.values()).sort((a, b) => b.y - a.y);
+    for (const line of sortedLines) {
+      line.items.sort((a, b) => a.x - b.x);
+      const lineText = line.items
+        .map((it, idx, arr) => {
+          // Ajoute un espace si l'item précédent ne se termine pas par un
+          // espace et qu'il y a un gap d'au moins ~2px en X.
+          const prev = idx > 0 ? arr[idx - 1] : null;
+          const needsSpace = prev && !prev.str.endsWith(" ") && !it.str.startsWith(" ");
+          return (needsSpace ? " " : "") + it.str;
+        })
+        .join("")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (lineText) text += lineText + "\n";
+    }
+    text += "\n"; // séparateur de page
   }
+
   return { text: text.trim(), numPages: pdf.numPages };
 }
 
@@ -183,6 +226,7 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
         setProgress("Extraction du texte…");
         const { text, numPages } = await extractPdfTextClient(file);
         console.log(`[facture] pdf texte natif : ${numPages}p, ${text.length} chars`);
+        console.log(`[facture] aperçu (500 premiers chars) :\n` + text.slice(0, 500));
 
         if (text.length >= 50) {
           rawText = text;
@@ -190,6 +234,8 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
           // PDF scanné : OCR côté client
           setProgress("PDF scanné détecté. OCR en cours dans votre navigateur…");
           rawText = await ocrPdfClient(file, setProgress);
+          console.log(`[facture] ocr : ${rawText.length} chars`);
+          console.log(`[facture] aperçu ocr :\n` + rawText.slice(0, 500));
         }
       } else {
         // Image directe : OCR client
@@ -219,8 +265,37 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
       body: JSON.stringify({ rawText }),
     });
     const j = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error((j as { error?: string }).error ?? `HTTP ${res.status}`);
-    return (j as { facture: ParsedFacture }).facture;
+
+    if (res.ok) {
+      return (j as { facture: ParsedFacture }).facture;
+    }
+
+    // 422 : aucune ligne reconnue. On rend un squelette vide avec le
+    // texte extrait dans le champ 'adresse' pour que l'utilisateur
+    // puisse voir ce qui a été lu et compléter/corriger.
+    if (res.status === 422) {
+      const sample = (j as { diagnostic?: { raw_sample?: string } }).diagnostic?.raw_sample
+        ?? rawText.slice(0, 1000);
+      console.warn("[facture] parsing automatique a échoué. Texte extrait :\n" + rawText);
+      setError(
+        "Extraction automatique impossible pour ce format. Complétez manuellement — " +
+        "un aperçu du texte lu est copié dans le champ 'Adresse'.",
+      );
+      return {
+        fournisseur: {
+          nom: null, siret: null, adresse: sample, telephone: null, email: null,
+        },
+        numero_facture: null,
+        date: null,
+        lignes: [],
+        tva_recap: [],
+        montant_ht: null,
+        tva: null,
+        montant_ttc: null,
+      };
+    }
+
+    throw new Error((j as { error?: string }).error ?? `HTTP ${res.status}`);
   }
 
   function updateFournisseur<K extends keyof ParsedFacture["fournisseur"]>(key: K, value: ParsedFacture["fournisseur"][K]) {
