@@ -24,21 +24,12 @@
   package = "@netlify/plugin-nextjs"
 
 # ── Functions (API routes & middleware) ─────────────────────
-# Plan payant Netlify : timeout étendu à 300 s par fonction pour
-# les routes qui font des appels Claude sur des PDFs volumineux.
-# Le champ `timeout` n'est PAS valide dans la section [functions]
-# globale — il doit être défini par fonction.
-[functions]
-  node_bundler = "esbuild"
-
-[functions."api/releve-import"]
-  timeout = 300
-
-[functions."api/mercuriale-import"]
-  timeout = 300
-
-[functions."api/facture-import"]
-  timeout = 300
+# Avec @netlify/plugin-nextjs v5+, les API routes App Router tournent
+# dans le serveur Next consolidé — les configs per-function de
+# netlify.toml ne s'appliquent pas. La durée max s'exprime via
+# `export const maxDuration` dans chaque route.tsx.
+# On retire node_bundler=esbuild (incompatible avec les packages ESM
+# type unpdf — provoque un 502 "Cannot find module" au cold-start).
 
 # ── Variables d'environnement ───────────────────────────────
 # À configurer DANS Netlify Dashboard > Site settings > Environment variables
