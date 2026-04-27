@@ -606,13 +606,17 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
         } catch { /* noop */ }
       }
 
-      // Trigger reload côté parent (factures page)
+      // Notifie le parent pour qu'il rafraîchisse sa liste — sans
+      // fermer la modal (la modal gère sa propre fermeture pour
+      // supporter le mode batch).
       onSaved();
 
-      // Si encore des fichiers en file d'attente, on enchaîne sans
-      // fermer la modal.
       if (queue.length > 0) {
+        // Encore des fichiers en file d'attente : on enchaîne
         await advanceQueue();
+      } else {
+        // Dernière facture du lot (ou import unique) : fermeture
+        onClose();
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur");
@@ -905,7 +909,7 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
         </div>
 
         {/* Footer */}
-        {step === "review" && (
+                {step === "review" && (
           <div className="flex justify-end gap-2 border-t border-gray-200 bg-gray-50 px-5 py-3">
             <button
               onClick={() => { setFacture(null); setStep("pick"); setError(null); }}
