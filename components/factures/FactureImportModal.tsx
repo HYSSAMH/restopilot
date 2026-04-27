@@ -4,7 +4,21 @@ import { useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { ParsedFacture, ParsedLigne } from "@/lib/parse-facture";
 
-const DEBUG_FACTURE = process.env.NEXT_PUBLIC_DEBUG_FACTURE === "1";
+/**
+ * Activé via :
+ *   - variable d'env build-time : NEXT_PUBLIC_DEBUG_FACTURE=1
+ *   - OU à chaud dans la console : localStorage.setItem("debugFacture", "1")
+ *     puis rafraîchir la page
+ */
+function isDebugMode(): boolean {
+  if (process.env.NEXT_PUBLIC_DEBUG_FACTURE === "1") return true;
+  if (typeof window !== "undefined") {
+    try { return window.localStorage.getItem("debugFacture") === "1"; }
+    catch { /* SSR or sandboxed */ }
+  }
+  return false;
+}
+const DEBUG_FACTURE = isDebugMode();
 
 type Step = "pick" | "parsing" | "review" | "saving";
 
@@ -131,7 +145,10 @@ async function ocrPdfClient(
       const pct = Math.round(((p - 1) / pdf.numPages) * 100);
       onProgress(`OCR page ${p}/${pdf.numPages}…`, pct);
       const page = await pdf.getPage(p);
-      const viewport = page.getViewport({ scale: 2 });
+      // Scale 3 (au lieu de 2) — plus l'image est haute résolution, plus
+      // tesseract reconnaît bien les caractères. Compromis : ~2x plus de
+      // RAM et CPU. Pour un scan classique 200dpi, scale 3 = ~600dpi.
+      const viewport = page.getViewport({ scale: 3 });
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("Canvas non supporté");
@@ -956,13 +973,12 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
               </svg>
               <p className="text-sm text-gray-700">Enregistrement…</p>
- 
             </div>
           )}
         </div>
 
         {/* Footer */}
-                {step === "review" && (
+        {step === "review" && (
           <div className="flex justify-end gap-2 border-t border-gray-200 bg-gray-50 px-5 py-3">
             <button
               onClick={() => { setFacture(null); setStep("pick"); setError(null); setQueue([]); setParsedQueue([]); setQueueIndex(0); setQueueTotal(0); }}
