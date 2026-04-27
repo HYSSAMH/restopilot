@@ -121,27 +121,66 @@ function guessCat(nom: string): string {
 // ─── Extraction d'en-tête / pied ────────────────────────────────
 
 function matchNumero(text: string): string | null {
+  // Patterns par ordre de spécificité décroissante.
+  // CHAQUE pattern accepte numéros mixtes (lettres+chiffres) ET tout-chiffres,
+  // pourvu qu'au moins un chiffre soit présent.
   const patterns: RegExp[] = [
+    // Odoo : "FAC/2025/02999" ou "RFAC/2025/00149"
     /(?:PRO\s*FORMA\s+)?(?:Facture|Avoir)\s+([A-Z]{1,6}\/\d{4}\/\d{3,6})/i,
-    /(?:FACTURE|FACT|FAC)\s*(?:N[°oº]|NO|NUM[ÉE]RO)?\s*[:.]?\s*([A-Z]{1,6}[\-_ ]?\d{2,}[A-Z0-9\-_]*)/i,
+    // "Numéro de facture: XYZ" / "Numéro de facture : XYZ" (UberEats, Vistaprint)
+    /Num[ée]ro\s+de\s+facture\s*[:.]?\s*([A-Z0-9][A-Z0-9\-_\/.]{2,40})/i,
+    // "N° de facture: XYZ"
+    /N[°oº]\s+de\s+facture\s*[:.]?\s*([A-Z0-9][A-Z0-9\-_\/.]{2,40})/i,
+    // "FACTURE N° XYZ" / "Facture N° XYZ" même sur la même ligne, sans
+    // chevaucher des mots blacklistés (utilise lookahead négatif).
+    /(?:FACTURE|FACT|FAC)\s*N[°oº]\s*[:.]?\s*(?!Date\b|Client\b)([A-Z0-9][A-Z0-9\-_\/]{2,40})/i,
+    // "Facture XYZ" sans label intermédiaire (mais lettre+chiffre prioritaire)
+    /(?:FACTURE|FACT|FAC)\s*(?:NO|NUM[ÉE]RO)?\s*[:.]?\s*([A-Z]{1,6}[\-_ ]?\d{2,}[A-Z0-9\-_]*)/i,
+    // "N° XYZ" générique avec préfixe lettre
     /\bN[°oº]\s*[:.]?\s*([A-Z]{1,4}\d[A-Z0-9\-]{2,20})\b/i,
+    // "facture (n°) : XYZ" avec lettre au début
     /facture\s*(?:n[°o]?\s*)?[:\-]?\s*([A-Z]{1,6}[\-_]?\d[A-Z0-9\/\-_]{2,20})/i,
   ];
   for (const p of patterns) {
     const m = text.match(p);
     if (!m || !m[1]) continue;
-    const candidate = m[1].trim().replace(/\s+/g, "");
+    const candidate = m[1].trim().replace(/\s+/g, "").replace(/[.,]$/, "");
     if (!/\d/.test(candidate)) continue;
-    if (/^(DATE|CLIENT|FACTURE|TOTAL|PAGE|NUM|RCS)/i.test(candidate)) continue;
+    if (/^(DATE|CLIENT|FACTURE|TOTAL|PAGE|NUM|RCS|EUR|TVA|HT|TTC)$/i.test(candidate)) continue;
+    if (candidate.length < 3 || candidate.length > 40) continue;
     return candidate;
   }
-  // Fallback : label "Facture N°" puis numéro sur ligne suivante (Verger)
+  // Fallback : label "Facture N°" puis numéro sur la ligne suivante (Verger,
+  // Pain Tordu : tableau en colonnes, le numéro est dessous le label).
+  // On itère sur les matches successifs et on skippe les mots blacklistés.
   const labelM = text.match(/Facture\s+N[°oº]/i);
   if (labelM) {
-    const after = text.slice(labelM.index! + labelM[0].length, labelM.index! + labelM[0].length + 250);
-    const nm = after.match(/\b([A-Z]{1,6}[\-_]?\d{2,}[A-Z0-9\-]*)\b/);
-    if (nm && /\d/.test(nm[1]) && !/^(DATE|CLIENT|FACTURE|TOTAL|PAGE|NUM|RCS)/i.test(nm[1])) {
-      return nm[1];
+    const after = text.slice(labelM.index! + labelM[0].length, labelM.index! + labelM[0].length + 350);
+    const re = /\b([A-Z0-9][A-Z0-9\-_]{2,30})\b/g;
+    let mm: RegExpExecArray | null;
+    while ((mm = re.exec(after)) !== null) {
+      const c = mm[1];
+      if (!/\d/.test(c)) continue;
+      if (/^(DATE|CLIENT|FACTURE|TOTAL|PAGE|NUM|RCS|EUR|TVA|HT|TTC|EUROS|VENEZIA|RUE|AVENUE)$/i.test(c)) continue;
+      if (c.length < 4) continue;
+      // Skip dates pures (07/09/2024 etc.) — pas comme "FC3969"
+      if (/^\d{1,2}[\/\-\.]\d{1,2}/.test(c)) continue;
+      return c;
+    }
+  }
+
+  // Fallback 2 : en-tête tableau "Facture ... Date ... Client" (cas
+  // KEDY PACK : "Facture                Date              Client" suivi
+  // d'une ligne avec le numéro, la date, le n° client).
+  const labelM2 = text.match(/Facture\s{2,}Date\s{2,}Client/i);
+  if (labelM2) {
+    const after = text.slice(labelM2.index! + labelM2[0].length, labelM2.index! + labelM2[0].length + 400);
+    const re = /\b([A-Z]{1,6}\d{3,}|\d{6,15})\b/g;
+    let mm: RegExpExecArray | null;
+    while ((mm = re.exec(after)) !== null) {
+      const c = mm[1];
+      if (/^\d{1,2}[\/\-\.]\d{1,2}/.test(c)) continue;
+      if (c.length >= 4 && c.length <= 30) return c;
     }
   }
   return null;
@@ -499,6 +538,56 @@ const PAIN_TORDU_LINE_RE = new RegExp(
   "i",
 );
 
+/**
+ * Format SCAPI / fournisseurs simples avec € en suffixe :
+ *   DESIGNATION QTE PU€ TVA% TOTAL€
+ *   ex : "MAINTENANCE EXTINCTEUR BASIC 3 30,00 € 20 % 90,00 €"
+ *   ex : "EXTINCTEUR 2 KG CO2 1 130,00 € 20 % 130,00 €"
+ *
+ * Pas de code produit. PU et total ont "€" en suffixe.
+ */
+const SCAPI_LINE_RE = new RegExp(
+  String.raw`^\s*` +
+    String.raw`([A-ZÀ-Ÿ][A-ZÀ-Ÿ0-9 \-]{3,60}?)\s+` +       // 1: désignation MAJ
+    String.raw`(\d+(?:[.,]\d+)?)\s+` +                     // 2: quantité
+    String.raw`(\d+[.,]\d{2})\s*€\s+` +                   // 3: PU + €
+    String.raw`(\d{1,2}(?:[.,]\d+)?)\s*%\s+` +            // 4: TVA %
+    String.raw`(\d+[.,]\d{2})\s*€\s*$`,                   // 5: total + €
+);
+
+/**
+ * Format SAFE TO EAT : ref + DESIGNATION + qté + [unité] + PU€ + REM% + MONT_HT€ + TVA%
+ *   ex : "ART00000008 -Pack Hygiène 1,00 250,00 € 0,00% 250,00 € 20,00%"
+ */
+const SAFE_TO_EAT_LINE_RE = new RegExp(
+  String.raw`^\s*` +
+    String.raw`([A-Z]{2,8}\d+)\s+` +                        // 1: ref ART00000008
+    String.raw`-?\s*(.+?)\s+` +                             // 2: désignation
+    String.raw`(\d+(?:[.,]\d+)?)\s+` +                     // 3: quantité
+    String.raw`(?:[A-Za-z\/]+\s+)?` +                       // unité optionnelle
+    String.raw`(\d+[.,]\d{2})\s*€?\s+` +                  // 4: PU
+    String.raw`\d+[.,]?\d*\s*%\s+` +                      // remise (ignorée)
+    String.raw`(\d+[.,]\d{2})\s*€?\s+` +                  // 5: montant HT
+    String.raw`(\d{1,2}(?:[.,]\d+)?)\s*%?\s*$`,           // 6: TVA %
+);
+
+/**
+ * Format KEDY PACK / similaires : ref + DESIGNATION + qté + UNITE + PU + REM% + MONT_HT + MONT_TTC + CODE_TVA
+ *   ex : "IC110 Bac inox 1/3X1 3 1/Pièces 9,110 0.00% 27,33 32,79 1"
+ */
+const KEDY_LINE_RE = new RegExp(
+  String.raw`^\s*` +
+    String.raw`([A-Z0-9]{2,12})\s+` +                        // 1: ref
+    String.raw`(.+?)\s+` +                                   // 2: désignation
+    String.raw`(\d+(?:[.,]\d+)?)\s+` +                     // 3: quantité
+    String.raw`(\d+\/[A-Za-zé]+)\s+` +                     // 4: unité ("1/Pièces")
+    String.raw`(\d+[.,]\d{1,4})\s+` +                      // 5: PU
+    String.raw`\d+\.\d{1,2}%\s+` +                        // remise
+    String.raw`(\d+[.,]\d{2})\s+` +                        // 6: mont HT
+    String.raw`(\d+[.,]\d{2})\s+` +                        // 7: mont TTC
+    String.raw`(\d{1,2})\s*$`,                              // 8: code TVA
+);
+
 const VERGER_TVA_CODE: Record<string, number> = {
   "1": 20,
   "2": 5.5,
@@ -563,6 +652,59 @@ function parseLignes(text: string, tvaRecap: TvaLigneRecap[]): ParsedLigne[] {
       lignes.push({
         nom, categorie: guessCat(nom), quantite, unite: "u",
         prix_unitaire: prixU, total, tva_taux: tvaTaux,
+      });
+      continue;
+    }
+
+    // 2.c) Pattern Kedy Pack (ref + unité fractionnaire + remise + 2 montants + code TVA)
+    m = KEDY_LINE_RE.exec(line);
+    if (m) {
+      const nom = m[2].trim();
+      if (nom.length < 3) continue;
+      const quantite = parseMontant(m[3]) ?? 0;
+      const unite = m[4].toLowerCase();
+      const prixU = parseMontant(m[5]) ?? 0;
+      const total = parseMontant(m[6]) ?? (quantite * prixU);
+      const tvaCode = m[8];
+      let tvaTaux: number | null = VERGER_TVA_CODE[tvaCode] ?? null;
+      if (tvaRecap.length === 1) tvaTaux = tvaRecap[0].taux;
+      lignes.push({
+        nom, categorie: guessCat(nom), quantite, unite,
+        prix_unitaire: prixU, total, tva_taux: tvaTaux,
+      });
+      continue;
+    }
+
+    // 2.d) Pattern SAFE TO EAT (ref + qté + PU€ + REM% + montant + TVA%)
+    m = SAFE_TO_EAT_LINE_RE.exec(line);
+    if (m) {
+      const nom = m[2].trim();
+      if (nom.length < 3) continue;
+      const quantite = parseMontant(m[3]) ?? 0;
+      const prixU = parseMontant(m[4]) ?? 0;
+      const total = parseMontant(m[5]) ?? (quantite * prixU);
+      const tvaPct = parseMontant(m[6]);
+      lignes.push({
+        nom, categorie: guessCat(nom), quantite, unite: "u",
+        prix_unitaire: prixU, total,
+        tva_taux: tvaPct != null && tvaPct >= 0 && tvaPct <= 30 ? tvaPct : null,
+      });
+      continue;
+    }
+
+    // 2.e) Pattern SCAPI (DESIGNATION QTE PU€ TVA% TOTAL€)
+    m = SCAPI_LINE_RE.exec(line);
+    if (m) {
+      const nom = m[1].trim();
+      if (nom.length < 3) continue;
+      const quantite = parseMontant(m[2]) ?? 0;
+      const prixU = parseMontant(m[3]) ?? 0;
+      const tvaPct = parseMontant(m[4]);
+      const total = parseMontant(m[5]) ?? (quantite * prixU);
+      lignes.push({
+        nom, categorie: guessCat(nom), quantite, unite: "u",
+        prix_unitaire: prixU, total,
+        tva_taux: tvaPct != null && tvaPct >= 0 && tvaPct <= 30 ? tvaPct : null,
       });
       continue;
     }
@@ -694,7 +836,19 @@ export function splitFactures(text: string): string[] {
 
 export function parseFactureText(text: string): ParsedFacture[] {
   const blocks = splitFactures(text);
-  return blocks
+  const result = blocks
     .map(parseOneFacture)
-    .filter(f => f.lignes.length > 0 || f.numero_facture);
+    .filter(f =>
+      f.lignes.length > 0
+      || f.numero_facture
+      || f.fournisseur.nom
+      || f.montant_ttc != null
+      || f.montant_ht != null,
+    );
+  // Si tout a été filtré mais qu'il y a du texte, retourner au moins
+  // une facture (squelette) pour permettre la saisie manuelle.
+  if (result.length === 0 && blocks.length > 0) {
+    return [parseOneFacture(blocks[0])];
+  }
+  return result;
 }
