@@ -187,6 +187,9 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
   // on traite le 1er normalement et on stocke les autres ici. Après
   // chaque save (ou skip), on dépile.
   const [queue, setQueue] = useState<File[]>([]);
+  // factures déjà parsées en attente de review (cas où un même PDF
+  // contient plusieurs factures, ex: relevé Verger avec 17 factures).
+  const [parsedQueue, setParsedQueue] = useState<ParsedFacture[]>([]);
   const [queueIndex, setQueueIndex] = useState(0); // 1-based pour affichage
   const [queueTotal, setQueueTotal] = useState(0);
 
@@ -216,24 +219,36 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
   }
 
   /**
-   * Passe au fichier suivant de la file d'attente. Si la file est
-   * vide, ferme la modal.
+   * Passe à la facture suivante. On consomme d'abord parsedQueue
+   * (cas N factures dans 1 PDF), puis queue de Files (cas N PDFs).
+   * Si tout est vide → reset à pick.
    */
   async function advanceQueue() {
+    setError(null);
+
+    // 1) Reste-t-il une facture déjà parsée à reviewer ?
+    if (parsedQueue.length > 0) {
+      const [next, ...rest] = parsedQueue;
+      setParsedQueue(rest);
+      setFacture(next);
+      setQueueIndex(i => i + 1);
+      setStep("review");
+      // garder fileBase64/fileMediaType car c'est le même PDF source
+      return;
+    }
+
+    // 2) Sinon, fichier suivant dans la queue ?
     setFacture(null);
     setFileBase64(null);
     setFileMediaType(null);
-    setError(null);
     if (queue.length === 0) {
-      // Plus rien : reset complet, on revient à l'état pick (au cas
-      // où l'user veut importer d'autres factures sans fermer).
       setQueueIndex(0);
       setQueueTotal(0);
       setStep("pick");
       return;
     }
-    const [next, ...rest] = queue;
-    setQueue(rest);
+    const [next, ...restFiles] = queue;
+    setQueue(restFiles);
     setQueueIndex(i => i + 1);
     await processFile(next);
   }
@@ -256,7 +271,6 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
       setFileBase64(b64);
       setFileMediaType(mt);
 
-      let parsed: ParsedFacture | null = null;
       let rawText = "";
 
       if (mt === "application/pdf") {
@@ -289,10 +303,19 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
 
       // Parsing serveur : texte → ParsedFacture (léger, rapide, pas de PDF)
       setProgress("Analyse des données extraites…");
-      parsed = await parseRawTextOnServer(rawText);
+      const { first, rest } = await parseRawTextOnServer(rawText);
 
-      if (!parsed) throw new Error("Aucune facture extraite.");
-      setFacture(parsed);
+      if (!first) throw new Error("Aucune facture extraite.");
+
+      // Si le PDF contenait plusieurs factures distinctes (Verger…),
+      // on en met une en review et on stocke les autres.
+      if (rest.length > 0) {
+        setParsedQueue(p => [...p, ...rest]);
+        // Met à jour le compteur du batch pour refléter le total réel
+        setQueueTotal(t => t + rest.length);
+      }
+
+      setFacture(first);
       setStep("review");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur");
@@ -302,7 +325,7 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
     }
   }
 
-  async function parseRawTextOnServer(rawText: string): Promise<ParsedFacture> {
+  async function parseRawTextOnServer(rawText: string): Promise<{ first: ParsedFacture; rest: ParsedFacture[] }> {
     const res = await fetch("/api/facture-parse-text", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -311,7 +334,13 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
     const j = await res.json().catch(() => ({}));
 
     if (res.ok) {
-      return (j as { facture: ParsedFacture }).facture;
+      // Le serveur renvoie soit `facture` (singulier) si une seule, soit
+      // aussi `factures` (pluriel) si plusieurs ont été détectées dans
+      // le même texte (cas relevé Verger : 17 factures dans un PDF).
+      const data = j as { facture: ParsedFacture; factures?: ParsedFacture[] };
+      const all = data.factures && data.factures.length > 0 ? data.factures : [data.facture];
+      const [first, ...rest] = all;
+      return { first, rest };
     }
 
     // 422 : aucune ligne reconnue. On rend un squelette vide avec le
@@ -325,7 +354,7 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
         "Extraction automatique impossible pour ce format. Complétez manuellement — " +
         "un aperçu du texte lu est copié dans le champ 'Adresse'.",
       );
-      return {
+      const skeleton: ParsedFacture = {
         fournisseur: {
           nom: null, siret: null, adresse: sample, telephone: null, email: null, tva_intra: null,
         },
@@ -338,6 +367,7 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
         tva: null,
         montant_ttc: null,
       };
+      return { first: skeleton, rest: [] };
     }
 
     throw new Error((j as { error?: string }).error ?? `HTTP ${res.status}`);
@@ -367,6 +397,21 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
   }
   function deleteLigne(idx: number) {
     setFacture(f => f ? { ...f, lignes: f.lignes.filter((_, i) => i !== idx) } : f);
+  }
+  function addLigne() {
+    setFacture(f => {
+      if (!f) return f;
+      const newLine: ParsedLigne = {
+        nom: "",
+        categorie: "epicerie",
+        quantite: 1,
+        unite: "u",
+        prix_unitaire: 0,
+        total: 0,
+        tva_taux: f.tva_recap.length === 1 ? f.tva_recap[0].taux : null,
+      };
+      return { ...f, lignes: [...f.lignes, newLine] };
+    });
   }
 
   async function handleSave() {
@@ -864,6 +909,14 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
                   </table>
                 </div>
 
+                <button
+                  onClick={addLigne}
+                  type="button"
+                  className="mt-3 inline-flex items-center gap-2 rounded-xl border border-dashed border-indigo-300 bg-indigo-50/50 px-4 py-2 text-sm font-medium text-indigo-700 hover:border-indigo-500 hover:bg-indigo-50"
+                >
+                  <span className="text-base">+</span> Ajouter une ligne
+                </button>
+
                 {/* Récapitulatif TVA extrait */}
                 {facture.tva_recap && facture.tva_recap.length > 0 && (
                   <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/40 p-3">
@@ -912,12 +965,12 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
                 {step === "review" && (
           <div className="flex justify-end gap-2 border-t border-gray-200 bg-gray-50 px-5 py-3">
             <button
-              onClick={() => { setFacture(null); setStep("pick"); setError(null); }}
+              onClick={() => { setFacture(null); setStep("pick"); setError(null); setQueue([]); setParsedQueue([]); setQueueIndex(0); setQueueTotal(0); }}
               className="min-h-[44px] rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium hover:bg-gray-100"
             >
               Recommencer
             </button>
-            {queue.length > 0 && (
+            {(queue.length > 0 || parsedQueue.length > 0) && (
               <button
                 onClick={() => { advanceQueue(); }}
                 className="min-h-[44px] rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-800 hover:bg-amber-100"
