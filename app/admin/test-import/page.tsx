@@ -125,6 +125,7 @@ export default function TestImportPage() {
   const [extract, setExtract] = useState<ExtractResult | null>(null);
   const [parseResult, setParseResult] = useState<unknown>(null);
   const [rawResponse, setRawResponse] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   async function handleFile(file: File) {
     setError(null);
@@ -192,7 +193,24 @@ export default function TestImportPage() {
         </p>
 
         <section className="mt-6 rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
-          <label className="flex cursor-pointer items-center gap-3 rounded-[8px] border border-dashed border-indigo-300 bg-[var(--accent-soft)]/40 px-4 py-4 text-sm font-medium text-[var(--accent)] hover:bg-[var(--accent-soft)]">
+          <label
+            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }}
+            onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }}
+            onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsDragging(false);
+              const f = e.dataTransfer.files?.[0];
+              if (f) handleFile(f);
+            }}
+            className={
+              "flex cursor-pointer flex-col items-center gap-2 rounded-[8px] border-2 border-dashed px-4 py-8 text-sm font-medium transition-colors " +
+              (isDragging
+                ? "border-indigo-500 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-200"
+                : "border-indigo-300 bg-[var(--accent-soft)]/40 text-[var(--accent)] hover:bg-[var(--accent-soft)]")
+            }
+          >
             <input
               type="file"
               accept=".pdf,image/*"
@@ -203,8 +221,12 @@ export default function TestImportPage() {
                 e.currentTarget.value = "";
               }}
             />
-            <span>📎</span>
-            <span>{filename || "Choisir un PDF ou une image"}</span>
+            <span className="text-2xl">📎</span>
+            <span>
+              {isDragging
+                ? "Relâchez pour importer"
+                : filename || "Glissez-déposez ou cliquez pour choisir un PDF / image"}
+            </span>
           </label>
 
           {etape !== "idle" && (
@@ -257,7 +279,8 @@ export default function TestImportPage() {
         {rawResponse && etape === "error" && (
           <section className="mt-4 rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
             <h2 className="mb-2 text-sm font-semibold text-[var(--text)]">Réponse serveur brute</h2>
-            <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-[var(--bg-subtle)] p-3 font-mono text-[11px] text-gray-700">
+            <pre 
+className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-[var(--bg-subtle)] p-3 font-mono text-[11px] text-gray-700">
               {rawResponse}
             </pre>
           </section>

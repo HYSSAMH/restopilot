@@ -485,6 +485,7 @@ export default function FacturesPage() {
                           <div className="mono tabular text-right text-[var(--text-muted)]">{o.qte}</div>
                           <div className="mono tabular text-right text-[var(--text-muted)]">{fmt(o.prix)}</div>
                           <div className="mono tabular text-right font-[600] text-[var(--text)]">{fmt(o.prix * o.qte)}</div>
+      
                         </div>
                       ))}
                     </div>

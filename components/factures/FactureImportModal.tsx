@@ -180,16 +180,20 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
   const [facture, setFacture] = useState<ParsedFacture | null>(null);
   const [fileBase64, setFileBase64] = useState<string | null>(null);
   const [fileMediaType, setFileMediaType] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   function reportProgress(s: string, pct?: number) {
     setProgress(s);
     if (typeof pct === "number") setProgressPct(pct);
   }
 
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file) return;
+    if (file) await processFile(file);
+  }
+
+  async function processFile(file: File) {
     const valid = ["application/pdf", "image/jpeg", "image/jpg", "image/png", "image/webp"];
     if (!valid.includes(file.type)) { setError("Format non supporté (PDF, JPG, PNG, WebP)."); return; }
     if (file.size > 20 * 1024 * 1024) { setError("Fichier trop lourd (max 20 Mo)."); return; }
@@ -581,22 +585,42 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
           {/* ── Étape : pick ──────────────────────── */}
           {step === "pick" && (
             <div>
-              <button
+              <div
                 onClick={() => fileRef.current?.click()}
-                className="flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 py-16 transition-colors hover:border-indigo-400 hover:bg-indigo-50"
+                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }}
+                onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }}
+                onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDragging(false);
+                  const file = e.dataTransfer.files?.[0];
+                  if (file) processFile(file);
+                }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") fileRef.current?.click(); }}
+                className={
+                  "flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed py-16 transition-colors cursor-pointer " +
+                  (isDragging
+                    ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200"
+                    : "border-gray-300 bg-gray-50 hover:border-indigo-400 hover:bg-indigo-50")
+                }
               >
-                <svg className="h-10 w-10 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <svg className={"h-10 w-10 transition-colors " + (isDragging ? "text-indigo-500" : "text-gray-400")} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4m-8 12h8a2 2 0 002-2v-3" />
                 </svg>
-                <p className="text-sm font-medium text-[#1A1A2E]">Cliquez pour choisir</p>
-                <p className="text-xs text-gray-500">PDF, JPG, PNG · 20 Mo max</p>
-              </button>
+                <p className="text-sm font-medium text-[#1A1A2E]">
+                  {isDragging ? "Relâchez pour importer" : "Glissez-déposez ou cliquez pour choisir"}
+                </p>
+                <p className="text-xs text-gray-500">PDF, JPG, PNG, WebP · 20 Mo max</p>
+              </div>
               <input
                 ref={fileRef}
                 type="file"
                 accept="application/pdf,image/jpeg,image/jpg,image/png,image/webp"
                 className="hidden"
-                onChange={handleFile}
+                onChange={handleInputChange}
               />
               {error && <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">{error}</p>}
             </div>
@@ -805,6 +829,7 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
               </svg>
               <p className="text-sm text-gray-700">Enregistrement…</p>
             </div>
+  
           )}
         </div>
 
