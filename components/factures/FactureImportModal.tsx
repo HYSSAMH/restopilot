@@ -182,15 +182,60 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
   const [fileMediaType, setFileMediaType] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
+  // File d'attente multi-factures : tableau de fichiers en attente
+  // après le fichier en cours. Quand l'utilisateur dépose N fichiers,
+  // on traite le 1er normalement et on stocke les autres ici. Après
+  // chaque save (ou skip), on dépile.
+  const [queue, setQueue] = useState<File[]>([]);
+  const [queueIndex, setQueueIndex] = useState(0); // 1-based pour affichage
+  const [queueTotal, setQueueTotal] = useState(0);
+
   function reportProgress(s: string, pct?: number) {
     setProgress(s);
     if (typeof pct === "number") setProgressPct(pct);
   }
 
   async function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (file) await processFile(file);
+    if (files.length === 0) return;
+    await startBatch(files);
+  }
+
+  /**
+   * Démarre le traitement d'un lot de N fichiers : on traite le
+   * premier et on stocke les autres dans la file d'attente.
+   */
+  async function startBatch(files: File[]) {
+    if (files.length === 0) return;
+    const [first, ...rest] = files;
+    setQueue(rest);
+    setQueueIndex(1);
+    setQueueTotal(files.length);
+    await processFile(first);
+  }
+
+  /**
+   * Passe au fichier suivant de la file d'attente. Si la file est
+   * vide, ferme la modal.
+   */
+  async function advanceQueue() {
+    setFacture(null);
+    setFileBase64(null);
+    setFileMediaType(null);
+    setError(null);
+    if (queue.length === 0) {
+      // Plus rien : reset complet, on revient à l'état pick (au cas
+      // où l'user veut importer d'autres factures sans fermer).
+      setQueueIndex(0);
+      setQueueTotal(0);
+      setStep("pick");
+      return;
+    }
+    const [next, ...rest] = queue;
+    setQueue(rest);
+    setQueueIndex(i => i + 1);
+    await processFile(next);
   }
 
   async function processFile(file: File) {
@@ -550,7 +595,25 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
         } catch { /* noop */ }
       }
 
+      // Toast de confirmation pour chaque facture sauvegardée du batch
+      if (queueTotal > 1) {
+        try {
+          const { pushToast } = await import("@/components/ui/Feedback");
+          pushToast(
+            `Facture ${queueIndex}/${queueTotal} enregistrée${queue.length > 0 ? " — passage à la suivante…" : ""}.`,
+            { tone: "success" },
+          );
+        } catch { /* noop */ }
+      }
+
+      // Trigger reload côté parent (factures page)
       onSaved();
+
+      // Si encore des fichiers en file d'attente, on enchaîne sans
+      // fermer la modal.
+      if (queue.length > 0) {
+        await advanceQueue();
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur");
       setStep("review");
@@ -563,7 +626,14 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
         {/* Header */}
         <div className="flex items-start justify-between gap-4 border-b border-gray-200 px-5 py-4">
           <div>
-            <h2 className="text-lg font-bold text-[#1A1A2E]">Importer une facture</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-bold text-[#1A1A2E]">Importer une facture</h2>
+              {queueTotal > 1 && (
+                <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-semibold text-indigo-700">
+                  {queueIndex} / {queueTotal}
+                </span>
+              )}
+            </div>
             <p className="mt-0.5 text-xs text-gray-500">
               {step === "pick"    && "Choisissez un PDF ou une photo de votre facture fournisseur."}
               {step === "parsing" && (progress || "Analyse de la facture…")}
@@ -594,8 +664,8 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
                   e.preventDefault();
                   e.stopPropagation();
                   setIsDragging(false);
-                  const file = e.dataTransfer.files?.[0];
-                  if (file) processFile(file);
+                  const files = Array.from(e.dataTransfer.files ?? []);
+                  if (files.length > 0) startBatch(files);
                 }}
                 role="button"
                 tabIndex={0}
@@ -613,12 +683,13 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
                 <p className="text-sm font-medium text-[#1A1A2E]">
                   {isDragging ? "Relâchez pour importer" : "Glissez-déposez ou cliquez pour choisir"}
                 </p>
-                <p className="text-xs text-gray-500">PDF, JPG, PNG, WebP · 20 Mo max</p>
+                <p className="text-xs text-gray-500">PDF, JPG, PNG, WebP · 20 Mo max · multiples acceptés</p>
               </div>
               <input
                 ref={fileRef}
                 type="file"
                 accept="application/pdf,image/jpeg,image/jpg,image/png,image/webp"
+                multiple
                 className="hidden"
                 onChange={handleInputChange}
               />
@@ -828,8 +899,8 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
               </svg>
               <p className="text-sm text-gray-700">Enregistrement…</p>
+ 
             </div>
-  
           )}
         </div>
 
@@ -842,6 +913,14 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
             >
               Recommencer
             </button>
+            {queue.length > 0 && (
+              <button
+                onClick={() => { advanceQueue(); }}
+                className="min-h-[44px] rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-800 hover:bg-amber-100"
+              >
+                Passer cette facture
+              </button>
+            )}
             <button
               onClick={handleSave}
               className="min-h-[44px] rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-600"
