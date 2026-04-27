@@ -845,8 +845,6 @@ export function parseFactureText(text: string): ParsedFacture[] {
       || f.montant_ttc != null
       || f.montant_ht != null,
     );
-  // Si tout a été filtré mais qu'il y a du texte, retourner au moins
-  // une facture (squelette) pour permettre la saisie manuelle.
   if (result.length === 0 && blocks.length > 0) {
     return [parseOneFacture(blocks[0])];
   }
