@@ -349,7 +349,24 @@ function matchTvaRecap(text: string): TvaLigneRecap[] {
   // Pattern 3 : Verger "CODE BASE TAUX MONTANT" — code TVA en premier (1-2 chiffres)
   const reVerger = /^\s*(\d{1,2})\s+([\d\s.]+[.,]\d{2})\s+(\d{1,2}[.,]\d{1,2})\s+([\d\s.]+[.,]\d{2})\s*$/;
 
+  // Pré-traitement : pour les lignes très larges contenant le récap TVA
+  // ET d'autres colonnes (cas Pain Tordu : "2 372,60 5,50 20,49     Net HT
+  // 372,60" sur la même ligne), on split sur de GROS gaps (≥15 espaces) qui
+  // séparent les colonnes principales — sans casser un récap "2 BASE TAUX
+  // MONTANT" qui n'a que ~5-15 espaces entre les chiffres.
+  const candidateLines: string[] = [];
   for (const raw of lines) {
+    if (!raw) continue;
+    candidateLines.push(raw); // toujours essayer la ligne entière d'abord
+    if (raw.length > 100 && /\s{25,}/.test(raw)) {
+      for (const col of raw.split(/\s{25,}/)) {
+        const t = col.trim();
+        if (t && t.length <= 120 && t !== raw.trim()) candidateLines.push(t);
+      }
+    }
+  }
+
+  for (const raw of candidateLines) {
     if (!raw || raw.length > 120) continue;
 
     let m = raw.match(reSur);
@@ -463,6 +480,25 @@ const VERGER_LINE_RE = new RegExp(
   "i",
 );
 
+/**
+ * Format Pain Tordu / boulangeries similaires :
+ *   CODE | DESIGNATION… | QTE | PU | [%REM] [REMISE_HT] | TOTAL_HT | code-TVA(1-2 chiffres)
+ *   ex : "AR0001 Baguette 250 gr 18,000 0,80 14,40 2"
+ *   ex : "AR0001 Baguette 250 gr 11H 20,000 0,80 16,00 2"
+ *
+ * Code alphanumérique (lettres + chiffres). Pas d'unité.
+ */
+const PAIN_TORDU_LINE_RE = new RegExp(
+  String.raw`^\s*` +
+    String.raw`([A-Z]{1,4}\d{3,8})\s+` +                    // 1: code (AR0001)
+    String.raw`(.+?)\s+` +                                   // 2: désignation
+    String.raw`(\d+(?:[.,]\d+)?)\s+` +                     // 3: quantité
+    String.raw`(\d+[.,]\d{2,4})\s+` +                      // 4: PU
+    String.raw`([\d\s.]*\d[.,]\d{2})\s+` +               // 5: total HT
+    String.raw`(\d{1,2})\s*$`,                              // 6: code TVA
+  "i",
+);
+
 const VERGER_TVA_CODE: Record<string, number> = {
   "1": 20,
   "2": 5.5,
@@ -508,6 +544,24 @@ function parseLignes(text: string, tvaRecap: TvaLigneRecap[]): ParsedLigne[] {
       if (tvaRecap.length === 1) tvaTaux = tvaRecap[0].taux;
       lignes.push({
         nom, categorie: guessCat(nom), quantite, unite,
+        prix_unitaire: prixU, total, tva_taux: tvaTaux,
+      });
+      continue;
+    }
+
+    // 2.b) Pattern Pain Tordu (Verger sans unité)
+    m = PAIN_TORDU_LINE_RE.exec(line);
+    if (m) {
+      const nom = m[2].trim();
+      if (nom.length < 3) continue;
+      const quantite = parseMontant(m[3]) ?? 0;
+      const prixU = parseMontant(m[4]) ?? 0;
+      const total = parseMontant(m[5]) ?? (quantite * prixU);
+      const tvaCode = m[6];
+      let tvaTaux: number | null = VERGER_TVA_CODE[tvaCode] ?? null;
+      if (tvaRecap.length === 1) tvaTaux = tvaRecap[0].taux;
+      lignes.push({
+        nom, categorie: guessCat(nom), quantite, unite: "u",
         prix_unitaire: prixU, total, tva_taux: tvaTaux,
       });
       continue;
