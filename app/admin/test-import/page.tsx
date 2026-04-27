@@ -279,8 +279,7 @@ export default function TestImportPage() {
         {rawResponse && etape === "error" && (
           <section className="mt-4 rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
             <h2 className="mb-2 text-sm font-semibold text-[var(--text)]">Réponse serveur brute</h2>
-            <pre 
-className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-[var(--bg-subtle)] p-3 font-mono text-[11px] text-gray-700">
+            <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-[var(--bg-subtle)] p-3 font-mono text-[11px] text-gray-700">
               {rawResponse}
             </pre>
           </section>
