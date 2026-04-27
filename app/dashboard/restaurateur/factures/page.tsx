@@ -487,6 +487,7 @@ export default function FacturesPage() {
                           <div className="mono tabular text-right font-[600] text-[var(--text)]">{fmt(o.prix * o.qte)}</div>
       
      
+    
                         </div>
                       ))}
                     </div>
@@ -503,7 +504,8 @@ export default function FacturesPage() {
         <FactureImportModal
           onClose={() => setImportOpen(false)}
           onSaved={() => {
-            setImportOpen(false);
+            // Recharge la liste après chaque save (la modal gère sa
+            // propre fermeture pour supporter le mode batch).
             setReloadKey(k => k + 1);
           }}
         />
