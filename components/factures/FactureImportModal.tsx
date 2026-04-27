@@ -2,38 +2,9 @@
 
 import { useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import type { ParsedFacture, ParsedLigne } from "@/lib/parse-facture";
 
-interface ParsedLigne {
-  nom:            string;
-  categorie:      string;
-  quantite:       number;
-  unite:          string;
-  prix_unitaire:  number;
-  total:          number;
-  tva_taux?:      number | null;
-}
-interface TvaLigneRecap {
-  taux:         number;
-  base_ht:      number;
-  montant_tva:  number;
-  ttc:          number | null;
-}
-interface ParsedFacture {
-  fournisseur: {
-    nom:       string | null;
-    siret:     string | null;
-    adresse:   string | null;
-    telephone: string | null;
-    email:     string | null;
-  };
-  numero_facture: string | null;
-  date:           string | null;
-  lignes:         ParsedLigne[];
-  tva_recap?:     TvaLigneRecap[];
-  montant_ht:     number | null;
-  tva:            number | null;
-  montant_ttc:    number | null;
-}
+const DEBUG_FACTURE = process.env.NEXT_PUBLIC_DEBUG_FACTURE === "1";
 
 type Step = "pick" | "parsing" | "review" | "saving";
 
@@ -139,7 +110,11 @@ async function extractPdfTextClient(file: File): Promise<{ text: string; numPage
  * OCR d'un PDF scanné côté client.
  * Rend chaque page en canvas via pdfjs-dist puis passe à tesseract.js.
  */
-async function ocrPdfClient(file: File, onProgress: (s: string) => void): Promise<string> {
+async function ocrPdfClient(
+  file: File,
+  onProgress: (s: string, pct?: number) => void,
+  signal?: { cancelled: boolean },
+): Promise<string> {
   const [{ getDocument }, tesseract] = await Promise.all([
     loadPdfjs(),
     import("tesseract.js"),
@@ -152,7 +127,9 @@ async function ocrPdfClient(file: File, onProgress: (s: string) => void): Promis
   let fullText = "";
   try {
     for (let p = 1; p <= pdf.numPages; p++) {
-      onProgress(`OCR page ${p}/${pdf.numPages}…`);
+      if (signal?.cancelled) throw new Error("Annulé");
+      const pct = Math.round(((p - 1) / pdf.numPages) * 100);
+      onProgress(`OCR page ${p}/${pdf.numPages}…`, pct);
       const page = await pdf.getPage(p);
       const viewport = page.getViewport({ scale: 2 });
       const canvas = document.createElement("canvas");
@@ -164,6 +141,7 @@ async function ocrPdfClient(file: File, onProgress: (s: string) => void): Promis
       const { data } = await worker.recognize(canvas);
       fullText += "\n" + data.text;
     }
+    onProgress("OCR terminé", 100);
   } finally {
     await worker.terminate();
   }
@@ -173,12 +151,16 @@ async function ocrPdfClient(file: File, onProgress: (s: string) => void): Promis
 /**
  * OCR d'une image (JPG/PNG/WebP) directement.
  */
-async function ocrImageClient(file: File, onProgress: (s: string) => void): Promise<string> {
+async function ocrImageClient(
+  file: File,
+  onProgress: (s: string, pct?: number) => void,
+): Promise<string> {
   const tesseract = await import("tesseract.js");
-  onProgress("OCR de l'image…");
+  onProgress("OCR de l'image…", 0);
   const worker = await tesseract.createWorker("fra");
   try {
     const { data } = await worker.recognize(file);
+    onProgress("OCR terminé", 100);
     return data.text;
   } finally {
     await worker.terminate();
@@ -189,13 +171,20 @@ const inputCls = "w-full rounded-lg border border-gray-200 bg-white px-3 py-2 te
 
 export default function FactureImportModal({ onClose, onSaved }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const cancelRef = useRef<{ cancelled: boolean }>({ cancelled: false });
   const [step, setStep] = useState<Step>("pick");
   const [error, setError] = useState<string | null>(null);
   const [filename, setFilename] = useState("");
   const [progress, setProgress] = useState<string>("");
+  const [progressPct, setProgressPct] = useState<number>(0);
   const [facture, setFacture] = useState<ParsedFacture | null>(null);
   const [fileBase64, setFileBase64] = useState<string | null>(null);
   const [fileMediaType, setFileMediaType] = useState<string | null>(null);
+
+  function reportProgress(s: string, pct?: number) {
+    setProgress(s);
+    if (typeof pct === "number") setProgressPct(pct);
+  }
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -209,6 +198,8 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
     setFilename(file.name);
     setStep("parsing");
     setProgress("Extraction du texte…");
+    setProgressPct(0);
+    cancelRef.current = { cancelled: false };
 
     try {
       const b64 = await readBase64(file);
@@ -225,22 +216,26 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
         // pour la partie PDF → zéro risque de 502/timeout.
         setProgress("Extraction du texte…");
         const { text, numPages } = await extractPdfTextClient(file);
-        console.log(`[facture] pdf texte natif : ${numPages}p, ${text.length} chars`);
-        console.log(`[facture] aperçu (500 premiers chars) :\n` + text.slice(0, 500));
+        if (DEBUG_FACTURE) {
+          console.log(`[facture] pdf texte natif : ${numPages}p, ${text.length} chars`);
+          console.log(`[facture] aperçu (500 premiers chars) :\n` + text.slice(0, 500));
+        }
 
         if (text.length >= 50) {
           rawText = text;
         } else {
           // PDF scanné : OCR côté client
           setProgress("PDF scanné détecté. OCR en cours dans votre navigateur…");
-          rawText = await ocrPdfClient(file, setProgress);
-          console.log(`[facture] ocr : ${rawText.length} chars`);
-          console.log(`[facture] aperçu ocr :\n` + rawText.slice(0, 500));
+          rawText = await ocrPdfClient(file, reportProgress, cancelRef.current);
+          if (DEBUG_FACTURE) {
+            console.log(`[facture] ocr : ${rawText.length} chars`);
+            console.log(`[facture] aperçu ocr :\n` + rawText.slice(0, 500));
+          }
         }
       } else {
         // Image directe : OCR client
         setProgress("OCR en cours dans votre navigateur…");
-        rawText = await ocrImageClient(file, setProgress);
+        rawText = await ocrImageClient(file, reportProgress);
       }
 
       // Parsing serveur : texte → ParsedFacture (léger, rapide, pas de PDF)
@@ -276,17 +271,18 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
     if (res.status === 422) {
       const sample = (j as { diagnostic?: { raw_sample?: string } }).diagnostic?.raw_sample
         ?? rawText.slice(0, 1000);
-      console.warn("[facture] parsing automatique a échoué. Texte extrait :\n" + rawText);
+      if (DEBUG_FACTURE) console.warn("[facture] parsing échoué :\n" + rawText);
       setError(
         "Extraction automatique impossible pour ce format. Complétez manuellement — " +
         "un aperçu du texte lu est copié dans le champ 'Adresse'.",
       );
       return {
         fournisseur: {
-          nom: null, siret: null, adresse: sample, telephone: null, email: null,
+          nom: null, siret: null, adresse: sample, telephone: null, email: null, tva_intra: null,
         },
         numero_facture: null,
         date: null,
+        date_echeance: null,
         lignes: [],
         tva_recap: [],
         montant_ht: null,
@@ -334,6 +330,25 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Session expirée");
+
+      // ── Détection de doublon ─────────────────────────────
+      if (facture.numero_facture) {
+        const { data: existingFacts } = await supabase
+          .from("commandes")
+          .select("id, created_at, montant_total")
+          .eq("restaurateur_id", user.id)
+          .eq("numero_facture_externe", facture.numero_facture)
+          .limit(1);
+        if (existingFacts && existingFacts.length > 0) {
+          const ok = window.confirm(
+            `Une facture portant le numéro ${facture.numero_facture} existe déjà ` +
+            `(import du ${new Date(existingFacts[0].created_at).toLocaleDateString("fr-FR")}, ` +
+            `${Number(existingFacts[0].montant_total).toFixed(2)} €).\n\n` +
+            `Continuer et créer un doublon ?`,
+          );
+          if (!ok) { setStep("review"); return; }
+        }
+      }
 
       // Récupère le nom du restaurateur depuis son profil (évite un 400
       // sur commandes.restaurateur_nom qui est NOT NULL côté DB).
@@ -435,8 +450,10 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
         errCmd = (res.error ?? null) as SupaErr;
       }
       // PGRST204 ou message "column ... does not exist" : retry sans tva_recap
+      let migrationManquante = false;
       if (errCmd && (errCmd.code === "PGRST204" || /column .* does not exist/i.test(errCmd.message))) {
-        console.warn("[facture-import] tva_recap absent côté DB, retry sans. Exécuter migration_tva_par_ligne.sql pour bénéficier du récap TVA.");
+        migrationManquante = true;
+        if (DEBUG_FACTURE) console.warn("[facture-import] tva_recap absent côté DB. Exécuter migration_tva_par_ligne.sql.");
         const res = await supabase.from("commandes")
           .insert(basePayload)
           .select("id").single();
@@ -467,11 +484,31 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
         }
       }
 
-      // 3. Lignes — tentative avec tva_taux puis fallback sans si la
-      // migration DB n'a pas été exécutée.
+      // 3. Mapping produit_id par fuzzy-match sur le nom (utile pour
+      // les statistiques de prix moyen, mercuriale, alertes).
+      const produitNoms = Array.from(new Set(facture.lignes.map(l => l.nom.toLowerCase().trim()))).filter(Boolean);
+      const produitIdByNom = new Map<string, string>();
+      if (produitNoms.length > 0) {
+        const { data: produitsHits } = await supabase
+          .from("produits")
+          .select("id, nom")
+          .eq("actif", true);
+        const known = (produitsHits ?? []).map(p => ({ id: p.id, nomLower: p.nom.toLowerCase().trim() }));
+        for (const ligneNom of produitNoms) {
+          let hit = known.find(p => p.nomLower === ligneNom);
+          if (!hit && ligneNom.length >= 6) {
+            const prefix = ligneNom.slice(0, Math.min(ligneNom.length, 12));
+            hit = known.find(p => p.nomLower.startsWith(prefix) || ligneNom.startsWith(p.nomLower.slice(0, Math.min(p.nomLower.length, 12))));
+          }
+          if (hit) produitIdByNom.set(ligneNom, hit.id);
+        }
+      }
+
+      // 4. Lignes — tentative avec tva_taux, fallback sans, et rollback
+      // de la commande si l'insert lignes échoue.
       const baseLignes = facture.lignes.map(l => ({
         commande_id:   cmd.id,
-        produit_id:    null,
+        produit_id:    produitIdByNom.get(l.nom.toLowerCase().trim()) ?? null,
         nom_snapshot:  l.nom,
         prix_snapshot: l.prix_unitaire,
         unite:         l.unite,
@@ -486,11 +523,28 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
         errLignes = (res.error ?? null) as SupaErrL;
       }
       if (errLignes && (errLignes.code === "PGRST204" || /column .* does not exist/i.test(errLignes.message))) {
-        console.warn("[facture-import] tva_taux absent côté DB, retry sans.");
+        migrationManquante = true;
+        if (DEBUG_FACTURE) console.warn("[facture-import] tva_taux absent côté DB, retry sans.");
         const res = await supabase.from("lignes_commande").insert(baseLignes);
         errLignes = (res.error ?? null) as SupaErrL;
       }
-      if (errLignes) throw new Error("Ajout lignes échoué : " + errLignes.message);
+      if (errLignes) {
+        // Rollback : supprime la commande créée pour ne pas laisser
+        // d'enregistrement orphelin sans lignes.
+        await supabase.from("commandes").delete().eq("id", cmd.id);
+        throw new Error("Ajout lignes échoué (commande annulée) : " + errLignes.message);
+      }
+
+      // Alerte UI non bloquante si migration partielle
+      if (migrationManquante) {
+        try {
+          const { pushToast } = await import("@/components/ui/Feedback");
+          pushToast(
+            "Migration DB partielle — exécuter migration_tva_par_ligne.sql pour conserver le récap TVA.",
+            { tone: "warning" },
+          );
+        } catch { /* noop */ }
+      }
 
       onSaved();
     } catch (e) {
@@ -550,19 +604,61 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
 
           {/* ── Étape : parsing ───────────────────── */}
           {step === "parsing" && (
-            <div className="flex flex-col items-center gap-3 py-20 text-center">
+            <div className="flex flex-col items-center gap-3 py-16 text-center">
               <svg className="h-10 w-10 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
               </svg>
               <p className="text-sm text-gray-700">{progress || "Analyse en cours…"}</p>
               <p className="text-xs text-gray-500">{filename}</p>
+              {progressPct > 0 && (
+                <div className="w-64 h-2 overflow-hidden rounded-full bg-gray-200">
+                  <div
+                    className="h-full rounded-full bg-indigo-500 transition-all duration-300"
+                    style={{ width: `${Math.min(100, Math.max(0, progressPct))}%` }}
+                  />
+                </div>
+              )}
+              <button
+                onClick={() => {
+                  cancelRef.current.cancelled = true;
+                  setError("Annulation demandée…");
+                }}
+                className="mt-2 text-xs text-gray-500 underline hover:text-gray-700"
+              >
+                Annuler
+              </button>
             </div>
           )}
 
           {/* ── Étape : review ────────────────────── */}
           {step === "review" && facture && (
             <div className="flex flex-col gap-5">
+              {/* Preview du fichier original */}
+              {fileBase64 && fileMediaType && (
+                <details className="rounded-2xl border border-gray-200 bg-white p-3">
+                  <summary className="cursor-pointer text-xs font-medium text-gray-600 hover:text-gray-900">
+                    Voir le document source ({fileMediaType === "application/pdf" ? "PDF" : "image"})
+                  </summary>
+                  <div className="mt-3 max-h-[420px] overflow-auto rounded-lg border border-gray-100 bg-gray-50 p-2">
+                    {fileMediaType === "application/pdf" ? (
+                      <iframe
+                        src={`data:${fileMediaType};base64,${fileBase64}`}
+                        title="Aperçu facture"
+                        className="h-[400px] w-full rounded"
+                      />
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={`data:${fileMediaType};base64,${fileBase64}`}
+                        alt="Aperçu facture"
+                        className="mx-auto max-h-[400px] w-auto rounded"
+                      />
+                    )}
+                  </div>
+                </details>
+              )}
+
               {/* Fournisseur */}
               <section className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
                 <h3 className="mb-3 text-sm font-semibold text-[#1A1A2E]">Fournisseur</h3>
