@@ -17,6 +17,13 @@ import { Badge } from "@/components/ui/Badge";
 import { Banner, pushToast } from "@/components/ui/Feedback";
 import { Skeleton } from "@/components/ui/Loading";
 
+interface TvaRecapRow {
+  taux: number;
+  base_ht: number;
+  montant_tva: number;
+  ttc: number | null;
+}
+
 interface Commande {
   id: string;
   fournisseur_id: string | null;
@@ -27,6 +34,7 @@ interface Commande {
   source: string | null;
   numero_facture_externe: string | null;
   pdf_path: string | null;
+  tva_recap: TvaRecapRow[] | null;
   created_at: string;
   lignes_commande: {
     id: string;
@@ -34,7 +42,33 @@ interface Commande {
     prix_snapshot: number;
     unite: string;
     quantite: number;
+    tva_taux: number | null;
   }[];
+}
+
+/**
+ * TTC d'une commande, calculé depuis les données les plus précises
+ * disponibles :
+ *   1. tva_recap (récap pied de facture importée)
+ *   2. somme(ligne.total * (1 + ligne.tva_taux/100))
+ *   3. fallback HT × 1.10
+ */
+function computeTtc(c: Commande): number {
+  if (Array.isArray(c.tva_recap) && c.tva_recap.length > 0) {
+    return c.tva_recap.reduce(
+      (s, r) => s + Number(r.base_ht) + Number(r.montant_tva),
+      0,
+    );
+  }
+  const lignes = c.lignes_commande ?? [];
+  if (lignes.some(l => l.tva_taux != null)) {
+    return lignes.reduce((s, l) => {
+      const ht = Number(l.prix_snapshot) * Number(l.quantite);
+      const tx = l.tva_taux != null ? Number(l.tva_taux) : 10;
+      return s + ht * (1 + tx / 100);
+    }, 0);
+  }
+  return Number(c.montant_total) * 1.10;
 }
 
 interface LignesByProduit {
@@ -89,8 +123,8 @@ export default function FacturesPage() {
         .from("commandes")
         .select(`
           id, fournisseur_id, fournisseur_externe_id, statut, montant_total, avoir_montant,
-          source, numero_facture_externe, pdf_path, created_at,
-          lignes_commande ( id, nom_snapshot, prix_snapshot, unite, quantite )
+          source, numero_facture_externe, pdf_path, tva_recap, created_at,
+          lignes_commande ( id, nom_snapshot, prix_snapshot, unite, quantite, tva_taux )
         `)
         .eq("restaurateur_id", user.id)
         .order("created_at", { ascending: false })
@@ -340,7 +374,7 @@ export default function FacturesPage() {
               <div className="text-right">Actions</div>
             </TableHead>
             {paginate(filtered, page, PAGE_SIZE_DEFAULT).map((c) => {
-              const ttc = Number(c.montant_total) * 1.10;
+              const ttc = computeTtc(c);
               const meta = STATUT_META[c.statut] ?? { label: c.statut, tone: "neutral" as StatutTone };
               const hasAvoir = Number(c.avoir_montant) > 0;
               return (
