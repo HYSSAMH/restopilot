@@ -16,6 +16,7 @@ import { Table, TableHead, TableRow, TableFooter } from "@/components/ui/Table";
 import { Badge } from "@/components/ui/Badge";
 import { Banner, pushToast } from "@/components/ui/Feedback";
 import { Skeleton } from "@/components/ui/Loading";
+import { CATEGORIES, categorieLabel, categorieIcon, categorieParent } from "@/lib/categories";
 
 interface TvaRecapRow {
   taux: number;
@@ -35,6 +36,7 @@ interface Commande {
   numero_facture_externe: string | null;
   pdf_path: string | null;
   tva_recap: TvaRecapRow[] | null;
+  categorie_dominante: string | null;
   created_at: string;
   lignes_commande: {
     id: string;
@@ -108,6 +110,7 @@ export default function FacturesPage() {
 
   const [search, setSearch] = useState("");
   const [fournFilter, setFournFilter] = useState<"tous" | string>("tous");
+  const [categorieFilter, setCategorieFilter] = useState<"tous" | string>("tous");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
   const [montantMin, setMontantMin] = useState<string>("");
@@ -123,7 +126,7 @@ export default function FacturesPage() {
         .from("commandes")
         .select(`
           id, fournisseur_id, fournisseur_externe_id, statut, montant_total, avoir_montant,
-          source, numero_facture_externe, pdf_path, tva_recap, created_at,
+          source, numero_facture_externe, pdf_path, tva_recap, categorie_dominante, created_at,
           lignes_commande ( id, nom_snapshot, prix_snapshot, unite, quantite, tva_taux )
         `)
         .eq("restaurateur_id", user.id)
@@ -187,6 +190,14 @@ export default function FacturesPage() {
   const filtered = useMemo(() => {
     let arr = commandes;
     if (fournFilter !== "tous") arr = arr.filter(c => (c.fournisseur_id ?? c.fournisseur_externe_id) === fournFilter);
+    if (categorieFilter !== "tous") {
+      // Match exact (sous-catégorie) ou parent (toutes les sous-cats)
+      arr = arr.filter(c => {
+        const cat = c.categorie_dominante;
+        if (!cat) return categorieFilter === "_aucune";
+        return cat === categorieFilter || cat.startsWith(categorieFilter + "/");
+      });
+    }
     if (dateFrom) arr = arr.filter(c => c.created_at.slice(0, 10) >= dateFrom);
     if (dateTo) arr = arr.filter(c => c.created_at.slice(0, 10) <= dateTo);
     const min = parseFloat(montantMin);
@@ -204,7 +215,7 @@ export default function FacturesPage() {
     return arr;
   }, [commandes, fournFilter, dateFrom, dateTo, montantMin, montantMax, search, fournNames]);
 
-  useEffect(() => { setPage(1); }, [fournFilter, dateFrom, dateTo, montantMin, montantMax, search, tab]);
+  useEffect(() => { setPage(1); }, [fournFilter, dateFrom, dateTo, montantMin, montantMax, search, tab, categorieFilter]);
 
   const fournUniques = Array.from(new Set(commandes.map(c => c.fournisseur_id ?? c.fournisseur_externe_id).filter((x): x is string => !!x)));
   const totalFiltre = filtered.filter(c => c.statut !== "annulee").reduce((s, c) => s + Number(c.montant_total), 0);
@@ -235,7 +246,7 @@ export default function FacturesPage() {
     return Array.from(map.values()).sort((a, b) => b.totalValeur - a.totalValeur);
   }, [filtered, fournNames]);
 
-  const hasFilters = !!(search || fournFilter !== "tous" || dateFrom || dateTo || montantMin || montantMax);
+  const hasFilters = !!(search || fournFilter !== "tous" || categorieFilter !== "tous" || dateFrom || dateTo || montantMin || montantMax);
 
   async function download(id: string) {
     setDL(id);
@@ -305,6 +316,28 @@ export default function FacturesPage() {
               <option key={id} value={id}>{fournNames[id] ?? id.slice(0, 6)}</option>
             ))}
           </Select>
+          <Select value={categorieFilter} onChange={e => setCategorieFilter(e.target.value)}>
+            <option value="tous">Toutes catégories</option>
+            <option value="_aucune">Sans catégorie</option>
+            <option value="mixte">Mixte</option>
+            <optgroup label="Alimentaire">
+              <option value="alimentaire">— Tout alimentaire</option>
+              {CATEGORIES.filter(c => c.parent === "alimentaire").map(c => (
+                <option key={c.id} value={c.id}>{c.icon} {c.label}</option>
+              ))}
+            </optgroup>
+            <optgroup label="Énergie">
+              <option value="energie">— Toute énergie</option>
+              {CATEGORIES.filter(c => c.parent === "energie").map(c => (
+                <option key={c.id} value={c.id}>{c.icon} {c.label}</option>
+              ))}
+            </optgroup>
+            <optgroup label="Autres">
+              {CATEGORIES.filter(c => !["alimentaire", "energie"].includes(c.parent)).map(c => (
+                <option key={c.id} value={c.id}>{c.icon} {c.label}</option>
+              ))}
+            </optgroup>
+          </Select>
           <Field label="Du">
             <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} max={dateTo || undefined} className="w-[150px]" />
           </Field>
@@ -323,7 +356,7 @@ export default function FacturesPage() {
               size="sm"
               iconLeft="x"
               onClick={() => {
-                setSearch(""); setFournFilter("tous"); setDateFrom(""); setDateTo("");
+                setSearch(""); setFournFilter("tous"); setCategorieFilter("tous"); setDateFrom(""); setDateTo("");
                 setMontantMin(""); setMontantMax("");
               }}
             >
@@ -382,8 +415,23 @@ export default function FacturesPage() {
                   <div className="mono tabular text-[12.5px] text-[var(--text-muted)]">
                     {new Date(c.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "2-digit" })}
                   </div>
-                  <div className="text-[13px] font-[550] text-[var(--text)] truncate">
-                    {fournNames[c.fournisseur_id ?? c.fournisseur_externe_id ?? ""] ?? "—"}
+                  <div className="text-[13px] font-[550] text-[var(--text)] truncate flex items-center gap-1.5">
+                    <span className="truncate">
+                      {fournNames[c.fournisseur_id ?? c.fournisseur_externe_id ?? ""] ?? "—"}
+                    </span>
+                    {c.categorie_dominante && c.categorie_dominante !== "mixte" && (
+                      <span
+                        className="shrink-0 inline-flex items-center gap-0.5 rounded-full bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700"
+                        title={categorieLabel(c.categorie_dominante)}
+                      >
+                        {categorieIcon(c.categorie_dominante)}
+                      </span>
+                    )}
+                    {c.categorie_dominante === "mixte" && (
+                      <span className="shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600" title="Mixte">
+                        🧩
+                      </span>
+                    )}
                   </div>
                   <div className="mono tabular text-[11.5px] text-[var(--text-subtle)] truncate">
                     {c.numero_facture_externe ?? `#${c.id.slice(0, 6).toUpperCase()}`}
@@ -504,8 +552,6 @@ export default function FacturesPage() {
         <FactureImportModal
           onClose={() => setImportOpen(false)}
           onSaved={() => {
-            // Recharge la liste après chaque save (la modal gère sa
-            // propre fermeture pour supporter le mode batch).
             setReloadKey(k => k + 1);
           }}
         />
