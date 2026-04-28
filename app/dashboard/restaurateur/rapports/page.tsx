@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { createClient } from "@/lib/supabase/client";
+import { CATEGORIES, classifierProduit, categorieLabel, categorieIcon } from "@/lib/categories";
 
 interface Ligne {
   nom_snapshot: string;
@@ -11,6 +12,7 @@ interface Ligne {
   quantite: number;
   date: string;
   fournisseur_id: string;
+  categorie: string;
 }
 
 interface MonthStats {
@@ -81,6 +83,7 @@ export default function RapportsPage() {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 25;
   const [selected, setSelected] = useState<string | null>(null);
+  const [tab, setTab] = useState<"produits" | "categories">("produits");
 
   useEffect(() => {
     (async () => {
@@ -92,7 +95,7 @@ export default function RapportsPage() {
         .from("commandes")
         .select(`
           fournisseur_id, fournisseur_externe_id, created_at, statut,
-          lignes_commande ( nom_snapshot, prix_snapshot, unite, quantite )
+          lignes_commande ( nom_snapshot, prix_snapshot, unite, quantite, categorie )
         `)
         .eq("restaurateur_id", user.id)
         .neq("statut", "annulee")
@@ -104,7 +107,7 @@ export default function RapportsPage() {
         fournisseur_id: string | null;
         fournisseur_externe_id: string | null;
         created_at: string;
-        lignes_commande: { nom_snapshot: string; prix_snapshot: number; unite: string; quantite: number }[];
+        lignes_commande: { nom_snapshot: string; prix_snapshot: number; unite: string; quantite: number; categorie: string | null }[];
       };
       ((data ?? []) as Row[]).forEach((c) => {
         const fId = c.fournisseur_id ?? c.fournisseur_externe_id ?? "";
@@ -116,6 +119,7 @@ export default function RapportsPage() {
             quantite:       Number(l.quantite),
             date:           c.created_at,
             fournisseur_id: fId,
+            categorie:      l.categorie || classifierProduit(l.nom_snapshot),
           });
         });
       });
@@ -226,6 +230,32 @@ export default function RapportsPage() {
   }, [filtered, moisCourant, moisPrec]);
 
   // Tri + recherche + pagination
+  // Agrégation par catégorie (parent + sous-cat)
+  const parCategorie = useMemo(() => {
+    const byCat = new Map<string, { qte: number; valeur: number; nbLignes: number }>();
+    const byParent = new Map<string, { qte: number; valeur: number; nbLignes: number }>();
+    let totalGlobal = 0;
+    for (const l of filtered) {
+      const ht = l.prix_snapshot * l.quantite;
+      const cat = l.categorie || "autres";
+      const parent = cat.includes("/") ? cat.split("/")[0] : cat;
+      if (!byCat.has(cat)) byCat.set(cat, { qte: 0, valeur: 0, nbLignes: 0 });
+      const c = byCat.get(cat)!;
+      c.qte += l.quantite; c.valeur += ht; c.nbLignes += 1;
+      if (!byParent.has(parent)) byParent.set(parent, { qte: 0, valeur: 0, nbLignes: 0 });
+      const p = byParent.get(parent)!;
+      p.qte += l.quantite; p.valeur += ht; p.nbLignes += 1;
+      totalGlobal += ht;
+    }
+    const parents = Array.from(byParent.entries())
+      .map(([id, s]) => ({ id, label: id.charAt(0).toUpperCase() + id.slice(1).replace("_", " "), ...s, pct: totalGlobal > 0 ? (s.valeur / totalGlobal) * 100 : 0 }))
+      .sort((a, b) => b.valeur - a.valeur);
+    const sousCats = Array.from(byCat.entries())
+      .map(([id, s]) => ({ id, label: categorieLabel(id), icon: categorieIcon(id), parent: id.includes("/") ? id.split("/")[0] : id, ...s, pct: totalGlobal > 0 ? (s.valeur / totalGlobal) * 100 : 0 }))
+      .sort((a, b) => b.valeur - a.valeur);
+    return { parents, sousCats, totalGlobal };
+  }, [filtered]);
+
   const sortedFiltered = useMemo(() => {
     const s = search.trim().toLowerCase();
     let arr = s ? produits.filter(p => p.nom.toLowerCase().includes(s)) : produits;
@@ -311,18 +341,44 @@ export default function RapportsPage() {
         </div>
       </div>
 
-      {/* Recherche */}
-      <div className="mb-3">
-        <input
-          type="search"
-          value={search}
-          onChange={e => { setSearch(e.target.value); setPage(1); }}
-          placeholder="Rechercher un produit…"
-          className="w-full min-h-[44px] rounded-[8px] border border-[var(--border)] bg-white px-3.5 py-2 text-sm outline-none focus:border-[var(--accent)]"
-        />
+      {/* Onglets */}
+      <div className="mb-3 flex border-b border-[var(--border)]">
+        <button
+          onClick={() => setTab("produits")}
+          className={"px-4 py-2 text-sm font-medium border-b-2 transition-colors " + (tab === "produits" ? "border-indigo-500 text-indigo-700" : "border-transparent text-gray-500 hover:text-gray-700")}
+        >
+          Par produit
+        </button>
+        <button
+          onClick={() => setTab("categories")}
+          className={"px-4 py-2 text-sm font-medium border-b-2 transition-colors " + (tab === "categories" ? "border-indigo-500 text-indigo-700" : "border-transparent text-gray-500 hover:text-gray-700")}
+        >
+          Par catégorie
+        </button>
       </div>
 
-      {loading ? (
+      {/* Recherche (visible uniquement onglet produits) */}
+      {tab === "produits" && (
+        <div className="mb-3">
+          <input
+            type="search"
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Rechercher un produit…"
+            className="w-full min-h-[44px] rounded-[8px] border border-[var(--border)] bg-white px-3.5 py-2 text-sm outline-none focus:border-[var(--accent)]"
+          />
+        </div>
+      )}
+
+      {tab === "categories" && !loading && (
+        <CategoriesView
+          parents={parCategorie.parents}
+          sousCats={parCategorie.sousCats}
+          totalGlobal={parCategorie.totalGlobal}
+        />
+      )}
+
+      {tab === "produits" && (loading ? (
         <div className="h-64 animate-pulse rounded-[10px] border border-[var(--border)] bg-white" />
       ) : produits.length === 0 ? (
         <div className="rounded-[10px] border border-[var(--border)] bg-white py-20 text-center text-gray-500">
@@ -378,10 +434,10 @@ export default function RapportsPage() {
             </div>
           )}
         </div>
-      )}
+      ))}
 
       {/* Drill-down produit */}
-      {selectedProduit && (
+      {tab === "produits" && selectedProduit && (
         <div className="mt-5 rounded-[10px] border border-[var(--border)] bg-white p-5 shadow-sm">
           <div className="mb-3 flex items-start justify-between gap-4">
             <div>
@@ -469,6 +525,85 @@ export default function RapportsPage() {
   );
 }
 
+function CategoriesView({
+  parents, sousCats, totalGlobal,
+}: {
+  parents: { id: string; label: string; qte: number; valeur: number; nbLignes: number; pct: number }[];
+  sousCats: { id: string; label: string; icon: string; parent: string; qte: number; valeur: number; nbLignes: number; pct: number }[];
+  totalGlobal: number;
+}) {
+  const [expandedParent, setExpandedParent] = React.useState<string | null>(null);
+
+  return (
+    <div className="rounded-[10px] border border-[var(--border)] bg-white shadow-sm overflow-hidden">
+      <div className="border-b border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Total période</p>
+          <p className="mono tabular text-lg font-bold text-[var(--text)]">
+            {totalGlobal.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+          </p>
+        </div>
+        <p className="text-xs text-gray-500">
+          {parents.length} catégorie{parents.length > 1 ? "s" : ""} · {sousCats.length} sous-catégorie{sousCats.length > 1 ? "s" : ""}
+        </p>
+      </div>
+      <div className="divide-y divide-[var(--border)]">
+        {parents.map(p => {
+          const subs = sousCats.filter(s => s.parent === p.id);
+          const isOpen = expandedParent === p.id;
+          return (
+            <div key={p.id}>
+              <button
+                onClick={() => setExpandedParent(isOpen ? null : p.id)}
+                className="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-[var(--bg-subtle)] text-left"
+              >
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <span className="text-base">{categorieIcon(p.id)}</span>
+                  <span className="font-semibold text-[var(--text)] capitalize">{p.label}</span>
+                  <span className="text-[11px] text-gray-500">·</span>
+                  <span className="text-[11px] text-gray-500">{p.nbLignes} ligne{p.nbLignes > 1 ? "s" : ""}</span>
+                </div>
+                <div className="flex items-center gap-4 shrink-0">
+                  <span className="mono tabular text-sm font-semibold text-[var(--text)]">
+                    {p.valeur.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                  </span>
+                  <span className="mono tabular text-xs text-gray-500 w-12 text-right">{p.pct.toFixed(1)}%</span>
+                  <span className="text-gray-400 text-sm">{isOpen ? "▼" : "▶"}</span>
+                </div>
+              </button>
+              {/* barre */}
+              <div className="px-4 pb-2">
+                <div className="h-1 w-full overflow-hidden rounded-full bg-gray-100">
+                  <div className="h-full bg-indigo-500" style={{ width: `${Math.min(100, p.pct)}%` }} />
+                </div>
+              </div>
+              {isOpen && subs.length > 0 && (
+                <div className="bg-[var(--bg-subtle)] px-6 py-2 space-y-1">
+                  {subs.map(s => (
+                    <div key={s.id} className="flex items-center justify-between gap-3 py-1.5 text-sm">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span>{s.icon}</span>
+                        <span className="text-[var(--text)] truncate">{s.label}</span>
+                        <span className="text-[11px] text-gray-500">· {s.nbLignes} ligne{s.nbLignes > 1 ? "s" : ""}</span>
+                      </div>
+                      <div className="flex items-center gap-4 shrink-0">
+                        <span className="mono tabular font-medium text-[var(--text)]">
+                          {s.valeur.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                        </span>
+                        <span className="mono tabular text-xs text-gray-500 w-12 text-right">{s.pct.toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function Th({
   children, sortable, sortKey, current, dir, onClick, className,
 }: {
@@ -524,11 +659,11 @@ function MonthlyBars({ data }: { data: { ym: string; qte: number; valeur: number
       {data.map(d => {
         const pct = (d.qte / max) * 100;
         return (
-          <div key={d.ym} className="flex-1 flex flex-col items-center gap-1 min-w-0" title={`${ymLabel(d.ym)} : ${fmtQte(d.qte)}`}>
+          <div key={d.ym} className="flex-1 flex flex-col items-center gap-1 min-w-0" title={ymLabel(d.ym) + " : " + fmtQte(d.qte)}>
             <div className="flex-1 w-full flex items-end">
               <div
                 className="w-full rounded-t bg-indigo-500 hover:bg-indigo-600 transition-colors"
-                style={{ height: `${pct}%`, minHeight: pct > 0 ? "2px" : "0" }}
+                style={{ height: pct + "%", minHeight: pct > 0 ? "2px" : "0" }}
               />
             </div>
             <span className="text-[9px] text-gray-500 truncate w-full text-center">{ymLabel(d.ym)}</span>

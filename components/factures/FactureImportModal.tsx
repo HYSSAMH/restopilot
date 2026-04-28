@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { ParsedFacture, ParsedLigne } from "@/lib/parse-facture";
+import { CATEGORIES, classifierProduit, categorieLabel, categorieIcon } from "@/lib/categories";
 
 /**
  * Activé via :
@@ -420,7 +421,7 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
       if (!f) return f;
       const newLine: ParsedLigne = {
         nom: "",
-        categorie: "epicerie",
+        categorie: "autres",
         quantite: 1,
         unite: "u",
         prix_unitaire: 0,
@@ -547,6 +548,7 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
         statut:                  "livree",
         source:                  "import",
         numero_facture_externe:  facture.numero_facture,
+        categorie_dominante:     facture.categorie_dominante ?? null,
         created_at:              createdAt,
       } as Record<string, unknown>;
 
@@ -564,9 +566,12 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
       let migrationManquante = false;
       if (errCmd && (errCmd.code === "PGRST204" || /column .* does not exist/i.test(errCmd.message))) {
         migrationManquante = true;
-        if (DEBUG_FACTURE) console.warn("[facture-import] tva_recap absent côté DB. Exécuter migration_tva_par_ligne.sql.");
+        if (DEBUG_FACTURE) console.warn("[facture-import] tva_recap/categorie absent. Exécuter migration_tva_par_ligne.sql + migration_categories_factures.sql.");
+        // Retry sans tva_recap, sans categorie_dominante
+        const fallbackPayload = { ...basePayload };
+        delete fallbackPayload.categorie_dominante;
         const res = await supabase.from("commandes")
-          .insert(basePayload)
+          .insert(fallbackPayload)
           .select("id").single();
         cmd = (res.data ?? null) as { id: string } | null;
         errCmd = (res.error ?? null) as SupaErr;
@@ -624,6 +629,7 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
         prix_snapshot: l.prix_unitaire,
         unite:         l.unite,
         quantite:      l.quantite,
+        categorie:     l.categorie || classifierProduit(l.nom),
       }));
       type SupaErrL = { message: string; code?: string } | null;
       let errLignes: SupaErrL = null;
@@ -635,8 +641,14 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
       }
       if (errLignes && (errLignes.code === "PGRST204" || /column .* does not exist/i.test(errLignes.message))) {
         migrationManquante = true;
-        if (DEBUG_FACTURE) console.warn("[facture-import] tva_taux absent côté DB, retry sans.");
-        const res = await supabase.from("lignes_commande").insert(baseLignes);
+        if (DEBUG_FACTURE) console.warn("[facture-import] tva_taux/categorie absent côté DB, retry sans.");
+        // Retry sans categorie ET sans tva_taux
+        const lignesFallback = baseLignes.map(b => {
+          const { categorie: _c, ...rest } = b;
+          void _c;
+          return rest;
+        });
+        const res = await supabase.from("lignes_commande").insert(lignesFallback);
         errLignes = (res.error ?? null) as SupaErrL;
       }
       if (errLignes) {
@@ -863,6 +875,23 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
                     <span className="mb-1 block text-xs font-medium text-gray-600">Montant TTC</span>
                     <input type="number" step="0.01" className={inputCls} value={facture.montant_ttc ?? ""} onChange={e => setFacture(f => f ? { ...f, montant_ttc: parseFloat(e.target.value) } : f)} />
                   </label>
+                  <label className="block sm:col-span-3">
+                    <span className="mb-1 block text-xs font-medium text-gray-600">
+                      Catégorie de la facture
+                      <span className="ml-1 text-[10px] text-gray-400">(auto-déterminée si une catégorie représente ≥ 70 % du HT)</span>
+                    </span>
+                    <select
+                      className={inputCls}
+                      value={facture.categorie_dominante ?? ""}
+                      onChange={e => setFacture(f => f ? { ...f, categorie_dominante: e.target.value || null } : f)}
+                    >
+                      <option value="">— Auto / mixte —</option>
+                      <option value="mixte">Mixte (plusieurs catégories)</option>
+                      {CATEGORIES.map(c => (
+                        <option key={c.id} value={c.id}>{c.icon} {c.label}</option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
               </section>
 
@@ -870,10 +899,11 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
               <section className="rounded-2xl border border-gray-200 bg-white p-4">
                 <h3 className="mb-3 text-sm font-semibold text-[#1A1A2E]">Lignes ({facture.lignes.length})</h3>
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[680px] text-sm">
+                  <table className="w-full min-w-[820px] text-sm">
                     <thead>
                       <tr className="border-b border-gray-200 text-xs font-medium uppercase tracking-wide text-gray-500">
                         <th className="py-2 text-left">Produit</th>
+                        <th className="py-2 text-left">Catégorie</th>
                         <th className="py-2 text-right">Qté</th>
                         <th className="py-2 text-left">Unité</th>
                         <th className="py-2 text-right">PU HT (€)</th>
@@ -887,6 +917,18 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
                         <tr key={i}>
                           <td className="py-2 pr-2">
                             <input className={inputCls} value={l.nom} onChange={e => updateLigne(i, "nom", e.target.value)} />
+                          </td>
+                          <td className="py-2 pr-2">
+                            <select
+                              className={inputCls + " min-w-[160px]"}
+                              value={l.categorie || classifierProduit(l.nom)}
+                              onChange={e => updateLigne(i, "categorie", e.target.value)}
+                              title={categorieLabel(l.categorie)}
+                            >
+                              {CATEGORIES.map(c => (
+                                <option key={c.id} value={c.id}>{c.icon} {c.label}</option>
+                              ))}
+                            </select>
                           </td>
                           <td className="py-2 pr-2 text-right">
                             <input type="number" step="0.01" className={inputCls + " w-20 text-right"} value={l.quantite} onChange={e => updateLigne(i, "quantite", e.target.value)} />

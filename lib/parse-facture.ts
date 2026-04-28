@@ -1,3 +1,5 @@
+import { classifierProduit, dominantCategorie } from "./categories";
+
 /**
  * Parser texte facture fournisseur → structure typée.
  * Aucun appel IA — uniquement des regex robustes calibrées sur des
@@ -42,6 +44,7 @@ export interface ParsedFacture {
   montant_ht: number | null;
   tva: number | null;
   montant_ttc: number | null;
+  categorie_dominante: string | null;
 }
 
 // ─── Helpers bas niveau ─────────────────────────────────────────
@@ -95,27 +98,6 @@ export function isValidSiret(siret: string): boolean {
     sum += d;
   }
   return sum % 10 === 0;
-}
-
-// ─── Catégorisation heuristique ─────────────────────────────────
-
-const CAT_KW: { cat: string; kws: string[] }[] = [
-  { cat: "boucherie", kws: ["boeuf","bœuf","veau","agneau","porc","poulet","volaille","charcuterie","jambon","saucisse","côte","cote","entrecote","entrecôte","filet","escalope","dinde","canard","rumsteck","bavette","lardon","chorizo"] },
-  { cat: "poissonnerie", kws: ["poisson","saumon","cabillaud","thon","crevette","langoustine","huitre","huître","moule","bar","dorade","sole","lotte","crustace","crustacé","bulot","calamar"] },
-  { cat: "fruits", kws: ["pomme","poire","banane","orange","citron","fraise","framboise","raisin","cerise","peche","pêche","abricot","ananas","mangue","kiwi","melon","pasteque","pastèque"] },
-  { cat: "legumes", kws: ["tomate","courgette","aubergine","poivron","oignon","ail","carotte","poireau","haricot","champignon","epinard","épinard","brocoli","chou","concombre","radis","betterave"] },
-  { cat: "pommes_de_terre", kws: ["pomme de terre","patate","grenaille","charlotte","agria","bintje"] },
-  { cat: "salades", kws: ["salade","laitue","roquette","mesclun","scarole","mache","mâche","frisee","frisée","endive"] },
-  { cat: "herbes", kws: ["persil","basilic","menthe","ciboulette","coriandre","thym","romarin","estragon","aneth","sauge","origan"] },
-  { cat: "cremerie", kws: ["lait","beurre","creme","crème","fromage","yaourt","oeuf","œuf","camembert","comte","comté","mozzarella","parmesan","gruyere"] },
-];
-
-function guessCat(nom: string): string {
-  const n = nom.toLowerCase();
-  for (const { cat, kws } of CAT_KW) {
-    if (kws.some(k => n.includes(k))) return cat;
-  }
-  return "epicerie";
 }
 
 // ─── Extraction d'en-tête / pied ────────────────────────────────
@@ -613,7 +595,7 @@ function parseLignes(text: string, tvaRecap: TvaLigneRecap[]): ParsedLigne[] {
       const tvaPct = parseMontant(m[5]);
       const totalTxt = parseMontant(m[6]) ?? (quantite * prixU);
       lignes.push({
-        nom, categorie: guessCat(nom), quantite, unite: "u",
+        nom, categorie: classifierProduit(nom), quantite, unite: "u",
         prix_unitaire: prixU, total: totalTxt,
         tva_taux: tvaPct != null && tvaPct >= 0 && tvaPct <= 30 ? tvaPct : null,
       });
@@ -632,7 +614,7 @@ function parseLignes(text: string, tvaRecap: TvaLigneRecap[]): ParsedLigne[] {
       let tvaTaux: number | null = VERGER_TVA_CODE[tvaCode] ?? null;
       if (tvaRecap.length === 1) tvaTaux = tvaRecap[0].taux;
       lignes.push({
-        nom, categorie: guessCat(nom), quantite, unite,
+        nom, categorie: classifierProduit(nom), quantite, unite,
         prix_unitaire: prixU, total, tva_taux: tvaTaux,
       });
       continue;
@@ -650,7 +632,7 @@ function parseLignes(text: string, tvaRecap: TvaLigneRecap[]): ParsedLigne[] {
       let tvaTaux: number | null = VERGER_TVA_CODE[tvaCode] ?? null;
       if (tvaRecap.length === 1) tvaTaux = tvaRecap[0].taux;
       lignes.push({
-        nom, categorie: guessCat(nom), quantite, unite: "u",
+        nom, categorie: classifierProduit(nom), quantite, unite: "u",
         prix_unitaire: prixU, total, tva_taux: tvaTaux,
       });
       continue;
@@ -669,7 +651,7 @@ function parseLignes(text: string, tvaRecap: TvaLigneRecap[]): ParsedLigne[] {
       let tvaTaux: number | null = VERGER_TVA_CODE[tvaCode] ?? null;
       if (tvaRecap.length === 1) tvaTaux = tvaRecap[0].taux;
       lignes.push({
-        nom, categorie: guessCat(nom), quantite, unite,
+        nom, categorie: classifierProduit(nom), quantite, unite,
         prix_unitaire: prixU, total, tva_taux: tvaTaux,
       });
       continue;
@@ -685,7 +667,7 @@ function parseLignes(text: string, tvaRecap: TvaLigneRecap[]): ParsedLigne[] {
       const total = parseMontant(m[5]) ?? (quantite * prixU);
       const tvaPct = parseMontant(m[6]);
       lignes.push({
-        nom, categorie: guessCat(nom), quantite, unite: "u",
+        nom, categorie: classifierProduit(nom), quantite, unite: "u",
         prix_unitaire: prixU, total,
         tva_taux: tvaPct != null && tvaPct >= 0 && tvaPct <= 30 ? tvaPct : null,
       });
@@ -702,7 +684,7 @@ function parseLignes(text: string, tvaRecap: TvaLigneRecap[]): ParsedLigne[] {
       const tvaPct = parseMontant(m[4]);
       const total = parseMontant(m[5]) ?? (quantite * prixU);
       lignes.push({
-        nom, categorie: guessCat(nom), quantite, unite: "u",
+        nom, categorie: classifierProduit(nom), quantite, unite: "u",
         prix_unitaire: prixU, total,
         tva_taux: tvaPct != null && tvaPct >= 0 && tvaPct <= 30 ? tvaPct : null,
       });
@@ -719,7 +701,7 @@ function parseLignes(text: string, tvaRecap: TvaLigneRecap[]): ParsedLigne[] {
       const prixU = parseMontant(m[6]) ?? 0;
       const total = parseMontant(m[7]) ?? (quantite * prixU);
       lignes.push({
-        nom, categorie: guessCat(nom), quantite, unite,
+        nom, categorie: classifierProduit(nom), quantite, unite,
         prix_unitaire: prixU, total,
         tva_taux: tvaPct != null && tvaPct >= 0 && tvaPct <= 30 ? tvaPct : null,
       });
@@ -736,7 +718,7 @@ function parseLignes(text: string, tvaRecap: TvaLigneRecap[]): ParsedLigne[] {
       const total = parseMontant(m[10]) ?? (quantite * prixU);
       const tvaPct = parseMontant(m[3]);
       lignes.push({
-        nom, categorie: guessCat(nom), quantite,
+        nom, categorie: classifierProduit(nom), quantite,
         unite: unite.toLowerCase().trim() || "pce",
         prix_unitaire: prixU, total,
         tva_taux: tvaPct != null && tvaPct >= 0 && tvaPct <= 30 ? tvaPct : null,
@@ -754,7 +736,7 @@ function parseLignes(text: string, tvaRecap: TvaLigneRecap[]): ParsedLigne[] {
       const total = parseMontant(totalHT) ?? (quantite * prixU);
       if (total <= 0 || quantite <= 0 || prixU <= 0) continue;
       lignes.push({
-        nom, categorie: guessCat(nom), quantite,
+        nom, categorie: classifierProduit(nom), quantite,
         unite: unite.toLowerCase().trim() || "pce",
         prix_unitaire: prixU, total, tva_taux: null,
       });
@@ -800,6 +782,7 @@ export function parseOneFacture(text: string): ParsedFacture {
       ?? (totaux.ht != null && (tvaSumRecap ?? totaux.tva) != null
             ? Math.round((totaux.ht + (tvaSumRecap ?? totaux.tva ?? 0)) * 100) / 100
             : null),
+    categorie_dominante: dominantCategorie(lignes),
   };
 }
 
