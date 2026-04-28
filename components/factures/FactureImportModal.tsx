@@ -384,6 +384,7 @@ export default function FactureImportModal({ onClose, onSaved }: Props) {
         montant_ht: null,
         tva: null,
         montant_ttc: null,
+        categorie_dominante: null,
       };
       return { first: skeleton, rest: [] };
     }
